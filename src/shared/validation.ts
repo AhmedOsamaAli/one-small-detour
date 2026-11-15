@@ -16,7 +16,9 @@ function isCell(value: unknown): value is { row: number; col: number } {
 
 export function isSwap(value: unknown): value is Swap {
   return isRecord(value) && isCell(value['a']) && isCell(value['b']) &&
-    integer(value['rows'], 1, MAX_BOARD_SIZE) && integer(value['cols'], 1, MAX_BOARD_SIZE);
+    integer(value['rows'], 1, MAX_BOARD_SIZE) && integer(value['cols'], 1, MAX_BOARD_SIZE) &&
+    (value['kind'] === undefined || (value['kind'] === 'ell' &&
+      ((value['rows'] === 3 && value['cols'] === 2) || (value['rows'] === 2 && value['cols'] === 3))));
 }
 
 function isGoal(value: unknown): value is Goal {
@@ -28,7 +30,10 @@ function isGoal(value: unknown): value is Goal {
 function isPuzzleMetadata(value: unknown): value is Record<string, unknown> {
   return isRecord(value) && typeof value['id'] === 'string' && typeof value['title'] === 'string' &&
     typeof value['note'] === 'string' && integer(value['chapter'], 0, Number.MAX_SAFE_INTEGER) &&
-    [1, 2, 4].includes(Number(value['area'])) && integer(value['area'], 1, 4) &&
+    integer(value['area'], 1, 4) &&
+    (value['frame'] === undefined || (value['frame'] === 'strip' && value['area'] === 3) ||
+      ((value['frame'] === 'square' || value['frame'] === 'ell') && value['area'] === 4)) &&
+    (value['practiceAfter'] === undefined || integer(value['practiceAfter'], 1, 10_000)) &&
     integer(value['budget'], 1, MAX_EXCHANGES) &&
     (value['minimum'] === undefined || integer(value['minimum'], 1, Number(value['budget']))) &&
     (value['theme'] === 'meadow' || value['theme'] === 'coast' || value['theme'] === 'orchard');

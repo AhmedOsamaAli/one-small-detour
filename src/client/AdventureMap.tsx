@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CatalogEntry } from '../shared/types.ts';
 import { campaignGates, campaignPlaces } from '../shared/progression.ts';
-import { Icon, LandscapeIllustration } from './components.tsx';
+import { Icon, LandscapeIllustration, ShapeGlyph } from './components.tsx';
+import { shapesFor } from '../shared/rules.ts';
 
 interface Point { x: number; y: number }
 interface Drag { id: number; y: number; offset: number; moved: boolean }
@@ -150,6 +151,8 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
   const preview = entries.find((place) => place.id === previewId) ?? entries[focusIndex] ?? null;
+  const previewFrame = preview?.frame ? shapesFor(preview.area, preview.size, preview.frame)[0] : null;
+  if (preview?.frame && !previewFrame) throw new Error('The selected Practice island has no supported frame.');
   const previewGate = preview ? gates.get(preview.id) : null;
   const previewIndex = preview ? entries.findIndex((place) => place.id === preview.id) : -1;
   const replay = preview !== null && done.has(preview.id);
@@ -278,7 +281,7 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
     <section className={`campaign-preview ${replay ? 'preview-done' : previewGate?.unlocked ? 'preview-ready' : 'preview-locked'}`}
       aria-label="Selected stop preview" data-testid="campaign-preview">
       {preview && previewGate ? <>
-        <div className="preview-picture"><LandscapeIllustration theme={preview.theme}/></div>
+        <div className="preview-picture">{previewFrame ? <ShapeGlyph shape={previewFrame}/> : <LandscapeIllustration theme={preview.theme}/>}</div>
         <div className="preview-copy">
           <div className="preview-eyebrow"><span>STOP {previewIndex + 1}</span><span className="preview-state">
             <Icon name={replay ? 'check' : previewGate.unlocked ? 'play' : 'lock'} size={12}/>{status}
@@ -291,7 +294,7 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
         </div>
         <p className={`preview-message ${error ? 'adventure-error' : ''}`} role={error ? 'alert' : 'status'}>
           {error ?? (loading ? 'Opening your stop...' : !previewGate.unlocked
-            ? `Finish stop ${nextIndex + 1} to unlock this stop.` : 'Connect the full road through every home.')}
+            ? `Finish stop ${nextIndex + 1} to unlock this stop.` : preview.frame ? preview.note : 'Connect the full road through every home.')}
         </p>
         <button className="primary-button campaign-play" disabled={!previewGate.unlocked || loading !== null}
           onClick={() => onSelect(preview.id)}

@@ -14,15 +14,21 @@
   --scene-water-glint: var(--world-foam, #d4eee2);
   --scene-halo: color-mix(in srgb, var(--map-water) 35%, var(--surface-soft));
   --scene-cloud: var(--edge-light);
+  --app-height: 100dvh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * { box-sizing: border-box; }
 body { margin: 0; background: linear-gradient(150deg, var(--sky-top), var(--sky-bottom)); color: var(--ink); font-family: 'DM Sans Variable', 'Segoe UI', sans-serif; }
-.preview-shell { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); align-items: center; gap: clamp(8px, 2vw, 28px); padding: clamp(12px, 3vw, 30px); height: 100dvh; min-height: 0; max-width: 1060px; margin: auto; background: radial-gradient(ellipse at 75% 54%, #acc39618, transparent 67%); }
+.preview-shell { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); align-items: center; gap: clamp(8px, 2vw, 28px); padding: max(clamp(12px, 3vw, 30px), var(--safe-top)) max(clamp(12px, 3vw, 30px), var(--safe-right)) max(clamp(12px, 3vw, 30px), var(--safe-bottom)) max(clamp(12px, 3vw, 30px), var(--safe-left)); height: var(--app-height); min-height: 0; max-width: 1060px; margin: auto; background: radial-gradient(ellipse at 75% 54%, #acc39618, transparent 67%); }
 .preview-copy { min-width: 0; padding-block: 6px; }
 .preview-brand { display: flex; align-items: center; gap: 8px; color: var(--ink); }
 .preview-brand > svg { flex-shrink: 0; }
 .preview-brand > span { font: 500 clamp(14px, 2.6vw, 20px)/1.2 'Fraunces Variable', Georgia, serif; letter-spacing: -.4px; white-space: nowrap; }
+.preview-brand > span, h1 { font-variation-settings: 'SOFT' 85, 'WONK' 1, 'opsz' 36; font-feature-settings: 'liga' 1, 'calt' 1; }
 .preview-eyebrow { margin: 20px 0 8px; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.5; letter-spacing: 1.1px; }
 h1 { font-family: 'Fraunces Variable', Georgia, serif; font-size: clamp(28px, min(6vw, 9vh), 50px); font-weight: 500; line-height: 1.08; letter-spacing: -1px; margin: 0 0 14px; text-wrap: balance; }
 .preview-subtitle { font-size: clamp(13px, 2.1vw, 16px); line-height: 1.55; color: var(--muted); margin: 0 0 20px; }
@@ -32,7 +38,7 @@ h1 { font-family: 'Fraunces Variable', Georgia, serif; font-size: clamp(28px, mi
 #open-game:active { translate: 0 1px; box-shadow: inset 0 1px 0 #fff9df38, 0 2px 0 #244a3a18; }
 #open-game:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; }
 .preview-art { min-width: 0; min-height: 0; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.preview-scene { display: block; width: 100%; max-height: calc(100dvh - 56px); aspect-ratio: 48 / 31; overflow: visible; }
+.preview-scene { display: block; width: 100%; max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 56px); aspect-ratio: 48 / 31; overflow: visible; }
 .preview-scene text { font: 700 14px 'DM Sans Variable', sans-serif; }
 .preview-art figcaption { font-size: 12px; font-weight: 500; line-height: 1.4; margin-top: 8px; color: var(--muted); text-align: center; }
 #preview-error:empty { display: none; }

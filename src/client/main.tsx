@@ -6,6 +6,10 @@ import '@fontsource-variable/fraunces/full.css';
 import './styles.css';
 import './art.css';
 import App from './App.tsx';
+import { trackViewport } from './viewport.ts';
+
+const stopViewport = trackViewport();
+import.meta.hot?.dispose(stopViewport);
 
 class GameBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   override state: { error: Error | null } = { error: null };

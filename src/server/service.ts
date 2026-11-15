@@ -8,6 +8,7 @@ import type { AttemptStore } from './attempts.ts';
 import type { GuideStore } from './guides.ts';
 import { isGuideTopics } from '../shared/guidance.ts';
 import type { Leaderboard, Mode, Player, RankedScore, ScoreRecord } from '../shared/types.ts';
+import type { DailyRankingStore } from './indexedRanking.ts';
 
 export interface ScoreStore {
   list(key: string): Promise<ScoreRecord[]>;
@@ -24,6 +25,7 @@ export interface GameServiceOptions {
   player: (request: Request) => Promise<Player | null>;
   now?: () => Date;
   accountExists?: (userId: string) => Promise<boolean>;
+  dailyRanking?: DailyRankingStore;
 }
 
 export function scoreKey(edition: string, mode: Mode, version = mode === 'daily' ? TIMED_SCORE_VERSION : RULE_VERSION): string {
@@ -69,6 +71,7 @@ export function createGameApi(options: GameServiceOptions): Hono {
   const clock = options.now ?? (() => new Date());
   const checkedAt = new Map<string, number>();
   const erasePlayer = async (userId: string): Promise<void> => {
+    await options.dailyRanking?.erase(userId);
     await options.attempts.erase(userId);
     await options.store.erase(userId);
     await options.guides.erase(userId);
@@ -102,9 +105,16 @@ export function createGameApi(options: GameServiceOptions): Hono {
     if (!edition) throw new RuleError('That challenge has not opened yet.', 'edition');
     return edition;
   };
+  const boardFor = async (key: string, mode: Mode, userId: string | null, includeLeaders = false): Promise<Leaderboard> =>
+    mode === 'daily' && options.dailyRanking ? options.dailyRanking.read(key, userId, includeLeaders) :
+      rankScores(await recordsFor(key), userId, options.source, mode);
 
   api.onError((error, c) => {
-    if (error instanceof RuleError) return c.json({ error: error.message, code: error.code }, 400);
+    if (error instanceof RuleError) {
+      const temporary = error.code === 'ranking_busy' || error.code === 'ranking_indexing';
+      if (temporary) c.header('Retry-After', '1');
+      return c.json({ error: error.message, code: error.code }, temporary ? 503 : 400);
+    }
     console.error(`Detour API ${c.req.method} ${c.req.path} failed:`, error);
     return c.json({ error: 'The village board could not be reached. Your puzzle is safe; please try again.', code: 'service_error' }, 503);
   });
@@ -179,13 +189,13 @@ export function createGameApi(options: GameServiceOptions): Hono {
     const mode = c.req.query('mode');
     if (mode !== 'daily' && mode !== 'gentle') throw new RuleError('Choose a valid challenge mode.', 'mode');
     const player = await options.player(c.req.raw);
-    return c.json(rankScores(await recordsFor(scoreKey(edition.id, mode)), player?.id ?? null, options.source, mode));
+    return c.json(await boardFor(scoreKey(edition.id, mode), mode, player?.id ?? null, true));
   });
 
   api.get('/api/my-rank', async (c) => {
     const edition = resolveEdition(c.req.query('edition') ?? '');
     const player = await options.player(c.req.raw);
-    const board = rankScores(await recordsFor(scoreKey(edition.id, 'daily')), player?.id ?? null, options.source, 'daily');
+    const board = await boardFor(scoreKey(edition.id, 'daily'), 'daily', player?.id ?? null);
     return c.json({
       edition: edition.id,
       rank: board.yourBest?.rank ?? null,
@@ -226,18 +236,21 @@ export function createGameApi(options: GameServiceOptions): Hono {
       const solveId = body.solveId;
       if (!solveId) throw new RuleError('This daily result is missing its solve identifier.', 'solve_id');
       const movesHash = createHash('sha256').update(JSON.stringify(body.moves.map((move) =>
-        [move.a.row, move.a.col, move.b.row, move.b.col, move.rows, move.cols]))).digest('hex');
+        move.kind ? [move.a.row, move.a.col, move.b.row, move.b.col, move.rows, move.cols, move.kind] :
+          [move.a.row, move.a.col, move.b.row, move.b.col, move.rows, move.cols]))).digest('hex');
       const completion = await options.attempts.complete(attempt.id, { solveId, movesHash, solveMs: receivedAt - attempt.startsAt });
       solveMs = completion.solveMs;
     }
     const key = scoreKey(edition.id, body.mode);
-    await options.store.put(key, {
+    const record: ScoreRecord = {
       userId: player.id, name: player.name,
-      footprint: repair.footprint, swaps: repair.swaps, submittedAt: clock().toISOString(),
+      footprint: repair.footprint, swaps: repair.swaps, submittedAt: new Date(receivedAt).toISOString(),
       ...(solveMs === undefined ? {} : { solveMs }),
-    });
+    };
+    if (body.mode === 'daily' && options.dailyRanking) await options.dailyRanking.put(key, record);
+    else await options.store.put(key, record);
     return c.json({
-      ...rankScores(await recordsFor(key), player.id, options.source, body.mode),
+      ...await boardFor(key, body.mode, player.id),
       saved: { swaps: repair.swaps, solveMs: solveMs ?? null },
     });
   });

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { certifyMinimum } from '../src/shared/difficulty.ts';
-import { dailyPuzzleForDate, editionForDate, getPuzzles, nextReset, puzzleDate } from '../src/shared/puzzles.ts';
+import { dailyMinimum, dailyPuzzleForDate, editionForDate, getPuzzles, nextReset, puzzleDate, STARTER_DAILY_START } from '../src/shared/puzzles.ts';
 import { MAX_EXCHANGES, roadFingerprint, RULE_VERSION, validateRepair } from '../src/shared/rules.ts';
 
 if (process.argv.length > 3) throw new Error('Usage: npm run verify:daily -- [YYYY-MM-DD]');
@@ -14,7 +14,7 @@ const dayMs = 86_400_000;
 const terrain = new Map<string, string>();
 const roads = new Map<string, string>();
 const campaignRoads = new Set(getPuzzles().map((puzzle) => roadFingerprint(puzzle.board)));
-assert.equal(campaignRoads.size, 200, 'The campaign must contain 200 distinct road decisions.');
+assert.equal(campaignRoads.size, 212, 'The campaign must contain 212 distinct road decisions.');
 const paving = new Set<string>();
 const repaired = new Set<string>();
 const fingerprints: string[] = [];
@@ -34,6 +34,11 @@ for (let offset = 0; offset < days; offset++) {
   assert.equal(puzzle.id, `daily-v${RULE_VERSION}-${id}`);
   const minimum = certifyMinimum(puzzle);
   assert.equal(minimum, puzzle.minimum, `${id}: the difficulty is not certified.`);
+  if (id >= STARTER_DAILY_START) {
+    assert.equal(minimum, dailyMinimum(id), `${id}: the Daily must match its gradual shared schedule.`);
+    assert.equal(puzzle.board.length, minimum <= 4 ? 8 : 10, `${id}: the Daily must match its scheduled map size.`);
+    assert.equal(puzzle.area, 2, `${id}: the ranked Daily frame rules must not change.`);
+  }
   assert.equal(puzzle.budget, MAX_EXCHANGES, `${id}: long attempts are not supported.`);
   const solution = validateRepair(puzzle, 'daily', puzzle.witness);
   assert.equal(solution.swaps, minimum, `${id}: the authoritative replay disagrees.`);
@@ -69,7 +74,6 @@ for (let offset = 0; offset < days; offset++) {
   assert.equal(fingerprint, fingerprints[offset], `${date.toISOString()}: regeneration changed the daily puzzle.`);
 }
 assert.equal(themes.size, 3, 'The year did not cover all three landscape themes.');
-assert.ok(Object.keys(difficulties).length >= 7, 'The year did not cover the daily difficulty cycle.');
 console.log(JSON.stringify({
   from: start,
   through: new Date(startDate.getTime() + (days - 1) * dayMs).toISOString().slice(0, 10),

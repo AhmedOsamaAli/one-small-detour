@@ -4,7 +4,7 @@ import { createGameApi, rankScores, scoreKey } from './service.ts';
 import type { ScoreStore } from './service.ts';
 import { MemoryAttemptStore } from './attempts.ts';
 import { MemoryGuideStore } from './guides.ts';
-import type { ScoreRecord } from '../shared/types.ts';
+import type { ScoreRecord, Swap } from '../shared/types.ts';
 import { AUTHORED, dailyPuzzleForDate } from '../shared/puzzles.ts';
 
 class MemoryScores implements ScoreStore {
@@ -132,9 +132,9 @@ test('deleting records and reconciling deleted accounts removes their scores', a
   assert.equal(deletion.status, 200);
 });
 
-test('advanced boards accept verified fifteen-exchange repairs and isolate earlier rules', async () => {
+test('verified fifteen-exchange repairs remain accepted and isolate earlier rules', async () => {
   const store = new MemoryScores();
-  const date = '2026-11-18';
+  const date = '2026-11-15';
   await store.put(scoreKey(date, 'gentle', '1'), record('old-rules', 2, 1));
   await store.put(scoreKey(date, 'gentle', '3'), record('classic-rules', 8, 2));
   const app = createGameApi({
@@ -144,14 +144,18 @@ test('advanced boards accept verified fifteen-exchange repairs and isolate earli
   });
   const puzzle = dailyPuzzleForDate(new Date(`${date}T12:00:00Z`));
   assert.ok(puzzle);
-  assert.equal(puzzle.minimum, 15);
+  assert.equal(puzzle.minimum, 5);
+  const first = puzzle.witness[0];
+  assert.ok(first);
+  const moves = [...Array<Swap>(10).fill(first), ...puzzle.witness];
+  assert.equal(moves.length, 15);
   const send = (moves: unknown) => app.request('/api/repairs', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ edition: date, mode: 'gentle', moves }),
   });
-  const short = await send(puzzle.witness.slice(0, -1));
+  const short = await send(moves.slice(0, -1));
   assert.equal(short.status, 400);
-  const full = await send(puzzle.witness);
+  const full = await send(moves);
   assert.equal(full.status, 200);
   const result = await full.text();
   assert.ok(result.includes('"footprint":60'));

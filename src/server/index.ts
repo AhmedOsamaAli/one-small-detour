@@ -13,6 +13,7 @@ import type { Mode, ScoreRecord } from '../shared/types.ts';
 import { GUIDE_TOPICS, isGuideTopic } from '../shared/guidance.ts';
 import { GUIDE_PREFERENCE_TTL_SECONDS } from './guides.ts';
 import type { GuideStore } from './guides.ts';
+import { IndexedDailyRanking } from './indexedRanking.ts';
 
 function isRedditId(id: string): id is `t2_${string}` {
   return /^t2_[a-z0-9]+$/i.test(id);
@@ -26,6 +27,21 @@ function parseRecords(values: Record<string, string>): ScoreRecord[] {
   });
 }
 
+async function rememberScoreKey(key: string, userId: string): Promise<void> {
+  const day = key.split(':')[2];
+  if (!day) throw new Error('Leaderboard key has no edition.');
+  const indexKey = `detour:player-records:${userId}`;
+  const prior = await redis.hGetAll(indexKey);
+  const expired = Object.entries(prior).filter(([, edition]) => {
+    const timestamp = Date.parse(`${edition}T00:00:00Z`);
+    if (!Number.isFinite(timestamp)) throw new Error('The player record index has an invalid date.');
+    return timestamp + 30 * 86_400_000 <= Date.now();
+  }).map(([field]) => field);
+  if (expired.length) await redis.hDel(indexKey, expired);
+  await redis.hSet(indexKey, { [key]: day });
+  await redis.expire(indexKey, 31 * 86_400);
+}
+
 const store: ScoreStore = {
   async list(key) {
     return parseRecords(await redis.hGetAll(key));
@@ -36,18 +52,9 @@ const store: ScoreStore = {
     const day = key.split(':')[2];
     if (!day) throw new Error('Leaderboard key has no edition.');
     const remaining = Math.max(1, Math.ceil((Date.parse(`${day}T00:00:00Z`) + 30 * 86_400_000 - Date.now()) / 1000));
-    const indexKey = `detour:player-records:${record.userId}`;
     // Index first: a successful score write must never become undiscoverable
     // when the player asks to erase records from an open-ended daily schedule.
-    const prior = await redis.hGetAll(indexKey);
-    const expired = Object.entries(prior).filter(([, edition]) => {
-      const timestamp = Date.parse(`${edition}T00:00:00Z`);
-      if (!Number.isFinite(timestamp)) throw new Error('The player record index has an invalid date.');
-      return timestamp + 30 * 86_400_000 <= Date.now();
-    }).map(([field]) => field);
-    if (expired.length) await redis.hDel(indexKey, expired);
-    await redis.hSet(indexKey, { [key]: day });
-    await redis.expire(indexKey, 31 * 86_400);
+    await rememberScoreKey(key, record.userId);
     await redis.hSet(key, { [scoreField(record)]: JSON.stringify(record) });
     await redis.expire(key, remaining);
   },
@@ -154,10 +161,18 @@ const guides: GuideStore = {
   },
 };
 
+const dailyRanking = new IndexedDailyRanking(redis, {
+  remember: rememberScoreKey,
+  keys: async (id) => Object.keys(await redis.hGetAll(`detour:player-records:${id}`)),
+  accountExists: async (id) => isRedditId(id) && Boolean(await reddit.getUserById(id)),
+  eraseOtherData: async (id) => { await attempts.erase(id); await store.erase(id); await guides.erase(id); },
+});
+
 const app = createGameApi({
   store,
   attempts,
   guides,
+  dailyRanking,
   source: 'reddit',
   community: () => context.subredditName ? `r/${context.subredditName}` : 'This little community',
   player: async () => {

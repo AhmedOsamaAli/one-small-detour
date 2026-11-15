@@ -3,9 +3,9 @@ import { gameApi, takeStorageNotice } from './api.ts';
 import { IslandAudio } from './audio.ts';
 import { BoardView } from './BoardView.tsx';
 import type { Transition } from './BoardView.tsx';
-import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, Icon, LandscapeIllustration, Modal, ScenicBackdrop, ShapeGlyph, TileGuide, WalkthroughFeatures } from './components.tsx';
+import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, HomeLetter, Icon, LandscapeIllustration, Modal, ScenicBackdrop, ShapeGlyph, TileGuide, WalkthroughFeatures } from './components.tsx';
 import { worldCssVariables } from './worldTheme.ts';
-import { applySwap, checkPuzzle, patchCells, RuleError, rulesFor, selectionIssue, shapesFor, tileAt } from '../shared/rules.ts';
+import { applySwap, checkPuzzle, patchArea, patchCells, RuleError, rulesFor, selectionIssue, shapesFor, tileAt } from '../shared/rules.ts';
 import type { PatchIssue } from '../shared/rules.ts';
 import { difficultyLabel } from '../shared/difficulty.ts';
 import { CelebrationHold } from '../shared/playback.ts';
@@ -17,7 +17,8 @@ import { useSolveTimer } from './useSolveTimer.ts';
 import { formatSolveTime } from '../shared/timing.ts';
 import { mergeGuideTopics, newTileGuides } from '../shared/guidance.ts';
 import { loadPreferences, PREF_KEY, resolveAppearance } from './preferences.ts';
-import type { Anchor, Board, Bootstrap, Celebration, Cell, FrameAxes, GuideBounds, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
+import type { Anchor, Board, Bootstrap, Celebration, Cell, FrameAxes, GuideTarget, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
+import { sameGuideTarget } from './coachLayout.ts';
 
 type Kind = 'daily' | 'studio' | 'guide';
 type Dialog = 'guide' | 'atlas' | 'erase' | 'welcome' | 'tour-tools' | 'tour-places' | 'tiles' | null;
@@ -36,17 +37,17 @@ const selectionLabels: Record<PatchIssue['code'], string> = {
 
 function rankSummary(rank: MyRank, label = 'today'): string {
   if (rank.rank === null) throw new Error('A saved daily rank is missing.');
-  if (rank.participants === 1) return `Rank #${rank.rank} ${label}`;
+  if (rank.participants === 1) return `Rank #${rank.rank} of 1 finisher ${label}`;
   if (rank.topPercent === null) throw new Error('The daily percentage is missing.');
-  return `#${rank.rank} · Top ${rank.topPercent < 1 ? '<1' : Math.ceil(rank.topPercent)}% ${label}`;
+  return `#${rank.rank} of ${rank.participants} · Top ${rank.topPercent < 1 ? '<1' : Math.ceil(rank.topPercent)}% ${label}`;
 }
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'Something unexpected happened. Please try again.';
 }
 
-function defaultShape(area: number): Shape {
-  const shapes = shapesFor(area);
+function defaultShape(puzzle: Puzzle): Shape {
+  const shapes = shapesFor(puzzle.area, puzzle.board.length, puzzle.frame);
   const shape = shapes.find((item) => item.rows === item.cols) ?? shapes[0];
   if (!shape) throw new Error('This patch size cannot fit the island.');
   return shape;
@@ -89,6 +90,8 @@ export default function App() {
   const [shape, setShape] = useState<Shape>({ rows: 1, cols: 2 });
   const [first, setFirst] = useState<Cell | null>(null);
   const [hover, setHover] = useState<Cell | null>(null);
+  const hoverForFeedback = useRef<Cell | null>(null);
+  hoverForFeedback.current = hover;
   const [selectionFeedback, setSelectionFeedback] = useState<PatchIssue | null>(null);
   const [busy, setBusy] = useState(false);
   const [transition, setTransition] = useState<Transition | null>(null);
@@ -119,7 +122,7 @@ export default function App() {
   const [arrivalComplete, setArrivalComplete] = useState(false);
   const [resultRevealed, setResultRevealed] = useState(false);
   const [resultDismissed, setResultDismissed] = useState(false);
-  const [guideBounds, setGuideBounds] = useState<GuideBounds | null>(null);
+  const [guideBounds, setGuideBounds] = useState<GuideTarget | null>(null);
   const celebrationHold = useRef<{ revision: number; flat: boolean; clock: CelebrationHold } | null>(null);
   const [frameAxes, setFrameAxes] = useState<FrameAxes>(FLAT_AXES);
   const guideWrites = useRef(new Set<Promise<void>>());
@@ -168,7 +171,7 @@ export default function App() {
     setFirst(null);
     setHover(null);
     setSelectionFeedback(null);
-    setShape(next.kind === 'guide' ? TUTORIAL_START_SHAPE : defaultShape(next.puzzle.area));
+    setShape(next.kind === 'guide' ? TUTORIAL_START_SHAPE : defaultShape(next.puzzle));
     setTransition(null);
     setBusy(false);
     setPublished(false);
@@ -299,19 +302,32 @@ export default function App() {
   }, [roadReady, check.journey, revision, arrivalComplete]);
   const restingStop: Anchor = arrived.at(-1) ?? 'A';
   const routes = roadReady ? check.routes : EMPTY_ROUTES;
-  const footprint = moves.reduce((total, move) => total + 2 * move.rows * move.cols, 0);
-  const shapes = useMemo(() => shapesFor(area), [area]);
+  const footprint = moves.reduce((total, move) => total + 2 * patchArea(move), 0);
+  const shapes = useMemo(() => shapesFor(area, board.length || 6, run?.puzzle.frame), [area, board.length, run?.puzzle.frame]);
   const guideMove = TUTORIAL_MOVES[moves.length] ?? null;
   const guideStage = run?.kind === 'guide' ? tutorialStage(shape, first, roadReady, guideMove) : null;
   const hoverIssue = useMemo(() => {
-    if (!hover || !run || roadReady || busy || !timer.canPlay || (run.kind === 'guide' && guideStage === 'frame')) return null;
+    if (!hover || !run || run.kind === 'guide' || roadReady || busy || !timer.canPlay) return null;
     return selectionIssue(board, hover, shape, first);
-  }, [hover, first, shape, board, run, roadReady, busy, timer.canPlay, guideStage]);
+  }, [hover, first, shape, board, run, roadReady, busy, timer.canPlay]);
   const feedback = selectionFeedback ?? hoverIssue;
   const feedbackCells = feedback?.cells ?? EMPTY_CELLS;
+  useEffect(() => {
+    if (!feedback) return;
+    const capturedHover = hoverForFeedback.current;
+    const expiry = window.setTimeout(() => {
+      setSelectionFeedback((current) => current === feedback ? null : current);
+      // Touch keeps its hover after a tap, which would otherwise recreate the error.
+      setHover((current) => current === capturedHover ? null : current);
+    }, 1000);
+    return () => window.clearTimeout(expiry);
+  }, [feedback]);
   const onHover = useCallback((cell: Cell | null) => {
     setHover(cell);
     if (cell) setSelectionFeedback(null);
+  }, []);
+  const updateGuideBounds = useCallback((next: GuideTarget | null) => {
+    setGuideBounds((current) => sameGuideTarget(current, next) ? current : next);
   }, []);
 
   const onArrival = useCallback((eventRevision: number, stop: JourneyStop) => {
@@ -590,7 +606,8 @@ export default function App() {
     roadReady ? nextStop ? `Next stop: ${nextStop}` : 'Final stop reached.' :
     moves.length >= rules.budget ? 'Undo a swap to continue.' :
     run?.kind === 'guide' ? guideStage === 'frame' ? 'Choose the glowing frame.' : !first ? 'Tap the orange pair.' : 'Tap the blue pair.' :
-    !first ? 'Choose a patch.' : 'Choose the matching patch.';
+    !first ? run?.puzzle.frame === 'ell' ? 'Choose an L patch.' : run?.puzzle.frame === 'strip' ? 'Choose a 3-square strip.' :
+      run?.puzzle.frame === 'square' ? 'Choose a 4-square patch.' : 'Choose a patch.' : 'Pick 2; tap start to clear.';
   const earnedRank = won && published && run?.kind === 'daily' && myRank?.edition === run.edition && myRank.rank !== null ? myRank : null;
   const rankLabel = run?.edition === bootstrap?.edition?.id ? 'today' : `on ${todayLabel}`;
   const pendingTopics = pendingRun ? newTileGuides(pendingRun.puzzle.board, preferences.seenGuides) : [];
@@ -633,12 +650,13 @@ export default function App() {
     {!loading && loadError && <main className="loading-place"><LandscapeIllustration theme="coast"/><h1>The island is taking its time.</h1><p className="inline-error" role="alert"><Icon name="warning" size={18}/>{loadError}</p><button className="primary-button" onClick={() => { void load(); }}>Try again <Icon name="arrow"/></button></main>}
     {!loading && !loadError && !run && pendingRun && <main className="loading-place"><LandscapeIllustration theme={pendingRun.puzzle.theme}/><h1>Before the clock starts.</h1></main>}
 
-    {!loading && !loadError && run && bootstrap && <main className={`game-layout ${run.kind === 'studio' || run.kind === 'guide' ? 'practice-play' : ''}`}>
+    {!loading && !loadError && run && bootstrap && <main className={`game-layout board-first ${run.kind === 'studio' || run.kind === 'guide' ? 'practice-play' : ''}`}>
       <aside className="story-panel">
         <div className="place-heading">
           <div className="edition-label">{run.kind === 'guide' ? 'GUIDED PRACTICE' : run.kind === 'studio' ? 'UNRANKED CHALLENGE' : `${todayLabel.toUpperCase()} / NO. ${run.number?.toString().padStart(3, '0')}`}</div>
           <h1 title={run.puzzle.title}>{run.puzzle.title}<span className="title-period">.</span></h1>
           <div className="challenge-facts"><span>{board.length} x {board.length}</span><span>{difficultyLabel(run.puzzle.minimum)}</span>
+            {run.puzzle.frame && <span>{run.puzzle.frame === 'ell' ? '4-square L' : run.puzzle.frame === 'strip' ? '3-square strips' : '2 x 2 squares'}</span>}
             {run.puzzle.minimum && <span title="A checked solution matches the proven lower bound for this patch size.">Minimum {run.puzzle.minimum} {run.puzzle.minimum === 1 ? 'exchange' : 'exchanges'}</span>}
           </div>
           {earnedRank && earnedRank.solveMs !== null && <div className="my-rank-line" data-testid="my-rank" role="status"
@@ -654,7 +672,9 @@ export default function App() {
               data-stop={anchor} data-arrived={index === 0 || arrived.includes(anchor) ? 'true' : 'false'}
               aria-current={anchor === nextStop ? 'step' : undefined}>
               <span className={`journey-stop ${index === 0 || arrived.includes(anchor) ? 'arrived' : ''} ${anchor === celebration?.anchors[0] ? 'stop-celebrating' : ''}`}
-                aria-label={`${anchor}: ${index === 0 ? 'start' : arrived.includes(anchor) ? 'arrived' : anchor === nextStop ? 'next stop' : 'later stop'}`}>{anchor}</span>
+                aria-label={`${anchor}: ${index === 0 ? 'start' : arrived.includes(anchor) ? 'arrived' : anchor === nextStop ? 'next stop' : 'later stop'}`}><HomeLetter anchor={anchor}/><span className="sr-only">{anchor}</span>
+                {(index === 0 || arrived.includes(anchor)) && <span className="journey-arrival-mark" aria-hidden="true"><Icon name="check" size={9}/></span>}
+              </span>
               {index < stops.length - 1 && <span className="journey-arrow" aria-hidden="true">→</span>}
             </li>)}
           </ol>
@@ -663,24 +683,21 @@ export default function App() {
       </aside>
 
       <section ref={stageSection} className="island-panel" aria-label="The playable island">
-        {run.kind === 'guide' && <TutorialCoach target={guideBounds} frame={guideStage === 'frame'} second={guideStage === 'second'}
-          step={Math.min(moves.length + 1, TUTORIAL_MOVES.length)} total={TUTORIAL_MOVES.length}
-          instruction={guideInstruction} pointing={!busy && !roadReady && dialog === null && boardReady}
-          onSkip={() => finishWalkthrough(true)}/>}
         <div className="play-toolbar" id="game-controls" tabIndex={-1}>
           <div className="visual-frames" role="group" aria-label="Frame orientation" aria-describedby={run.kind === 'guide' ? 'lesson-instruction' : undefined}>
             <span className="frame-label">Frame</span>
-            {shapes.map((item) => <button key={`${item.rows}:${item.cols}`} className={`frame-option ${shape.rows === item.rows && shape.cols === item.cols ? 'chosen' : ''} ${run.kind === 'guide' && guideStage === 'frame' && item.rows === guideMove?.rows && item.cols === guideMove.cols ? 'tutorial-target' : ''}`}
+            {shapes.map((item) => <button key={`${item.rows}:${item.cols}:${item.kind ?? 'rect'}`} className={`frame-option ${shape.rows === item.rows && shape.cols === item.cols && shape.kind === item.kind ? 'chosen' : ''} ${run.kind === 'guide' && guideStage === 'frame' && item.rows === guideMove?.rows && item.cols === guideMove.cols ? 'tutorial-target' : ''}`}
               disabled={!timer.canPlay || busy || travelerMoving}
-              aria-label={`Frame ${item.rows} rows by ${item.cols} columns`} aria-pressed={shape.rows === item.rows && shape.cols === item.cols}
+              data-frame-kind={item.kind ?? 'rect'} data-frame-rows={item.rows} data-frame-cols={item.cols}
+              aria-label={`Frame ${item.rows} rows by ${item.cols} columns${item.kind === 'ell' ? ', L of 4 squares' : ''}`} aria-pressed={shape.rows === item.rows && shape.cols === item.cols && shape.kind === item.kind}
               onClick={() => {
-                if (shape.rows !== item.rows || shape.cols !== item.cols) {
+                if (shape.rows !== item.rows || shape.cols !== item.cols || shape.kind !== item.kind) {
                   setShape(item); setFirst(null); setHover(null); setSelectionFeedback(null);
                   if (run.kind === 'guide') setNotice(null);
                 }
               }}>
               <ShapeGlyph shape={item} axes={frameAxes}/>
-              <span aria-hidden="true">{item.cols} x {item.rows}</span>
+              <span aria-hidden="true">{item.kind === 'ell' ? 'L / 4' : `${item.cols} x ${item.rows}`}</span>
             </button>)}
           </div>
           <div className="run-metrics">
@@ -692,8 +709,8 @@ export default function App() {
           </div>
           <button className="icon-button undo-control" disabled={!timer.canPlay || moves.length === 0 || busy} onClick={undo} aria-label="Undo" title="Undo"><Icon name="undo" size={20}/></button>
         </div>
-        <BoardView board={board} puzzleId={run.puzzle.id} theme={run.puzzle.theme} seed={localHash(run.puzzle.id)}
-          shape={shape} first={first} second={null}
+        <BoardView board={board} moves={moves} puzzleId={run.puzzle.id} theme={run.puzzle.theme} seed={localHash(run.puzzle.id)}
+          shape={shape} axes={frameAxes} first={first} second={null}
           hover={run.kind === 'guide' ? !roadReady && guideStage !== 'frame' ? first ? guideMove?.b ?? null : guideMove?.a ?? null : null : hover}
           invalid={run.kind === 'guide' ? false : feedback !== null} blockedCells={feedbackCells}
           routes={routes} transition={transition} reduced={reducedMotion} dark={dark} flat={preferences.flat} guide={run.kind === 'guide'}
@@ -707,12 +724,12 @@ export default function App() {
           </div> : timed && timer.phase === 'running' && timer.elapsedMs < 400
             ? <div className="countdown-go" role="status">Go!</div> : null}
           playback={playback} busy={busy} paused={dialog !== null || completionOpen} onProjection={setFrameAxes}
-          onGuideBounds={setGuideBounds} onArrival={onArrival} onJourneyEnd={onJourneyEnd}
+          onGuideBounds={updateGuideBounds} onArrival={onArrival} onJourneyEnd={onJourneyEnd}
           onCell={onCell} onHover={onHover} onBusy={setBusy} onFallback={fallback}/>
         <div className="board-footer">
         <div className={`island-status ${feedback ? 'selection-warning' : ''}`}
           role={selectionFeedback ? 'alert' : 'status'} aria-live={selectionFeedback ? 'assertive' : 'polite'}
-          data-testid="selection-status" title={feedback?.message} aria-label={feedback?.message}>
+          data-testid="selection-status" title={feedback?.message ?? (first ? 'Tap the same starting square again to deselect.' : undefined)} aria-label={feedback?.message}>
           {!won && (run.kind !== 'guide' || feedback) && <>{feedback ? <Icon name="warning" size={18}/> : <span className="status-step">{first ? '2' : '1'}</span>}
             <span>{feedback ? selectionLabels[feedback.code] : status}</span></>}
         </div>
@@ -735,6 +752,7 @@ export default function App() {
               <span>{earnedRank.source === 'local' ? 'Local rank' : 'Your rank'} {rankLabel}</span>
               <strong>#{earnedRank.rank}</strong>
               {earnedRank.topPercent !== null && <p>Top {earnedRank.topPercent < 1 ? '<1' : Math.ceil(earnedRank.topPercent)}% {rankLabel}</p>}
+              <span>Among {earnedRank.participants} saved {earnedRank.participants === 1 ? 'finisher' : 'finishers'} in this community. Rank when saved.</span>
             </div> : <h2>{run.kind === 'guide' ? 'Three little repairs. Everyone is home!' : run.puzzle.minimum === moves.length ? 'Perfect detour!' : 'Everyone is home!'}</h2>}
             <div className="result-metrics">
               <span><Icon name="swap" size={15}/>{moves.length} {moves.length === 1 ? 'exchange' : 'exchanges'}</span>
@@ -744,6 +762,7 @@ export default function App() {
               {nextCampaignIndex === currentCampaignIndex + 1 ? `Next: stop ${nextCampaignIndex + 1}.` :
                 nextCampaign ? 'Your next stop is ready.' : `All ${campaign.length} stops complete.`}
             </p>}
+            {run.kind === 'daily' && nextCampaign && <p className="completion-next">Continue in unranked Practice: stop {nextCampaignIndex + 1}.</p>}
             {run.kind === 'daily' && <p className={`score-save-status ${saveError ? 'save-failed' : ''}`} data-testid="save-status">
               <Icon name={saveError ? 'warning' : 'trophy'} size={14}/>
               {autoSaveSuppressed ? 'Records removed. Begin a fresh attempt to rank again.' : saveError ? `Not saved: ${saveError}` : publishing ? 'Saving your score...' :
@@ -753,13 +772,24 @@ export default function App() {
         </div>
           <div className="result-actions completion-actions">
             {run.kind === 'guide' ? <button className="primary-button" onClick={() => setDialog('tour-tools')}>See your tools <Icon name="arrow" size={17}/></button> :
-              run.kind === 'daily' ? <>{saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}<button className="primary-button" onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }} aria-label="Play more in practice"><Icon name="map" size={17}/>Play more</button></> :
-                <button className="primary-button" onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }} aria-label="View the next practice stop">Play more <Icon name="arrow" size={17}/></button>}
+              <>{run.kind === 'daily' && saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}
+                {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
+                  onClick={() => { if (nextCampaign) openPractice(nextCampaign.id); }} aria-label="Continue your journey">
+                  Continue your journey <Icon name="arrow" size={17}/>
+                </button>}
+                <button className={nextCampaign ? 'secondary-button' : 'primary-button'} onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }}
+                  aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={17}/>Practice map</button>
+              </>}
           </div>
         </Modal>}
       </section>
 
     </main>}
+
+    {run?.kind === 'guide' && <TutorialCoach target={guideBounds} frame={guideStage === 'frame'} second={guideStage === 'second'}
+      step={Math.min(moves.length + 1, TUTORIAL_MOVES.length)} total={TUTORIAL_MOVES.length}
+      instruction={guideInstruction} pointing={!busy && !roadReady && dialog === null && boardReady}
+      onSkip={() => finishWalkthrough(true)}/>}
 
     {notice && <div className={`toast ${notice.error ? 'toast-error' : ''}`} role={notice.error ? 'alert' : 'status'}><Icon name={notice.error ? 'warning' : 'check'} size={18}/><span>{notice.message}</span><button aria-label="Dismiss message" onClick={() => setNotice(null)}><Icon name="close" size={15}/></button></div>}
 
@@ -805,8 +835,8 @@ export default function App() {
           The traveler waits at A until the complete trail is ready.</p>
       </div>
       <div className="guide-steps">
-        {[['Choose a frame', 'Each puzzle fixes the patch size. Choose its orientation using the frame pictures.'],
-          ['Tap two places', 'Tap your first patch, then the matching patch. They trade places immediately. Undo is always free.'],
+        {[['Choose a frame', 'Each island uses one frame family. Later Practice teaches three-square strips, four-square gardens and L patches. Choose its pictured orientation; terrain never rotates.'],
+          ['Tap two places', 'Tap your first patch, then the matching patch. Tap the same starting square again to deselect. A valid second patch swaps immediately; Undo is free.'],
           ['Finish the road', 'Keep one continuous trail through every home, in order. No diagonals, skipped homes or revisiting a square. Then the traveler walks and celebrates.']].map(([title, text], index) =>
           <div className="guide-step" key={title}><GuideIllustration step={index + 1}/><span className="guide-step-number">0{index + 1}</span><h3>{title}</h3><p>{text}</p></div>)}
       </div>

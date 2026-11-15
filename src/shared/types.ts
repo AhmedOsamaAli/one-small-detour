@@ -4,6 +4,7 @@ export type Board = readonly string[];
 export type Mode = 'daily' | 'gentle';
 export type Theme = 'meadow' | 'coast' | 'orchard';
 export type GuideTopic = 'basics' | 'rocks' | 'bridges';
+export type PatchFamily = 'strip' | 'square' | 'ell';
 
 export interface Cell {
   row: number;
@@ -15,6 +16,12 @@ export interface GuideBounds {
   y: number;
   width: number;
   height: number;
+}
+
+export interface GuideTarget {
+  cell: GuideBounds;
+  patches: GuideBounds[];
+  viewport: { width: number; height: number };
 }
 
 export interface Celebration {
@@ -42,6 +49,7 @@ export interface JourneyPlayback {
 export interface Shape {
   rows: number;
   cols: number;
+  kind?: 'ell';
 }
 
 export interface FrameAxes {
@@ -63,6 +71,7 @@ export interface Goal {
 export interface Rules {
   areas: readonly number[];
   budget: number;
+  frame?: PatchFamily;
 }
 
 export interface Puzzle {
@@ -77,6 +86,8 @@ export interface Puzzle {
   chapter: number;
   minimum?: number;
   journey?: readonly Anchor[];
+  frame?: PatchFamily;
+  practiceAfter?: number;
 }
 
 export interface AuthoredPuzzle extends Puzzle {
@@ -100,6 +111,8 @@ export interface CatalogEntry {
   budget: number;
   size: number;
   minimum?: number;
+  frame?: PatchFamily;
+  practiceAfter?: number;
 }
 
 export interface RouteCheck {

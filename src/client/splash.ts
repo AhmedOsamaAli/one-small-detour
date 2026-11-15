@@ -1,13 +1,28 @@
 import { requestExpandedMode } from '@devvit/web/client';
 import '@fontsource-variable/dm-sans';
-import '@fontsource-variable/fraunces';
+import '@fontsource-variable/fraunces/full.css';
 import { loadPreferences, PREF_KEY, resolveAppearance } from './preferences.ts';
 import { worldCssVariables } from './worldTheme.ts';
+import { HOME_GLYPHS, HOME_PLAQUE_PATH, HOME_SPROUT_PATH } from './homeLetter.ts';
+import { isAnchor } from '../shared/rules.ts';
 
 const button = document.getElementById('open-game');
 const errorText = document.getElementById('preview-error');
 const preview = document.querySelector<HTMLElement>('.preview-shell');
 if (!(button instanceof HTMLButtonElement) || !errorText || !preview) throw new Error('The preview controls are missing.');
+
+document.querySelectorAll<SVGSVGElement>('svg[data-home-letter]').forEach((mark) => {
+  const anchor = mark.dataset['homeLetter'];
+  if (!isAnchor(anchor)) throw new Error('The preview home is missing its letter.');
+  for (const [index, outline] of [HOME_PLAQUE_PATH, HOME_GLYPHS[anchor], HOME_SPROUT_PATH].entries()) {
+    const part = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    part.setAttribute('d', outline);
+    part.setAttribute('fill', index === 0 ? 'var(--world-home-badge)' : 'currentColor');
+    if (index === 0) { part.setAttribute('stroke', 'currentColor'); part.setAttribute('stroke-width', '1.25'); }
+    if (index === 1) part.setAttribute('fill-rule', 'evenodd');
+    mark.append(part);
+  }
+});
 
 let savedAppearance = loadPreferences();
 const updateAppearance = (): void => {

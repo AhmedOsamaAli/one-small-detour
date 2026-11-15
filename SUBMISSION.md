@@ -38,22 +38,31 @@ A bounded replay limit
 of 2,000 exchanges protects score submissions; there is no small puzzle budget.
 
 The daily island is not a 200-day season. Date-seeded generation continues beyond
-the practice collection. Difficulty cycles through checked minimums of 2, 3, 4,
-5, 7, 10 and 15 exchanges after the introductory edition.
+the practice collection. Existing editions through 2026-11-15 are preserved.
+From 2026-11-16 UTC, date-seeded minimums begin at three, vary within 3-5 in
+week one and 3-7 in week two, then mix 3-10 with fewer very hard days. Changes
+are limited to two moves between consecutive dates, with weekly recovery
+targets. Every player still receives the same shared, certified Daily.
 
 ### A daily ritual, not a feed of level cards
 
-The daily puzzle opens directly. A separate practice campaign has **203 checked
+The daily puzzle opens directly. A separate practice campaign has **212 checked
 places** on one continuous, winding landscape. The numbered road progresses
 from one-exchange repairs to 15-exchange expeditions. Completing each unfinished
 stop unlocks the next; older discoveries stay replayable. The original 200 keep
-their order and IDs; three certified 12x12 landscapes come last. Daily editions
-are unchanged.
+their relative order and IDs; three certified 12x12 landscapes come last.
+Nine new lessons teach three-square strips, 2x2 squares and four-square Ls,
+starting at stops 13, 40 and 79. Each island offers only its own family, with
+one-, two- and three-exchange lessons. L notches remain outside the patch.
+Stop numbers can shift, but previous island IDs, boards, completion flags and
+scores remain. Daily frame rules and existing editions are unchanged.
 
 Tapping a number previews the stop, with its illustrated goal card and visible
 Ready/Completed/Locked state. A clear Play or Replay button starts it.
 Find my stop only moves the map camera, while the daily challenge is always
 available without campaign prerequisites.
+After a Daily or Practice finish, Continue your journey opens the next unfinished
+unranked stop directly; Practice map remains a separate optional browsing action.
 
 Everyone can compare the same daily challenge. The interface shows only the
 player's own rank and inclusive top percentage among that day's genuine
@@ -71,6 +80,14 @@ There is no sharing form or clipboard control, and saving never posts a comment.
 
 The world uses original procedural Three.js scenery: connected stone lanes,
 shader water, grass, cottages, bridges, boulders and an animated courier.
+Recessed ponds use depth shading, connected banks and soft moving reflections;
+seeded wildflowers and subtle submerged fish remain decorative. Their identities
+match across views, move with each patch and return exactly with Undo. Reduced
+motion leaves them still, and menus/background tabs pause scenic animation.
+Hand-carved A-F letterforms with restrained sprout details appear on home
+plaques and matching coloured route badges. The same vector shapes are used
+in 3D, Flat, the preview and guide. Normal spoken letters remain available to
+screen readers; expressive headings do not replace readable instructions or timers.
 Reached homes light up. Selection frames match the actual camera projection.
 White-backed arrows point to the starting square directly inside ordinary
 orange/blue patch highlights in both views, not only from the tutorial coach.
@@ -88,10 +105,12 @@ Appearance starts in Light, even on dark-mode devices; a chosen mode is remember
 in the browser and applies to the whole UI and matching island lighting rather
 than an inversion filter. Theme changes do not reset moves or timing. First visits begin with skippable, untimed hands-on
 practice and a short feature walkthrough before the daily countdown. An original
-drawn courier speaks beside the board and points to actual frame/patch targets.
+drawn courier moves near actual frame/patch targets with a short pointer.
 The player makes three guided exchanges with tall/wide frames before the
 complete A-B-C road is ready. Guidance follows Undo and does not cover the
-playable targets. The arrow and ring target only the starting square, with
+playable targets, selected patches or controls. The hint can cover inactive
+scenery and teaches tapping the same starting square again to deselect.
+The arrow and ring target only the starting square, with
 top/left instructions rather than pointing to the whole two-square patch. Guide
 acknowledgements are remembered across app updates for signed-in players; new
 boulder/bridge rules are introduced before the relevant island starts.
@@ -113,7 +132,8 @@ home and wave; it does not reveal the daily solution. The clear
 **Play today's island** button launches the game. Offscreen animation pauses,
 reduced motion gets a static scene, and feed scrolling is never captured.
 Completion uses one dismissible popup with prominent earned rank/percentage.
-Player-facing navigation says **Practice**, with **Play more** after a win.
+Player-facing navigation says **Practice**, with **Continue your journey**
+after a win and a separate Practice map browsing action.
 
 ### How it was built
 
@@ -125,11 +145,14 @@ Generation retains a legal solution and matches it against a lower bound on
 the initially missing paving. This certifies the displayed minimum; a shuffle
 count alone would not prove difficulty. The actual solver enforces bridge
 directions, ordered stops and a non-retracing final trail.
+Small square-frame Practice lessons use exhaustive replay of all shorter
+sequences when the paving bound is not tight, within an explicit 20,000-state
+limit. Their displayed minimums are not inferred from scramble counts.
 
 ### Honest limits
 
 Rearranging worlds is an established puzzle family, including Carto and
-Continuity. Our particular interaction chooses two-cell patches anywhere while
+Continuity. Our Daily interaction chooses two-cell patches anywhere while
 homes stay fixed. We do not claim worldwide novelty or guaranteed prize odds.
 Solvability checks and frame-timing samples do not establish human enjoyment,
 retention or native phone performance.
@@ -146,17 +169,21 @@ Do not present the local rehearsal as a live Reddit installation.
 | 20-30 s | A boulder and a directional bridge | "Homes and boulders stay put. Bridges must face the right way." |
 | 30-40 s | The whole road connects; courier visits the ordered homes | "Finish the whole road first. Then watch every arrival." |
 | 40-48 s | Frozen solve time and earned-rank popup after a saved daily finish | "Fewest exchanges first. Time breaks ties. Your score saves itself." |
-| 48-57 s | The 203-stop winding road, preview card and one-click mute | "One connected campaign. Preview a stop, then play. The daily island stays available." |
+| 48-57 s | The 212-stop winding road, preview card and one-click mute | "One connected campaign. Preview a stop, then play. The daily island stays available." |
 
 Use genuine recorded gameplay. Do not invent player counts, scores or community
 activity. Keep the final video below the event's stated one-minute ceiling.
 
 ## Local verification evidence
 
-- Current local release check: **82 tests passed**, all three TypeScript checks passed,
+- Current local source check: **114 tests passed**, all three TypeScript checks passed,
   and the production build passed.
-- The combined preview/onboarding/result/header/movement/selection flow passed **198 isolated browser
-  assertions**, including light/dark inline layouts, explicit Play and error
+- The final browser gate passed **651 assertions** in three fresh-process
+  batches (380 + 191 + 80), with no uncaught browser errors. Batching keeps
+  accumulated headless GPU state out of the result; it is not native-phone
+  performance evidence.
+- Browser verification covers the preview/onboarding/result/header/movement/selection
+  flow, including light/dark inline layouts, explicit Play and error
   behavior, static reduced motion, natural feed scrolling and offscreen pause,
   three guided repairs, unblocked tap targets and the earned-rank popup.
   Result actions remain visible on short landscape screens, and closing the
@@ -168,6 +195,37 @@ activity. Keep the final video below the event's stated one-minute ceiling.
   manual Dark choices survive reload, and legacy automatic settings migrate
   without resetting other preferences. Enlarged couriers are checked against
   actual 3D camera bounds and Flat map bounds on all four supported board sizes.
+- Invalid first/second feedback expires after one second in both views. Timed
+  touch, mouse and keyboard checks cover homes, rocks, bounds and overlap,
+  repeat-tap renewal, stationary hover expiry, preserving a good first patch,
+  and preventing an old timeout from clearing a newer valid preview.
+- The new strip, square and L lessons complete through the actual interface in
+  both views. Checks compare occupied-cell highlights and terrain exchanges with
+  authoritative replays; L notches remain still during normal swaps and Undo.
+  Earlier completion flags remain, and Practice finishes never save a Daily rank.
+- Native Daily rankings use a sorted-set index with one personal best per player,
+  exact integer move/time ordering, per-player optimistic transactions and
+  tie-aware snapshot reads. Legacy records migrate without deletion.
+  The indexed result matches an independent full-sort oracle for 100,000
+  synthetic finishers, with a fixed 13 adapter operations per ordinary read
+  before bounded housekeeping. This is algorithm/call-count evidence, not
+  measured native Redis or Reddit throughput. See the
+  [ranking system design and platform limits](README.md#ranking-system-design-and-scale).
+- Expanded-game sizing uses the visible viewport and safe-area insets. iPhone
+  13-sized, high-density portrait/landscape, short browser-height and simulated
+  notch/home-indicator cases keep the walkthrough and actions reachable.
+  Compact welcome content fits without being hidden below its footer. These are
+  browser-emulation checks, not a claim of native iPhone/Reddit certification.
+- On-board arrow shafts match the selected frame's actual projected direction;
+  their tips still identify the first square. The direction is checked in Flat
+  and 3D after portrait/landscape/desktop resizes.
+- The board-first layout makes square edges **at least 25% larger at 876x770**
+  than the prior layout in that actual user-window size. Both map views retain
+  the same fitted controls. Real geometry, fixed-size
+  labels, primary controls and the courier at every current road position
+  remain inside the tested viewports. Exchanges and Undo also run with
+  unclipped moving terrain. This is measured layout coverage, not a claim
+  about physical-phone frame rates.
 - The selection matrix compares accelerated 3D hit testing with full semantic
   geometry at **1,720 cell/edge samples** across real 6x6, 8x8, 10x10 and 12x12
   islands. Both views exercise every available first/second hover issue category:
@@ -176,12 +234,13 @@ activity. Keep the final video below the event's stated one-minute ceiling.
   This is a finite scenario matrix, not a claim about every possible device,
   pointer coordinate or future daily island.
 - Shared text/surface token pairs pass 4.5:1 contrast checks in both palettes.
-  Actual representative 3D road/grass pixel samples measure **3.12:1 in light**
-  and **3.51:1 in dark**; raw terrain palettes are checked for every landscape
+  Actual representative 3D road/grass pixel samples measure **3.17:1 in light**
+  and **3.13:1 in dark**; raw terrain palettes are checked for every landscape
   theme. These checks are not a full accessibility certification.
 - All 12x12 Practice controls and fitting are checked at nine portrait/landscape
-  sizes, in both views and appearances. The original 200 puzzle objects and 16
-  sampled daily editions match pre-change fingerprints exactly.
+  sizes, in both views and appearances. The original 200 puzzle objects and
+  all five released Daily editions through 2026-11-15 match pre-change
+  fingerprints exactly. Only future editions use the gradual difficulty schedule.
 - Dedicated motion checks verify ordinary-play in-board arrows, real intermediate
   Flat positions, paired terrain identity, reverse Undo, input gating, menu and
   simulated visibility-event pauses, reduced motion, resize/new-attempt cleanup
@@ -194,7 +253,7 @@ activity. Keep the final video below the event's stated one-minute ceiling.
 - The latest date audit covers **14 November 2026 through 13 November 2027**:
   365 distinct terrain layouts, 365 distinct road-decision layouts and 365
   independent regenerations. No solution witness appeared in a public edition.
-- The campaign has **203 distinct road-decision layouts**, all certified, and
+- The campaign has **212 distinct road-decision layouts**, all certified, and
   preserves every original place and discovery ID. Regenerating the 155 added
   places independently produces byte-for-byte identical content. The year of
   daily editions has no repeated campaign layout.
@@ -221,7 +280,7 @@ activity. Keep the final video below the event's stated one-minute ceiling.
   cancelling a full-road walk back to A without ghost arrivals. Boulder and
   overlap feedback identify the same offending cells in the living and flat
   views. The timer still freezes before the final walking celebration.
-- Campaign tests prove all 203 stops unlock in order without a progression
+- Campaign tests prove all 212 stops unlock in order without a progression
   dead end. Browser wins were used to check actual unlock transitions.
 - Browser checks cover previewing without starting, explicit Play/Replay,
   locked-stop messaging, camera navigation to stop 200, touch drags without

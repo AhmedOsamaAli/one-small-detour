@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { canTraverse, connects, isAnchor, locate, tileAt, walkable } from '../shared/rules.ts';
+import { canTraverse, connects, isAnchor, locate, patchCells, patchOutline, tileAt, walkable } from '../shared/rules.ts';
 import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, Shape, Swap, Theme } from '../shared/types.ts';
 import type { PlaybackFrame } from '../shared/playback.ts';
 import { COMPLETION_CELEBRATION_MS } from '../shared/playback.ts';
-import { COURIER_SCALE, GRASS_COLORS, HOME_COLORS, worldPalette } from './worldTheme.ts';
+import { COURIER_SCALE, FLOWER_COLORS, GRASS_COLORS, HOME_BADGE_BG, HOME_COLORS, worldPalette } from './worldTheme.ts';
 import type { WorldColor, WorldPalette } from './worldTheme.ts';
+import { sceneryOrigins, tileScenery, waterBanks } from './scenery.ts';
+import type { Flower } from './scenery.ts';
+import { HOME_GLYPHS, HOME_PLAQUE_PATH, HOME_SPROUT_PATH } from './homeLetter.ts';
 
 interface Callbacks {
   onCell: (cell: Cell) => void;
@@ -16,6 +19,7 @@ interface Callbacks {
 }
 
 interface TileObject {
+  origin: number;
   group: THREE.Group;
   water: THREE.ShaderMaterial | null;
   links: { mesh: THREE.Mesh; row: number; col: number }[];
@@ -153,6 +157,7 @@ export class LivingIsland {
   private frames = new THREE.Group();
   private trails = new THREE.Group();
   private traveler = new THREE.Group();
+  private travelerEnvelope = new THREE.Box3();
   private observer: ResizeObserver;
   private raycaster = new THREE.Raycaster();
   private pickCandidates: THREE.Object3D[] = [];
@@ -195,6 +200,8 @@ export class LivingIsland {
   private currentHover: string | null = null;
   private dirty = true;
   private lastRender = 0;
+  private renderHeight = 1;
+  private liftPoint = new THREE.Vector3();
   private shadowsDirty = true;
   private highlightKey = '';
   private highlightMaterials = new Map<string, THREE.MeshBasicMaterial>();
@@ -206,6 +213,8 @@ export class LivingIsland {
   private instanceMatrix = new THREE.Matrix4();
   private batchColor = new THREE.Color();
   private soilGeometry = this.track(roundedPrism(0.985, 0.985, 0.23, 0.07));
+  private waterBedGeometry = this.track(roundedPrism(0.985, 0.985, 0.135, 0.07));
+  private waterDepthGeometry = this.track(roundedPrism(0.99, 0.99, 0.06, 0.025));
   private topGeometry = this.track(roundedPrism(0.97, 0.97, 0.055, 0.055));
   private stoneGeometry = this.track(paving(0.70, 0.70, 3));
   private roadBedGeometry = this.track(roundedPrism(0.73, 0.73, 0.018, 0.055));
@@ -321,6 +330,12 @@ export class LivingIsland {
     this.pickPlane.layers.enable(INPUT_LAYER);
     this.scene.add(this.pickPlane, this.boardGroup, this.terrainBatches, this.frames, this.trails, this.festivities);
     this.makeTraveler();
+    const travelerBounds = new THREE.Box3().setFromObject(this.traveler);
+    const radius = Math.max(Math.abs(travelerBounds.min.x), travelerBounds.max.x, Math.abs(travelerBounds.min.z), travelerBounds.max.z) + 0.04;
+    this.travelerEnvelope.set(
+      new THREE.Vector3(-radius, travelerBounds.min.y - 0.03, -radius),
+      new THREE.Vector3(radius, travelerBounds.max.y + 0.03, radius),
+    );
     this.scene.add(this.traveler);
     this.canvas.addEventListener('pointermove', this.pointerMove);
     this.canvas.addEventListener('pointerleave', this.pointerLeave);
@@ -401,21 +416,25 @@ export class LivingIsland {
     group.add(grass);
   }
 
-  private addFlower(group: THREE.Group, random: () => number, theme: Theme): void {
-    const flower = new THREE.Group();
-    flower.position.set((random() - 0.5) * 0.65, 0.25, (random() - 0.5) * 0.65);
-    this.mesh(this.flowerStem, this.terrainMaterial('grassDeep'), new THREE.Vector3(0, 0.06, 0), flower);
-    const color = theme === 'orchard' ? '#e5a89d' : theme === 'coast' ? '#fff1cb' : random() > 0.5 ? '#f6d275' : '#d58a70';
-    const petals = new THREE.InstancedMesh(this.flowerPetal, this.material(color), 5);
-    const matrix = new THREE.Matrix4();
-    for (let i = 0; i < 5; i++) {
-      matrix.makeTranslation(Math.cos(i * 1.256) * 0.027, 0.125, Math.sin(i * 1.256) * 0.027);
-      petals.setMatrixAt(i, matrix);
+  private addFlowers(group: THREE.Group, flowers: readonly Flower[], theme: Theme): void {
+    for (const bloom of flowers) {
+      const flower = new THREE.Group();
+      flower.position.set(bloom.x, 0.25, bloom.z);
+      flower.rotation.y = bloom.rotation;
+      flower.scale.setScalar(bloom.scale);
+      this.mesh(this.flowerStem, this.terrainMaterial('grassDeep'), new THREE.Vector3(0, 0.06, 0), flower);
+      const petals = new THREE.InstancedMesh(this.flowerPetal, this.material(FLOWER_COLORS[theme][bloom.color]), 5);
+      const matrix = new THREE.Matrix4();
+      for (let i = 0; i < 5; i++) {
+        matrix.makeTranslation(Math.cos(i * 1.256) * 0.027, 0.125, Math.sin(i * 1.256) * 0.027);
+        petals.setMatrixAt(i, matrix);
+      }
+      petals.instanceMatrix.needsUpdate = true;
+      flower.add(petals);
+      this.mesh(this.flowerCenter, '#f3d16f', new THREE.Vector3(0, 0.14, 0), flower);
+      flower.traverse((part) => part.layers.disable(INPUT_LAYER));
+      group.add(flower);
     }
-    petals.instanceMatrix.needsUpdate = true;
-    flower.add(petals);
-    this.mesh(this.flowerCenter, '#d5a448', new THREE.Vector3(0, 0.14, 0), flower);
-    group.add(flower);
   }
 
   private addTree(group: THREE.Group, random: () => number, theme: Theme): void {
@@ -446,18 +465,35 @@ export class LivingIsland {
     canvas.width = canvas.height = 128;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Map labels could not be drawn.');
-    context.fillStyle = '#fffdf1';
-    context.beginPath();
-    context.arc(64, 64, 48, 0, Math.PI * 2);
-    context.fill();
-    context.strokeStyle = color;
-    context.lineWidth = 5;
-    context.stroke();
-    context.fillStyle = new THREE.Color(color).multiplyScalar(0.65).getStyle();
-    context.font = 'bold 64px sans-serif';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(text, 64, 67);
+    if (isAnchor(text) && !persistent) {
+      context.save();
+      context.translate(16, 10);
+      context.scale(3, 3);
+      const plaque = new Path2D(HOME_PLAQUE_PATH);
+      context.fillStyle = HOME_BADGE_BG;
+      context.fill(plaque);
+      context.strokeStyle = color;
+      context.lineWidth = 1.25;
+      context.lineJoin = 'round';
+      context.stroke(plaque);
+      context.fillStyle = color;
+      context.fill(new Path2D(HOME_GLYPHS[text]), 'evenodd');
+      context.fill(new Path2D(HOME_SPROUT_PATH));
+      context.restore();
+    } else {
+      context.fillStyle = '#fffdf1';
+      context.beginPath();
+      context.arc(64, 64, 48, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = color;
+      context.lineWidth = 5;
+      context.stroke();
+      context.fillStyle = new THREE.Color(color).multiplyScalar(0.65).getStyle();
+      context.font = 'bold 64px sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(text, 64, 67);
+    }
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     if (persistent) this.textures.push(texture);
@@ -531,12 +567,14 @@ export class LivingIsland {
     this.dirty = true;
   }
 
-  private makeWater(row: number, col: number): THREE.ShaderMaterial {
+  private makeWater(row: number, col: number, fish: boolean, variant: number): THREE.ShaderMaterial {
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uTime: this.time,
         uShore: { value: new THREE.Vector4() },
+        uCorners: { value: new THREE.Vector4() },
         uOffset: { value: new THREE.Vector2(col, row) },
+        uFish: { value: new THREE.Vector2(fish ? 1 : 0, variant) },
         uDeep: { value: new THREE.Color(this.palette.water) },
         uLight: { value: new THREE.Color(this.palette.waterLight) },
         uFoam: { value: new THREE.Color(this.palette.foam) },
@@ -544,23 +582,43 @@ export class LivingIsland {
       vertexShader: `varying vec2 vUv; varying vec3 vWorld;
         void main(){vUv=uv; vWorld=(modelMatrix*vec4(position,1.)).xyz;
         gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `uniform float uTime; uniform vec4 uShore; uniform vec2 uOffset;
+      fragmentShader: `uniform float uTime; uniform vec4 uShore; uniform vec4 uCorners; uniform vec2 uOffset; uniform vec2 uFish;
         uniform vec3 uDeep; uniform vec3 uLight; uniform vec3 uFoam; varying vec2 vUv; varying vec3 vWorld;
         void main(){
           vec2 uv=vWorld.xz;
           float a=uv.x*4.3+uv.y*3.1+uTime*.65;
           float b=uv.y*6.2-uv.x*2.4-uTime*.48;
-          vec3 normal=normalize(vec3(cos(a)*.045,1.,cos(b)*.035));
+          float c=uv.x*9.1-uv.y*7.7+uTime*.31;
+          vec3 normal=normalize(vec3(cos(a)*.11+sin(c)*.025,1.,cos(b)*.085));
           vec3 view=normalize(cameraPosition-vWorld);
           float fresnel=pow(1.-max(0.,dot(view,normal)),3.);
-          float glint=pow(max(0.,dot(normal,normalize(view+vec3(-.4,.85,.25)))),64.);
-          vec3 water=mix(uDeep,uLight,.16+sin(a)*.055+sin(b)*.035);
-          water=mix(water,mix(uLight,uFoam,.35),.10+fresnel*.34);
-          float shore=max(max((1.-smoothstep(0.,.065,vUv.x))*uShore.x,
-            (1.-smoothstep(0.,.065,1.-vUv.x))*uShore.y),
-            max((1.-smoothstep(0.,.065,vUv.y))*uShore.z,(1.-smoothstep(0.,.065,1.-vUv.y))*uShore.w));
-          water=mix(water,uLight,shore*.38);
-          water+=uFoam*(glint*.25+shore*.13);
+          float glint=pow(max(0.,dot(normal,normalize(view+vec3(-.4,.85,.25)))),42.);
+          float bank=2.;
+          if(uShore.x>.5)bank=min(bank,vUv.x);
+          if(uShore.y>.5)bank=min(bank,1.-vUv.x);
+          if(uShore.z>.5)bank=min(bank,vUv.y);
+          if(uShore.w>.5)bank=min(bank,1.-vUv.y);
+          if(uCorners.x>.5)bank=min(bank,length(vUv));
+          if(uCorners.y>.5)bank=min(bank,length(vUv-vec2(1.,0.)));
+          if(uCorners.z>.5)bank=min(bank,length(vUv-vec2(0.,1.)));
+          if(uCorners.w>.5)bank=min(bank,length(vUv-vec2(1.,1.)));
+          float depth=smoothstep(0.,.26,bank);
+          vec3 water=mix(uLight,uDeep,.44+depth*.56);
+          water=mix(water,uLight,(sin(a)*sin(b)+1.)*.065);
+          if(uFish.x>.5){
+            float phase=uTime*.42+uFish.y*.83;
+            vec2 q=vUv-vec2(.5+sin(phase)*.22,.5+sin(phase*.7)*.10);
+            q.x*=cos(phase)>=0.?1.:-1.;
+            float body=1.-smoothstep(.85,1.,length(q/vec2(.095,.035)));
+            float tail=step(-.15,q.x)*(1.-step(-.075,q.x))*step(abs(q.y),(-.075-q.x)*.5);
+            water=mix(water,mix(uDeep,uFoam,.45),max(body,tail)*.48);
+          }
+          float reflection=pow(max(0.,sin(a*.55+b*.2+sin(c)*.15)),10.);
+          water=mix(water,mix(uLight,uFoam,.35),reflection*.17+fresnel*.26);
+          float shore=1.-smoothstep(.012,.065+sin(a-b)*.008,bank);
+          float ripple=(1.-smoothstep(.008,.025,abs(bank-(.075+sin(uTime*.65)*.012))))*(1.-smoothstep(.10,.18,bank));
+          water=mix(water,uFoam,shore*.45+ripple*.13);
+          water+=uFoam*glint*.20;
           gl_FragColor=vec4(water,1.);
           #include <colorspace_fragment>
         }`,
@@ -569,7 +627,7 @@ export class LivingIsland {
     return material;
   }
 
-  reset(board: Board, theme: Theme, seed: number): void {
+  reset(board: Board, theme: Theme, seed: number, origins: readonly number[] = sceneryOrigins(board.length, [])): void {
     this.cancelHoverFrame();
     this.movement = null;
     this.callbacks.onBusy(false);
@@ -588,20 +646,25 @@ export class LivingIsland {
     for (let row = 0; row < this.size; row++) {
       for (let col = 0; col < this.size; col++) {
         const tile = tileAt(board, { row, col });
-        const random = randomSeed(seed + row * 731 + col * 1591);
+        const origin = origins[row * this.size + col];
+        if (origin === undefined) throw new Error('The island scenery is missing a terrain identity.');
+        const scenery = tileScenery(seed, origin);
+        const random = randomSeed(seed + Math.floor(origin / this.size) * 731 + origin % this.size * 1591);
         const group = new THREE.Group();
         group.position.set(col - center, 0, row - center);
-        const soil = this.mesh(this.soilGeometry, this.terrainMaterial('soil'), new THREE.Vector3(0, -0.015, 0), group);
+        const soil = this.mesh(hasWater(tile) ? this.waterBedGeometry : this.soilGeometry, this.terrainMaterial('soil'), new THREE.Vector3(0, -0.015, 0), group);
         soil.receiveShadow = true;
         const grassColor = GRASS_COLORS[Math.floor(random() * GRASS_COLORS.length)] ?? 'grass';
         if (!hasWater(tile)) this.mesh(this.topGeometry, this.terrainMaterial(grassColor), new THREE.Vector3(0, 0.22, 0), group);
         let water: THREE.ShaderMaterial | null = null;
         const links: TileObject['links'] = [];
         if (hasWater(tile)) {
-          water = this.makeWater(row, col);
+          const depth = this.mesh(this.waterDepthGeometry, this.terrainMaterial('water'), new THREE.Vector3(0, 0.125, 0), group);
+          depth.layers.disable(INPUT_LAYER);
+          water = this.makeWater(row, col, tile === '~' && scenery.fish, scenery.variant);
           const plane = new THREE.Mesh(this.waterGeometry, water);
           plane.rotation.x = -Math.PI / 2;
-          plane.position.y = 0.25;
+          plane.position.y = 0.205;
           plane.layers.enable(INPUT_LAYER);
           group.add(plane);
         }
@@ -661,11 +724,11 @@ export class LivingIsland {
           moss.scale.set(0.65, 0.6, 0.6);
         } else if (tile === '.') {
           this.addGrass(group, random, Math.max(14, Math.round((this.container.clientWidth < 680 ? 26 : 48) * 6 / this.size)));
-          if (random() > 0.79) this.addFlower(group, random, theme);
+          if (scenery.flowers.length) this.addFlowers(group, scenery.flowers, theme);
           else if ((row === 0 || row === this.size - 1 || col === 0 || col === this.size - 1) && random() > 0.84) this.addTree(group, random, theme);
         }
         this.boardGroup.add(group);
-        this.tiles.push({ group, water, links, bounds: new THREE.Box3(), batchParts: [] });
+        this.tiles.push({ origin, group, water, links, bounds: new THREE.Box3(), batchParts: [] });
       }
     }
     this.refreshTerrain();
@@ -777,12 +840,9 @@ export class LivingIsland {
       tile.links.forEach((link) => { link.mesh.visible = canTraverse(this.board, { row, col }, { row: row + link.row, col: col + link.col }); });
       if (!tile.water) return;
       tile.water.uniforms['uOffset']?.value.set(col, row);
-      tile.water.uniforms['uShore']?.value.set(
-        hasWater(this.board[row]?.[col - 1]) ? 0 : 1,
-        hasWater(this.board[row]?.[col + 1]) ? 0 : 1,
-        hasWater(this.board[row + 1]?.[col]) ? 0 : 1,
-        hasWater(this.board[row - 1]?.[col]) ? 0 : 1,
-      );
+      const banks = waterBanks(this.board, { row, col });
+      tile.water.uniforms['uShore']?.value.set(Number(banks.west), Number(banks.east), Number(banks.south), Number(banks.north));
+      tile.water.uniforms['uCorners']?.value.set(Number(banks.southwest), Number(banks.southeast), Number(banks.northwest), Number(banks.northeast));
     });
     this.updatePickingBounds();
     this.refreshBatchSlots();
@@ -798,14 +858,12 @@ export class LivingIsland {
 
   animateSwap(move: Swap, next: Board): void {
     const objects: Movement['objects'] = [];
-    for (let row = 0; row < move.rows; row++) {
-      for (let col = 0; col < move.cols; col++) {
+    for (const { row, col } of patchCells({ row: 0, col: 0 }, move)) {
         const a = this.tiles[(move.a.row + row) * this.size + move.a.col + col];
         const b = this.tiles[(move.b.row + row) * this.size + move.b.col + col];
         if (!a || !b) throw new Error('The selected landscape patch is missing.');
         objects.push({ tile: a, group: a.group, from: a.group.position.clone(), to: b.group.position.clone(), side: 1 });
         objects.push({ tile: b, group: b.group, from: b.group.position.clone(), to: a.group.position.clone(), side: -1 });
-      }
     }
     this.movement = { move, next, objects, began: this.visualTime };
     this.callbacks.onBusy(true);
@@ -822,8 +880,7 @@ export class LivingIsland {
       group.rotation.set(0, 0, 0);
     });
     const { move } = movement;
-    for (let row = 0; row < move.rows; row++) {
-      for (let col = 0; col < move.cols; col++) {
+    for (const { row, col } of patchCells({ row: 0, col: 0 }, move)) {
         const ai = (move.a.row + row) * this.size + move.a.col + col;
         const bi = (move.b.row + row) * this.size + move.b.col + col;
         const a = this.tiles[ai];
@@ -831,11 +888,11 @@ export class LivingIsland {
         if (!a || !b) throw new Error('The patch exchange lost a terrain tile.');
         this.tiles[ai] = b;
         this.tiles[bi] = a;
-      }
     }
     this.board = movement.next;
     this.movement = null;
     this.refreshTerrain();
+    this.resize();
     this.callbacks.onBusy(false);
     this.dirty = true;
   }
@@ -906,18 +963,32 @@ export class LivingIsland {
           bar(x + (horizontal ? offset : 0), z + (horizontal ? 0 : offset), segment * 0.65, horizontal, border, 0.055 * thickness, 42);
         }
       };
-      edge(left + width / 2, back, width, true);
-      edge(left + width / 2, back + depth, width, true);
-      edge(left, back + depth / 2, depth, false);
-      edge(left + width, back + depth / 2, depth, false);
-      const fill = new THREE.Mesh(
-        this.highlightFill, this.highlightMaterial(color, preview ? 0.065 : 0.145, true),
-      );
-      fill.scale.set(shape.cols - 0.035, shape.rows - 0.035, 1);
-      fill.rotation.x = -Math.PI / 2;
-      fill.position.set(left + width / 2, 0.43, back + depth / 2);
-      fill.renderOrder = 32;
-      this.frames.add(fill);
+      if (shape.kind === 'ell') {
+        const outline = patchOutline(shape);
+        outline.forEach((start, index) => {
+          const end = outline[(index + 1) % outline.length];
+          if (!end) throw new Error('The L frame is missing an outline edge.');
+          edge(cell.col - this.size / 2 + (start.col + end.col) / 2,
+            cell.row - this.size / 2 + (start.row + end.row) / 2,
+            Math.abs(end.col - start.col) + Math.abs(end.row - start.row), start.row === end.row);
+        });
+      } else {
+        edge(left + width / 2, back, width, true);
+        edge(left + width / 2, back + depth, width, true);
+        edge(left, back + depth / 2, depth, false);
+        edge(left + width, back + depth / 2, depth, false);
+      }
+      const fills = shape.kind === 'ell' ? patchCells(cell, shape).map((part) => ({
+        x: part.col - (this.size - 1) / 2, z: part.row - (this.size - 1) / 2, width: 0.965, depth: 0.965,
+      })) : [{ x: left + width / 2, z: back + depth / 2, width: shape.cols - 0.035, depth: shape.rows - 0.035 }];
+      for (const part of fills) {
+        const fill = new THREE.Mesh(this.highlightFill, this.highlightMaterial(color, preview ? 0.065 : 0.145, true));
+        fill.scale.set(part.width, part.depth, 1);
+        fill.rotation.x = -Math.PI / 2;
+        fill.position.set(part.x, 0.43, part.z);
+        fill.renderOrder = 32;
+        this.frames.add(fill);
+      }
       const badge = this.frameBadge(number, color);
       badge.position.set(left - 0.035, 0.72, back - 0.015);
       this.frames.add(badge);
@@ -1142,17 +1213,17 @@ export class LivingIsland {
         col: { x: round(colAxis.x / scale), y: round(colAxis.y / scale) },
         row: { x: round(rowAxis.x / scale), y: round(rowAxis.y / scale) },
       };
-      const key = JSON.stringify(axes);
+      const key = JSON.stringify([axes, width, height, this.camera.left, this.camera.right, this.camera.top, this.camera.bottom]);
       if (key !== this.projectionKey) { this.projectionKey = key; this.callbacks.onProjection(axes); }
     }
   }
 
-  guideBounds(cell: Cell): GuideBounds {
+  guideBounds(cell: Cell, shape: Shape = { rows: 1, cols: 1 }): GuideBounds {
     const bounds = this.canvas.getBoundingClientRect();
     const xs: number[] = [];
     const ys: number[] = [];
-    for (const col of [cell.col, cell.col + 1]) {
-      for (const row of [cell.row, cell.row + 1]) {
+    for (const col of [cell.col, cell.col + shape.cols]) {
+      for (const row of [cell.row, cell.row + shape.rows]) {
         const point = new THREE.Vector3(col - this.size / 2, 0.30, row - this.size / 2).project(this.camera);
         xs.push(bounds.x + (point.x + 1) * bounds.width / 2);
         ys.push(bounds.y + (1 - point.y) * bounds.height / 2);
@@ -1179,11 +1250,16 @@ export class LivingIsland {
   }
 
   private resize(): void {
+    if (this.movement) { this.finishSwap(); return; }
     const width = Math.max(this.container.clientWidth, 1);
     const height = Math.max(this.container.clientHeight, 1);
+    this.renderHeight = height;
+    const pixelRatio = Math.min(window.devicePixelRatio, 1.8, Math.sqrt(1_600_000 / (width * height)));
+    if (this.renderer.getPixelRatio() !== pixelRatio) this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(width, height, false);
     const aspect = width / height;
-    this.camera.position.set(width < 680 ? 0.2 : 7.4, width < 680 ? 13 : 12, width < 680 ? 7.5 : 10.5);
+    const headOn = width < 680 || aspect < 1.25;
+    this.camera.position.set(headOn ? 0.2 : 7.4, headOn ? 13 : 12, headOn ? 7.5 : 10.5);
     this.camera.lookAt(0, 0.1, 0);
     this.camera.updateMatrixWorld();
     this.boardGroup.updateWorldMatrix(true, true);
@@ -1199,11 +1275,49 @@ export class LivingIsland {
       }
     });
     if (extent.isEmpty()) extent.set(new THREE.Vector3(-4, -4, -1), new THREE.Vector3(4, 4, 1));
-    const margin = Math.min(20, Math.max(16, Math.min(width, height) * 0.04));
-    const vertical = 2 * Math.max(
+    const terrainExtent = extent.clone();
+    const margin = Math.min(8, width / 8, height / 8);
+    let vertical = 2 * Math.max(
       (extent.max.y - extent.min.y) / 2 * height / Math.max(1, height - margin * 2),
       (extent.max.x - extent.min.x) / 2 * width / Math.max(1, width - margin * 2) / aspect,
     );
+    // Billboard labels keep a fixed pixel size as the camera fit changes.
+    for (let pass = 0; pass < 8; pass++) {
+      extent.copy(terrainExtent);
+      const halfLabel = 14 * vertical / height;
+      for (const sprite of this.landmarkSprites) {
+        sprite.getWorldPosition(point).applyMatrix4(this.camera.matrixWorldInverse);
+        extent.expandByPoint(new THREE.Vector3(point.x - halfLabel, point.y - halfLabel, point.z));
+        extent.expandByPoint(new THREE.Vector3(point.x + halfLabel, point.y + halfLabel, point.z));
+      }
+      this.traveler.scale.setScalar(Math.min(3, COURIER_SCALE * Math.max(1, Math.min(2.4, 28 * vertical / height * 1.65))));
+      const scale = this.traveler.scale.x;
+      const center = (this.size - 1) / 2;
+      for (let row = 0; row < this.size; row++) for (let col = 0; col < this.size; col++) {
+        const tile = this.board[row]?.[col];
+        if (!walkable(tile)) continue;
+        const base = tile === 'h' || tile === 'v' ? 0.435 : 0.37;
+        for (const x of [this.travelerEnvelope.min.x, this.travelerEnvelope.max.x])
+          for (const y of [this.travelerEnvelope.min.y, this.travelerEnvelope.max.y])
+            for (const z of [this.travelerEnvelope.min.z, this.travelerEnvelope.max.z]) {
+              point.set(col - center + x * scale, base + y * scale, row - center + 0.14 + z * scale)
+                .applyMatrix4(this.camera.matrixWorldInverse);
+              extent.expandByPoint(point);
+            }
+      }
+      this.traveler.updateWorldMatrix(true, true);
+      box.setFromObject(this.traveler);
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+        point.set(x, y, z).applyMatrix4(this.camera.matrixWorldInverse);
+        extent.expandByPoint(point);
+      }
+      const next = Math.max(
+        (extent.max.y - extent.min.y) * height / Math.max(1, height - margin * 2),
+        (extent.max.x - extent.min.x) * width / Math.max(1, width - margin * 2) / aspect,
+      );
+      if (Math.abs(next - vertical) < 0.00001) { vertical = next; break; }
+      vertical = next;
+    }
     const centerX = (extent.max.x + extent.min.x) / 2;
     const centerY = (extent.max.y + extent.min.y) / 2;
     this.camera.left = centerX - vertical * aspect / 2;
@@ -1223,6 +1337,20 @@ export class LivingIsland {
     this.updatePickingBounds();
     this.shadowsDirty = true;
     this.dirty = true;
+  }
+
+  private fittedLift(object: Movement['objects'][number], desired: number): number {
+    const up = this.renderHeight / (this.camera.top - this.camera.bottom) * (this.camera.matrixWorldInverse.elements[5] ?? 0);
+    if (up <= 0) return desired;
+    const bounds = object.tile.bounds;
+    let top = Infinity;
+    // Picking bounds stay at their pre-swap position until the patches land.
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
+      this.liftPoint.set(x, y, z).sub(object.from).applyQuaternion(object.group.quaternion)
+        .add(object.group.position).project(this.camera);
+      top = Math.min(top, (1 - this.liftPoint.y) * this.renderHeight / 2);
+    }
+    return Math.min(desired, Math.max(0, (top - 4) / up));
   }
 
   private pick(event: { clientX: number; clientY: number }): Cell | null {
@@ -1320,8 +1448,8 @@ export class LivingIsland {
       const eased = progress * progress * (3 - 2 * progress);
       for (const object of this.movement.objects) {
         object.group.position.lerpVectors(object.from, object.to, eased);
-        object.group.position.y += Math.sin(Math.PI * progress) * (object.side === 1 ? 0.85 : 1.30);
         object.group.rotation.z = Math.sin(progress * Math.PI * 2) * 0.035 * object.side;
+        object.group.position.y += this.fittedLift(object, Math.sin(Math.PI * progress) * (object.side === 1 ? 0.85 : 1.30));
       }
       this.syncTerrainBatches(this.movement.objects.map((object) => object.tile));
       if (progress === 1) this.finishSwap();

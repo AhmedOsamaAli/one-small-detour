@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { FrameAxes, GuideTopic, Shape, Theme, Tile } from '../shared/types.ts';
-import { isAnchor } from '../shared/rules.ts';
+import type { Anchor, FrameAxes, GuideTopic, Shape, Theme, Tile } from '../shared/types.ts';
+import { isAnchor, patchCells } from '../shared/rules.ts';
+import { HOME_GLYPHS, HOME_PLAQUE_PATH, HOME_SPROUT_PATH } from './homeLetter.ts';
 
 type IconName = 'sound' | 'mute' | 'undo' | 'reset' | 'book' | 'help' | 'close' | 'arrow' | 'sun' | 'moon' | 'leaf' | 'trophy' | 'map' | 'swap' | 'check' | 'chevron' | 'lock' | 'clock' | 'warning' | 'bridge' | 'play' | 'grid' | 'trash' | 'cube';
 
@@ -34,6 +35,14 @@ const paths: Record<IconName, ReactNode> = {
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+
+export function HomeLetter({ anchor, plaque = false }: { anchor: Anchor; plaque?: boolean }) {
+  return <svg className="home-letter" viewBox="0 0 32 36" fill="currentColor" aria-hidden="true" focusable="false" data-home-letter={anchor}>
+    {plaque && <path d={HOME_PLAQUE_PATH} fill="var(--world-home-badge)" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round"/>}
+    <path d={HOME_GLYPHS[anchor]} fillRule="evenodd"/>
+    <path d={HOME_SPROUT_PATH}/>
+  </svg>;
 }
 
 export function BrandMark() {
@@ -239,7 +248,7 @@ function TileGlyph({ tile }: { tile: Tile }) {
       <g transform="translate(4 4)" stroke="#5b573f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths.bridge}</g>
     </g>}
     {isAnchor(tile) && <><rect x="8" y="13" width="16" height="14" rx="1" fill="#fff2db" stroke="#a99a7b"/>
-      <path d="m6 14 10-9 10 9H6Z" fill="#698775"/><rect x="14" y="20" width="4" height="7" fill="#9c8259"/></>}
+      <path d="m6 14 10-9 10 9H6Z" fill={`var(--world-home-${tile.toLowerCase()})`}/><rect x="14" y="20" width="4" height="7" fill="#9c8259"/></>}
   </svg>;
 }
 
@@ -294,9 +303,7 @@ export function ShapeGlyph({ shape, axes = FLAT_AXES, tiles }: { shape: Shape; a
   const height = Math.max(...corners.map((corner) => corner.y)) - top + 3;
   return <svg className={`shape-glyph ${tiles ? 'terrain-glyph' : ''}`} width={width} height={height}
     viewBox={`${left} ${top} ${width} ${height}`} fill="none" aria-hidden="true">
-    {Array.from({ length: shape.rows * shape.cols }, (_, index) => {
-      const row = Math.floor(index / shape.cols);
-      const col = index % shape.cols;
+    {patchCells({ row: 0, col: 0 }, shape).map(({ row, col }, index) => {
       const polygon = [point(row + 0.06, col + 0.06), point(row + 0.06, col + 0.94),
         point(row + 0.94, col + 0.94), point(row + 0.94, col + 0.06)]
         .map((corner) => `${corner.x},${corner.y}`).join(' ');
@@ -357,8 +364,10 @@ export function GuideIllustration({ step }: { step: number }) {
       <path d="M42 38q28-20 62 15m-1-9 1 9-9-1" stroke="#11649a" strokeWidth="2.5" strokeLinecap="round"/>
       <rect x="57" y="49" width="68" height="29" rx="6" stroke="#11649a" strokeDasharray="4 3" strokeWidth="2.5"/></>}
     {step === 3 && <><path d="M40 37h34v26h34" stroke="#f9edc8" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
-      {[{ x: 38, y: 37, label: 'A' }, { x: 72, y: 63, label: 'B' }, { x: 106, y: 63, label: 'C' }].map((stop) =>
-        <g key={stop.label}><circle cx={stop.x} cy={stop.y} r="10" fill="#fff0cd" stroke="#56794b" strokeWidth="1.5"/>
-          <text x={stop.x} y={stop.y + 4} textAnchor="middle" fill="#213b34" fontSize="11" fontFamily="sans-serif" fontWeight="bold">{stop.label}</text></g>)}</>}
+      {([{ x: 38, y: 37, label: 'A' }, { x: 72, y: 63, label: 'B' }, { x: 106, y: 63, label: 'C' }] as const).map((stop) =>
+        <g key={stop.label} transform={`translate(${stop.x - 10} ${stop.y - 11.25}) scale(.625)`} style={{ color: `var(--world-home-${stop.label.toLowerCase()})` }}>
+          <path d={HOME_PLAQUE_PATH} fill="var(--world-home-badge)" stroke="currentColor" strokeWidth="1.25"/>
+          <path d={HOME_GLYPHS[stop.label]} fill="currentColor" fillRule="evenodd"/><path d={HOME_SPROUT_PATH} fill="currentColor"/>
+        </g>)}</>}
   </svg>;
 }

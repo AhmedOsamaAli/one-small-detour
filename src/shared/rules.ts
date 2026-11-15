@@ -1,4 +1,4 @@
-import type { Anchor, Board, Cell, Goal, JourneyPlan, Mode, Puzzle, Repair, RouteCheck, Rules, Shape, Swap, Tile } from './types.ts';
+import type { Anchor, Board, Cell, Goal, JourneyPlan, Mode, PatchFamily, Puzzle, Repair, RouteCheck, Rules, Shape, Swap, Tile } from './types.ts';
 
 export const RULE_VERSION = '4';
 export const BOARD_SIZES = [6, 8, 10, 12] as const;
@@ -46,18 +46,48 @@ export function canTraverse(board: Board, from: Cell, to: Cell): boolean {
 }
 
 export function rulesFor(puzzle: Puzzle, mode: Mode): Rules {
-  return mode === 'gentle'
+  return mode === 'gentle' && !puzzle.frame
     ? { areas: [1, 2, 4], budget: Math.min(MAX_EXCHANGES, Math.max(3, puzzle.budget + 2)) }
-    : { areas: [puzzle.area], budget: puzzle.budget };
+    : { areas: [puzzle.area], budget: puzzle.budget, ...(puzzle.frame ? { frame: puzzle.frame } : {}) };
 }
 
-export function shapesFor(area: number, size = 6): Shape[] {
+export function shapesFor(area: number, size = 6, frame?: PatchFamily): Shape[] {
+  if (frame === 'ell') return area === 4 && size >= 3 ? [{ rows: 3, cols: 2, kind: 'ell' }, { rows: 2, cols: 3, kind: 'ell' }] : [];
+  if (frame === 'square') return area === 4 && size >= 2 ? [{ rows: 2, cols: 2 }] : [];
+  if (frame === 'strip' && area !== 3) return [];
   return Array.from({ length: size }, (_, index) => index + 1)
     .filter((rows) => area % rows === 0 && area / rows <= size)
     .map((rows) => ({ rows, cols: area / rows }));
 }
 
+export function patchArea(shape: Shape): number {
+  return shape.kind === 'ell' ? 4 : shape.rows * shape.cols;
+}
+
+export function patchOutline(shape: Shape): Cell[] {
+  if (shape.kind === 'ell') {
+    if (shape.rows === 3 && shape.cols === 2) return [
+      { row: 0, col: 0 }, { row: 0, col: 1 }, { row: 2, col: 1 },
+      { row: 2, col: 2 }, { row: 3, col: 2 }, { row: 3, col: 0 },
+    ];
+    if (shape.rows === 2 && shape.cols === 3) return [
+      { row: 0, col: 0 }, { row: 0, col: 3 }, { row: 1, col: 3 },
+      { row: 1, col: 1 }, { row: 2, col: 1 }, { row: 2, col: 0 },
+    ];
+    throw new RuleError('Choose a supported L frame.', 'shape');
+  }
+  return [{ row: 0, col: 0 }, { row: 0, col: shape.cols }, { row: shape.rows, col: shape.cols }, { row: shape.rows, col: 0 }];
+}
+
 export function patchCells(start: Cell, shape: Shape): Cell[] {
+  if (shape.kind === 'ell') {
+    const offsets = shape.rows === 3 && shape.cols === 2
+      ? [{ row: 0, col: 0 }, { row: 1, col: 0 }, { row: 2, col: 0 }, { row: 2, col: 1 }]
+      : shape.rows === 2 && shape.cols === 3
+        ? [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 1, col: 0 }] : null;
+    if (!offsets) throw new RuleError('Choose a supported L frame.', 'shape');
+    return offsets.map((cell) => ({ row: start.row + cell.row, col: start.col + cell.col }));
+  }
   const cells: Cell[] = [];
   for (let r = 0; r < shape.rows; r++) {
     for (let c = 0; c < shape.cols; c++) cells.push({ row: start.row + r, col: start.col + c });
@@ -75,6 +105,10 @@ export function inspectPatch(board: Board, start: Cell, shape: Shape): PatchIssu
   const size = boardSize(board);
   if (![start.row, start.col, shape.rows, shape.cols].every(Number.isInteger)) {
     return { code: 'shape', message: 'Choose whole squares.', cells: [] };
+  }
+  if (shape.kind !== undefined && (shape.kind !== 'ell' ||
+      !((shape.rows === 3 && shape.cols === 2) || (shape.rows === 2 && shape.cols === 3)))) {
+    return { code: 'shape', message: 'Choose a supported frame shape.', cells: [] };
   }
   if (shape.rows < 1 || shape.cols < 1 || start.row < 0 || start.col < 0 ||
       start.row + shape.rows > size || start.col + shape.cols > size) {
@@ -102,15 +136,18 @@ export function selectionIssue(board: Board, start: Cell, shape: Shape, first: C
   const issue = inspectPatch(board, start, shape);
   if (issue) return issue;
   if (!first || (first.row === start.row && first.col === start.col) ||
-      !patchesOverlap({ a: first, b: start, ...shape })) return null;
+      !patchesOverlap({ ...shape, a: first, b: start })) return null;
   return {
     code: 'overlap', message: 'Patches overlap. Pick another spot.',
-    cells: patchCells(start, shape).filter((cell) => cell.row >= first.row && cell.row < first.row + shape.rows &&
-      cell.col >= first.col && cell.col < first.col + shape.cols),
+    cells: patchCells(start, shape).filter((cell) => patchCells(first, shape).some((other) => other.row === cell.row && other.col === cell.col)),
   };
 }
 
 export function patchesOverlap(move: Swap): boolean {
+  if (move.kind === 'ell') {
+    const first = new Set(patchCells(move.a, move).map((cell) => `${cell.row},${cell.col}`));
+    return patchCells(move.b, move).some((cell) => first.has(`${cell.row},${cell.col}`));
+  }
   return move.a.row < move.b.row + move.rows && move.b.row < move.a.row + move.rows &&
     move.a.col < move.b.col + move.cols && move.b.col < move.a.col + move.cols;
 }
@@ -118,14 +155,18 @@ export function patchesOverlap(move: Swap): boolean {
 export function applySwap(board: Board, move: Swap, rules: Rules, used = 0): Board {
   if (used >= rules.budget) throw new RuleError(rules.budget === MAX_EXCHANGES
     ? 'This attempt is too long to save. Undo or restart to continue.' : 'That is the last cut. Undo is always free.', 'budget');
-  if (!rules.areas.includes(move.rows * move.cols)) throw new RuleError('Use one of today\'s frame sizes.', 'area');
+  if (!rules.areas.includes(patchArea(move)) ||
+      (move.kind === 'ell') !== (rules.frame === 'ell') ||
+      (rules.frame === 'square' && (move.rows !== 2 || move.cols !== 2)) ||
+      (rules.frame === 'strip' && !((move.rows === 1 && move.cols === 3) || (move.rows === 3 && move.cols === 1)))) {
+    throw new RuleError('Use one of this island\'s frame shapes.', 'area');
+  }
   const firstProblem = patchProblem(board, move.a, move);
   const secondProblem = patchProblem(board, move.b, move);
   if (firstProblem || secondProblem) throw new RuleError(firstProblem ?? secondProblem ?? 'Invalid patch.');
   if (patchesOverlap(move)) throw new RuleError('The two patches cannot overlap. Pick another spot.', 'overlap');
   const next = board.map((row) => row.split(''));
-  for (let row = 0; row < move.rows; row++) {
-    for (let col = 0; col < move.cols; col++) {
+  for (const { row, col } of patchCells({ row: 0, col: 0 }, move)) {
       const a = { row: move.a.row + row, col: move.a.col + col };
       const b = { row: move.b.row + row, col: move.b.col + col };
       const targetA = next[a.row];
@@ -133,7 +174,6 @@ export function applySwap(board: Board, move: Swap, rules: Rules, used = 0): Boa
       if (!targetA || !targetB) throw new RuleError('The landscape has an invalid row.', 'board');
       targetA[a.col] = tileAt(board, b);
       targetB[b.col] = tileAt(board, a);
-    }
   }
   return next.map((row) => row.join(''));
 }
@@ -391,7 +431,7 @@ export function validateRepair(puzzle: Puzzle, mode: Mode, moves: readonly Swap[
   return {
     board,
     routes: check.routes,
-    footprint: moves.reduce((total, move) => total + 2 * move.rows * move.cols, 0),
+    footprint: moves.reduce((total, move) => total + 2 * patchArea(move), 0),
     swaps: moves.length,
   };
 }
@@ -404,10 +444,10 @@ export function roadFingerprint(board: Board): string {
   return board.map((row) => row.replace(/~/g, '.')).join('/');
 }
 
-export function legalSwaps(board: Board, area: number): Swap[] {
+export function legalSwaps(board: Board, area: number, frame?: PatchFamily): Swap[] {
   const size = boardSize(board);
   const swaps: Swap[] = [];
-  for (const shape of shapesFor(area, size)) {
+  for (const shape of shapesFor(area, size, frame)) {
     const positions: Cell[] = [];
     for (let row = 0; row <= size - shape.rows; row++) {
       for (let col = 0; col <= size - shape.cols; col++) {

@@ -1,4 +1,4 @@
-import { applySwap, assertBoard, checkRoutes, locate, validateRepair, walkable } from './rules.ts';
+import { applySwap, assertBoard, checkPuzzle, checkRoutes, legalSwaps, locate, rulesFor, validateRepair, walkable } from './rules.ts';
 import type { Anchor, AuthoredPuzzle, Board, Goal, Puzzle, Swap } from './types.ts';
 
 export function difficultyLabel(minimum: number | undefined): string {
@@ -73,6 +73,29 @@ export function certifyMinimum(puzzle: AuthoredPuzzle): number {
   assertBoard(puzzle.board);
   const minimum = Math.ceil(pavingLowerBound(puzzle.board, puzzle.goals, puzzle.journey) / puzzle.area);
   validateRepair(puzzle, 'daily', puzzle.witness);
+  if (minimum >= 1 && minimum < puzzle.witness.length && puzzle.frame && puzzle.witness.length <= 3) {
+    const swaps = legalSwaps(puzzle.board, puzzle.area, puzzle.frame);
+    const rules = rulesFor(puzzle, 'daily');
+    let frontier: Board[] = [puzzle.board];
+    const seen = new Set([puzzle.board.join('/')]);
+    for (let depth = 0; depth < puzzle.witness.length; depth++) {
+      const next: Board[] = [];
+      for (const board of frontier) {
+        if (checkPuzzle(board, puzzle).solved) throw new Error(`${puzzle.id}: a shorter ${depth}-move repair exists.`);
+        if (depth + 1 === puzzle.witness.length) continue;
+        for (const move of swaps) {
+          const candidate = applySwap(board, move, rules, depth);
+          const key = candidate.join('/');
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (seen.size > 20_000) throw new Error(`${puzzle.id}: the exact frame proof exceeded its verified search limit.`);
+          next.push(candidate);
+        }
+      }
+      frontier = next;
+    }
+    return puzzle.witness.length;
+  }
   if (minimum < 1 || minimum !== puzzle.witness.length) {
     throw new Error(`${puzzle.id}: ${puzzle.witness.length} witness moves do not match the ${minimum}-move lower bound.`);
   }
@@ -81,7 +104,7 @@ export function certifyMinimum(puzzle: AuthoredPuzzle): number {
 
 export function replayPuzzle(puzzle: Puzzle, moves: readonly Swap[]): Board {
   let board = puzzle.board;
-  moves.forEach((move, used) => { board = applySwap(board, move, { areas: [puzzle.area], budget: puzzle.budget }, used); });
+  moves.forEach((move, used) => { board = applySwap(board, move, rulesFor(puzzle, 'daily'), used); });
   return board;
 }
 

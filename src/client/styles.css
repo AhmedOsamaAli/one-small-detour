@@ -11,9 +11,15 @@
   --text-body: 16px;
   --text-label: 14px;
   --text-caption: 12px;
+  --app-height: min(100dvh, var(--visual-height, 100dvh));
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * { box-sizing: border-box; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 body { margin: 0; min-width: 0; font-size: var(--text-body); line-height: 1.5; }
 button { font: inherit; }
 button { cursor: pointer; }
@@ -104,6 +110,9 @@ button { transition: background .18s, border-color .18s, color .18s, transform .
 .flat-patch-frame.patch-2 { color: #286797; background: #2867970d; }
 .flat-patch-frame.preview { z-index: 4; border-style: dashed; }
 .flat-patch-frame.invalid { color: #b33f35; background: #b33f3512; }
+.flat-patch-frame.shaped-frame { border: 0; background: none; box-shadow: none; }
+.shaped-frame-outline { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.shaped-frame.preview .shaped-frame-outline > path:last-child { stroke-dasharray: 6 4; }
 .flat-frame-badge { position: absolute; top: -8px; left: -8px; display: grid; place-items: center; width: 20px; height: 20px; border: 1.5px solid currentColor; border-radius: 50%; color: inherit; background: #fffdf1; font-size: 12px; font-weight: 700; line-height: 1; box-shadow: 0 1px 3px #34412b24; }
 .flat-cell:focus-visible { outline: 2px dotted #315546; outline-offset: -5px; }
 .flat-cell:hover { filter: brightness(1.05); }
@@ -641,7 +650,7 @@ button { transition: background .18s, border-color .18s, color .18s, transform .
 }
 
 html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-behavior: none; }
-.viewport-fit.app-shell { height: 100dvh; min-height: 0; display: grid; grid-template-rows: 64px minmax(0, 1fr); padding: 0; }
+.viewport-fit.app-shell { height: var(--app-height); min-height: 0; display: grid; grid-template-rows: 64px minmax(0, 1fr); padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
 .viewport-fit .site-header { height: auto; min-height: 0; padding: 0; margin: 0 24px; flex-wrap: nowrap; gap: 10px; }
 .viewport-fit .header-nav { width: auto; margin-left: auto; flex-shrink: 0; }
 .viewport-fit .header-nav > .icon-button { display: inline-flex; }
@@ -700,7 +709,19 @@ html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-be
 .viewport-fit .result-actions { width: 100%; padding: 0; gap: 6px 12px; justify-content: flex-end; }
 .viewport-fit .result-actions .primary-button { padding: 9px 12px; min-height: 44px; }
 .viewport-fit .result-actions .text-button { min-height: 44px; }
-.viewport-fit .dialog { overscroll-behavior: contain; }
+.viewport-fit .dialog[open] {
+  position: fixed;
+  top: calc((var(--app-height) + var(--safe-top) - var(--safe-bottom)) / 2);
+  bottom: auto;
+  left: calc((100vw + var(--safe-left) - var(--safe-right)) / 2);
+  right: auto;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  max-height: min(calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 16px), 960px);
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 16px);
+  overscroll-behavior: contain;
+}
+.viewport-fit .loading-place { min-height: 0; overflow: auto; }
 .viewport-fit .toast { bottom: max(14px, env(safe-area-inset-bottom)); }
 @media (max-width: 680px) {
   .viewport-fit.app-shell { grid-template-rows: 56px minmax(0, 1fr); }

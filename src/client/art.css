@@ -10,10 +10,23 @@
 :where(:root[data-appearance="dark"]) .art-sun { display: none; }
 :where(:root[data-appearance="dark"]) .art-moon { display: initial; }
 .viewport-fit .site-header {
+  background: var(--surface);
   border-color: color-mix(in srgb, var(--border-strong) 55%, transparent);
   box-shadow: 0 1px 0 var(--edge-light);
 }
 .wordmark > svg { filter: drop-shadow(0 2px 1px var(--art-shadow)); }
+.wordmark > span { font-variation-settings: 'SOFT' 85, 'WONK' 1, 'opsz' 28; }
+.viewport-fit .story-panel h1,
+.dialog-heading h2,
+.guide-step h3,
+.preview-copy h3,
+.tour-feature h3,
+.tile-guide > h3 {
+  font-variation-settings: 'SOFT' 85, 'WONK' 1, 'opsz' 36;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+.title-period { position: relative; color: transparent; }
+.title-period::after { content: ''; position: absolute; width: .3em; height: .17em; left: 0; bottom: .18em; border-radius: 90% 5% 90% 5%; transform: rotate(-24deg); background: var(--green); }
 .viewport-fit .header-nav > .icon-button {
   background: color-mix(in srgb, var(--surface-raised) 85%, transparent);
   color: var(--green);
@@ -29,6 +42,18 @@
 .viewport-fit .header-nav > .sound-is-on { background: var(--surface-selected); border-color: var(--border-strong); }
 .edition-label { color: var(--green); font-weight: 700; }
 .story-panel h1 { text-shadow: 0 1px 0 var(--edge-light); }
+.viewport-fit .story-panel {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+@media (max-height: 600px) {
+  .viewport-fit .story-panel { padding: 4px 8px; }
+}
+@media (max-height: 600px) and (min-width: 700px), (max-height: 500px) and (min-width: 560px) {
+  .viewport-fit.direct-play .game-layout { --hud-width: clamp(248px, 30vw, 268px); }
+}
 .challenge-facts > span + span::before { color: var(--border-strong); }
 .viewport-fit .play-toolbar {
   background: linear-gradient(150deg, var(--surface-raised), var(--surface-soft));
@@ -50,13 +75,25 @@
 }
 .frame-option.chosen:hover:not(:disabled) { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent-ink); }
 .journey-stop {
-  background: var(--surface-raised);
-  color: var(--ink);
-  border-color: var(--border-strong);
+  position: relative;
+  background: var(--home-color);
+  color: var(--world-home-badge);
+  border-color: var(--home-color);
   box-shadow: inset 0 1px 0 var(--edge-light), 0 2px 0 var(--art-shadow);
+  border-radius: 8px 4px 8px 4px;
 }
-.journey-stop.arrived { background: var(--surface-selected); color: var(--ink); border-color: var(--border-strong); }
-.journey-order [aria-current=step] .journey-stop { color: var(--accent-ink); background: var(--accent-bg); border-color: var(--accent-border); }
+.home-letter { display: block; width: 100%; height: 100%; flex-shrink: 0; pointer-events: none; }
+.journey-stop > .home-letter { width: 27px; height: 30px; max-width: 100%; max-height: 100%; }
+.journey-stop::before { content: ''; position: absolute; inset: 3px; border: 1px solid currentColor; border-radius: 5px 1px 5px 1px; opacity: .25; pointer-events: none; }
+.journey-order li[data-stop=A] { --home-color: var(--world-home-a); }
+.journey-order li[data-stop=B] { --home-color: var(--world-home-b); }
+.journey-order li[data-stop=C] { --home-color: var(--world-home-c); }
+.journey-order li[data-stop=D] { --home-color: var(--world-home-d); }
+.journey-order li[data-stop=E] { --home-color: var(--world-home-e); }
+.journey-order li[data-stop=F] { --home-color: var(--world-home-f); }
+.journey-stop.arrived { background: var(--home-color); color: var(--world-home-badge); border-color: var(--home-color); box-shadow: inset 0 0 0 1px var(--world-home-badge), 0 2px 0 var(--art-shadow); }
+.journey-order [aria-current=step] .journey-stop { color: var(--world-home-badge); background: var(--home-color); border: 2px solid var(--home-color); box-shadow: 0 0 0 2px var(--accent-border); }
+.journey-arrival-mark { position: absolute; right: -3px; bottom: -4px; display: grid; place-items: center; width: 12px; height: 12px; border: 1px solid var(--home-color); border-radius: 50%; color: var(--home-color); background: var(--world-home-badge); }
 .journey-arrow { color: var(--muted); }
 .primary-button {
   color: var(--primary-ink);
@@ -80,10 +117,11 @@
 .viewport-fit .board-footer {
   border: 1px solid var(--line);
   border-radius: 13px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: var(--surface);
   padding-inline: 8px 3px;
   box-shadow: inset 0 1px 0 var(--edge-light);
 }
+.viewport-fit .island-status { min-height: 52px; }
 .view-selector { background: var(--surface-raised); box-shadow: inset 0 0 0 1px var(--line); }
 .view-option { color: var(--muted); }
 .view-option.selected { background: var(--surface-selected); border-color: var(--border-strong); color: var(--ink); box-shadow: inset 0 1px 0 var(--edge-light); }
@@ -92,6 +130,67 @@
 .viewport-fit .world-stage.is-flat {
   background: radial-gradient(ellipse at 50% 62%, color-mix(in srgb, var(--world-sea) 18%, transparent), transparent 70%);
   border-radius: 22px;
+}
+.viewport-fit.direct-play .game-layout .world-stage {
+  width: min(calc(100vw - 8px), calc(100% + 32px));
+  max-width: none;
+  justify-self: center;
+}
+@media (max-height: 600px) and (min-width: 700px), (max-height: 500px) and (min-width: 560px) {
+  .viewport-fit.direct-play .game-layout .world-stage { width: 100%; }
+}
+@media (min-width: 820px) and (min-height: 601px) {
+  .viewport-fit.direct-play .game-layout.board-first {
+    --hud-width: clamp(256px, 25vw, 280px);
+    width: min(1480px, calc(100% - 32px));
+    grid-template-columns: minmax(0, 1fr) var(--hud-width);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 12px 16px;
+    padding-block: 10px;
+  }
+  .viewport-fit .board-first .story-panel { grid-column: 2; grid-row: 1; display: block; }
+  .viewport-fit .board-first .story-panel h1 { font-size: 26px; line-height: 1.15; margin-block: 8px 12px; }
+  .viewport-fit .board-first .mission { width: 100%; max-width: none; margin-top: 16px; }
+  .viewport-fit .board-first .journey-arrow { width: 8px; }
+  .viewport-fit .board-first .island-panel { display: contents; }
+  .viewport-fit.direct-play .game-layout.board-first .world-stage { grid-column: 1; grid-row: 1 / -1; width: 100%; height: 100%; }
+  .viewport-fit .board-first .play-toolbar {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-rows: auto auto;
+    padding: 10px;
+    gap: 8px;
+  }
+  .viewport-fit .board-first .frame-label { display: none; }
+  .viewport-fit .board-first .visual-frames { grid-column: 1; grid-row: 1; gap: 8px; }
+  .viewport-fit .board-first .frame-option { width: 62px; min-width: 62px; max-width: 62px; min-height: 62px; padding: 6px; }
+  .viewport-fit .board-first .frame-option .shape-glyph { max-width: 46px; max-height: 28px; }
+  .viewport-fit .board-first .run-metrics {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    margin-left: 0;
+    width: 100%;
+    gap: 12px;
+  }
+  .viewport-fit .board-first .compact-time { border: 0; padding: 0; white-space: nowrap; }
+  .viewport-fit .board-first .compact-moves { gap: 5px; font-size: 13px; }
+  .viewport-fit .board-first .compact-moves strong { font-size: 24px; }
+  .viewport-fit .board-first .undo-control { grid-column: 2; grid-row: 1; align-self: center; margin-left: 0; }
+  .viewport-fit .board-first .board-footer { grid-column: 2; grid-row: 3; align-self: start; }
+  .viewport-fit .board-first:has(.lesson-coach) { grid-template-rows: auto auto auto minmax(0, 1fr); }
+  .viewport-fit .board-first .lesson-coach { grid-column: 2; grid-row: 2; height: auto; min-height: 76px; }
+  .viewport-fit .board-first .courier-speech { width: 100%; height: auto; min-height: 76px; }
+  .viewport-fit.direct-play .game-layout.board-first:has(.lesson-coach) .world-stage { grid-column: 1; grid-row: 1 / -1; height: 100%; }
+  .viewport-fit .board-first:has(.lesson-coach) .play-toolbar { grid-column: 2; grid-row: 3; }
+  .viewport-fit .board-first:has(.lesson-coach) .board-footer { grid-column: 2; grid-row: 4; }
 }
 .viewport-fit .flat-map-scroll .flat-map {
   background: var(--world-grass-deep);
@@ -145,14 +244,15 @@
 }
 .flat-grass::before, .flat-grass::after { content: ''; position: absolute; width: 24%; height: 78%; border-left: 1.5px solid var(--world-blade); bottom: 0; transform: rotate(-17deg); left: 0; }
 .flat-grass::after { left: 85%; height: 65%; transform: rotate(20deg); }
+.flat-flowers { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
 .flat-cell .flat-landmark {
   width: 61%;
   height: 55%;
   margin-top: 12%;
-  background: var(--world-road-light);
-  border: 1px solid var(--world-road-shade);
+  background: var(--world-home-badge);
+  border: 1px solid var(--home-roof);
   border-radius: 2px 2px 3px 3px;
-  color: #213b34;
+  color: var(--home-roof);
   z-index: 3;
   box-shadow: inset -3px 0 0 #9d774326, 0 2px 0 var(--world-mortar);
 }
@@ -166,6 +266,7 @@
   background: var(--home-roof);
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
+.flat-landmark > .home-letter { position: relative; height: 125%; width: 100%; max-width: 32px; z-index: 1; background: var(--world-home-badge); border-radius: 4px 1px 4px 1px; }
 .flat-cell[data-tile=A] { --home-roof: var(--world-home-a); }
 .flat-cell[data-tile=B] { --home-roof: var(--world-home-b); }
 .flat-cell[data-tile=C] { --home-roof: var(--world-home-c); }
@@ -173,9 +274,16 @@
 .flat-cell[data-tile=E] { --home-roof: var(--world-home-e); }
 .flat-cell[data-tile=F] { --home-roof: var(--world-home-f); }
 .terrain-water, .terrain-bridge {
-  background: linear-gradient(145deg, color-mix(in srgb, var(--world-water-light) 25%, var(--world-water)), var(--world-water));
+  background:
+    linear-gradient(to bottom, var(--shore-north, transparent), transparent 25%),
+    linear-gradient(to top, var(--shore-south, transparent), transparent 25%),
+    linear-gradient(to right, var(--shore-west, transparent), transparent 25%),
+    linear-gradient(to left, var(--shore-east, transparent), transparent 25%),
+    radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--world-water-light) 22%, var(--world-water)), var(--world-water) 85%);
   color: var(--world-foam);
-  box-shadow: inset 0 1px 0 #dcf4dc44, inset 0 -2px 0 #102d4140;
+  border-radius: 2px;
+  outline: 1.5px solid var(--world-water);
+  box-shadow: none;
 }
 .flat-ripples { position: absolute; inset: 17% 12%; pointer-events: none; }
 .flat-ripples::before, .flat-ripples::after {
@@ -189,8 +297,44 @@
   border-radius: 50%;
   transform: rotate(-8deg);
   opacity: .8;
+  animation: water-shimmer 7s ease-in-out infinite;
 }
-.flat-ripples::after { left: auto; right: 0; top: 60%; width: 58%; opacity: .6; }
+.flat-ripples::after { left: auto; right: 0; top: 60%; width: 58%; opacity: .6; animation-delay: -3s; }
+.world-stage[data-animation-paused="true"] .flat-ripples::before,
+.world-stage[data-animation-paused="true"] .flat-ripples::after { animation-play-state: paused; }
+@keyframes water-shimmer {
+  0%, 100% { transform: translate(-3%, 0) rotate(-8deg); opacity: .45; }
+  50% { transform: translate(4%, 9%) rotate(-5deg); opacity: .8; }
+}
+.flat-fish {
+  position: absolute;
+  left: 35%;
+  top: 44%;
+  width: 21%;
+  height: 8%;
+  border-radius: 50%;
+  background: var(--world-foam);
+  opacity: .3;
+  pointer-events: none;
+  animation: fish-drift 12s ease-in-out infinite;
+}
+.flat-fish::before {
+  content: '';
+  position: absolute;
+  right: 85%;
+  top: -25%;
+  width: 45%;
+  height: 150%;
+  background: inherit;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.world-stage[data-animation-paused="true"] .flat-fish { animation-play-state: paused; }
+@keyframes fish-drift {
+  0%, 100% { transform: translate(-45%, -20%); }
+  45% { transform: translate(95%, 35%); }
+  50% { transform: translate(100%, 35%) scaleX(-1); }
+  95% { transform: translate(-45%, -20%) scaleX(-1); }
+}
 .terrain-rock::after { content: ''; position: absolute; width: 72%; height: 22%; bottom: 14%; left: 14%; border-radius: 50%; background: #102a3c55; }
 .flat-rock {
   z-index: 1;
@@ -295,8 +439,55 @@
 .tile-guide-tag.fixed-tag { color: var(--ink); background: var(--surface-raised); border-color: var(--border-strong); }
 .tour-reassurance { background: var(--surface-soft); border-color: var(--line); }
 .walkthrough-dialog .dialog-actions { background: var(--surface); z-index: 5; }
+:root[data-compact-height] .walkthrough-dialog { --dialog-pad: 16px; }
+:root[data-compact-height] .walkthrough-dialog .welcome-vignette { display: none; }
+:root[data-compact-height] .walkthrough-dialog .dialog-heading { padding-block: 10px; margin-bottom: 12px; }
+:root[data-compact-height] .walkthrough-dialog .dialog-heading h2 { font-size: 26px; }
+:root[data-compact-height] .walkthrough-dialog .dialog-welcome { flex-direction: row; text-align: left; gap: 10px; padding: 12px; margin-bottom: 12px; }
+:root[data-compact-height] .walkthrough-dialog .dialog-welcome > .guide-courier { width: 48px; height: 64px; flex-shrink: 0; }
+:root[data-compact-height] .walkthrough-dialog .tour-reassurance { margin-block: 10px; padding: 8px 10px; }
+:root[data-compact-height] .walkthrough-dialog .dialog-actions { padding-top: 12px; }
 .courier-speech { background: linear-gradient(130deg, var(--surface-raised), var(--accent-bg)); border-color: var(--accent-border); box-shadow: inset 0 1px 0 var(--edge-light), 0 3px 0 var(--art-shadow); }
 .courier-words > strong { color: var(--ink); }
+.coach-deselect-hint { color: var(--muted); font-size: 12px; line-height: 1.3; }
+.viewport-fit .lesson-coach {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: var(--app-height);
+  bottom: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  z-index: 80;
+}
+.viewport-fit .lesson-coach .courier-speech {
+  position: absolute;
+  width: min(300px, calc(100vw - 16px));
+  height: auto;
+  min-height: 76px;
+  max-height: calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 16px);
+  overflow: auto;
+  pointer-events: auto;
+}
+.frame-option.tutorial-target { animation: none; box-shadow: 0 0 0 2px var(--green); }
+@media (max-height: 500px) {
+  .viewport-fit .lesson-coach .courier-speech { grid-template-columns: 32px minmax(0, 1fr) 44px; min-height: 62px; padding: 6px; gap: 6px; }
+  .viewport-fit .lesson-coach .guide-courier { width: 32px; height: 48px; }
+  .viewport-fit .lesson-coach .courier-words > strong { font-size: 14px; }
+}
+@media (max-width: 340px) {
+  .viewport-fit .lesson-coach .courier-speech { grid-template-columns: 28px minmax(0, 1fr) 44px; padding: 6px; gap: 4px; }
+  .viewport-fit .lesson-coach .guide-courier { width: 28px; height: 42px; }
+  .viewport-fit .lesson-coach .courier-words { gap: 3px; }
+}
+@media (max-width: 280px) {
+  .viewport-fit .lesson-coach .courier-speech { grid-template-columns: minmax(0, 1fr) 44px; }
+  .viewport-fit .lesson-coach .guide-courier { position: absolute; left: 8px; top: 8px; width: 20px; height: 26px; }
+  .viewport-fit .lesson-coach .courier-words > span { display: flex; align-items: center; min-height: 26px; padding-left: 28px; }
+  .viewport-fit .lesson-coach .courier-speech > .text-button { grid-column: 2; }
+}
 .completion-dialog .result-card,
 .completion-dialog .result-card.perfect-result {
   background: radial-gradient(ellipse at 20% 5%, color-mix(in srgb, var(--accent-bg) 75%, transparent), transparent 80%), var(--surface-raised);

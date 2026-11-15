@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { GRASS_COLORS, worldCssVariables, worldPalette } from './worldTheme.ts';
+import { GRASS_COLORS, HOME_BADGE_BG, HOME_COLORS, worldCssVariables, worldPalette } from './worldTheme.ts';
 import type { Theme } from '../shared/types.ts';
 
 function luminance(hex: string): number {
@@ -19,6 +19,18 @@ function contrast(a: string, b: string): number {
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
+test('all six home identities are distinct and their matching letters remain readable', () => {
+  const colors = Object.values(HOME_COLORS);
+  assert.equal(new Set(colors).size, 6);
+  for (const [anchor, color] of Object.entries(HOME_COLORS)) {
+    assert.ok(contrast(color, HOME_BADGE_BG) >= 4.5, `${anchor} badge contrast`);
+    for (const dark of [false, true]) {
+      const variables = worldCssVariables('meadow', dark);
+      assert.equal(variables[`--world-home-${anchor.toLowerCase()}`], color);
+      assert.equal(variables['--world-home-badge'], HOME_BADGE_BG);
+    }
+  }
+});
 test('stone roads, granite highlights and water marks remain distinct in every world palette', () => {
   const themes: Theme[] = ['meadow', 'coast', 'orchard'];
   for (const theme of themes) for (const dark of [false, true]) {

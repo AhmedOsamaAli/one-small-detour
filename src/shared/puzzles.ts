@@ -1,6 +1,7 @@
 import { boardFingerprint, MAX_EXCHANGES, roadFingerprint, RULE_VERSION } from './rules.ts';
 import { CHALLENGES } from './challenges.generated.ts';
 import { CAMPAIGN_ADDITIONS } from './campaign.generated.ts';
+import { FRAME_LESSONS } from './frameLessons.ts';
 import { certifyMinimum } from './difficulty.ts';
 import { generateDailyChallenge, PLACE_TITLES, seedOf } from './generation.ts';
 import type { AuthoredPuzzle, CatalogEntry, Edition, Puzzle, Swap, Theme } from './types.ts';
@@ -174,7 +175,7 @@ export function getSeasonPuzzles(): readonly AuthoredPuzzle[] {
 
 export function getPuzzles(): readonly AuthoredPuzzle[] {
   if (!campaign) {
-    const puzzles = [...getSeasonPuzzles(), ...getExpeditions(), ...CAMPAIGN_ADDITIONS, ...getWidePractice()];
+    const puzzles = [...getSeasonPuzzles(), ...getExpeditions(), ...CAMPAIGN_ADDITIONS, ...getWidePractice(), ...FRAME_LESSONS];
     const ids = new Set<string>();
     const roads = new Set<string>();
     for (const puzzle of puzzles) {
@@ -191,7 +192,24 @@ export function getPuzzles(): readonly AuthoredPuzzle[] {
 }
 
 export const SEASON_START = '2026-11-11';
+export const STARTER_DAILY_START = '2026-11-16';
 const DAY = 86_400_000;
+
+export function dailyMinimum(dateId: string): number {
+  const day = Math.floor((Date.parse(`${dateId}T00:00:00Z`) - Date.parse(`${STARTER_DAILY_START}T00:00:00Z`)) / DAY);
+  if (!Number.isInteger(day) || day < 0) throw new Error('The gradual Daily schedule starts on 2026-11-16.');
+  let minimum = 3;
+  for (let offset = 1; offset <= day; offset++) {
+    const choices = offset < 7 ? [3, 3, 4, 4, 5] : offset < 14 ? [3, 4, 4, 5, 5, 6, 7] :
+      [3, 4, 4, 5, 5, 6, 6, 7, 8, 10];
+    const date = new Date(Date.parse(`${STARTER_DAILY_START}T00:00:00Z`) + offset * DAY).toISOString().slice(0, 10);
+    const seed = seedOf(`detour:difficulty-v1:${date}`);
+    const target = offset % 7 === 6 ? 3 + seed % 2 : choices[seed % choices.length];
+    if (target === undefined) throw new Error('The Daily difficulty schedule has no candidate.');
+    minimum = Math.max(minimum - 2, Math.min(minimum + 2, target));
+  }
+  return minimum;
+}
 
 export function puzzleDate(id: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(id)) return null;
@@ -207,11 +225,13 @@ export function dailyPuzzleForDate(date: Date): AuthoredPuzzle | null {
   const cached = dailyCache.get(id);
   if (cached) return cached;
   const weekly = [2, 3, 4, 5, 7, 10, 15];
-  const minimum = index === 0 ? 1 : weekly[(index - 1) % weekly.length] ?? 2;
+  const starter = id >= STARTER_DAILY_START;
+  const minimum = starter ? dailyMinimum(id) : index === 0 ? 1 : weekly[(index - 1) % weekly.length] ?? 2;
   const puzzle = generateDailyChallenge({
     id: `daily-v${RULE_VERSION}-${id}`,
     title: PLACE_TITLES[index % PLACE_TITLES.length] ?? 'A different way home',
-    minimum, seed: seedOf(`detour:journey-v${RULE_VERSION}:${id}`), chapter: index + 1,
+    minimum,
+    seed: seedOf(`detour:journey-v${RULE_VERSION}:${id}`), chapter: index + 1,
   });
   dailyCache.set(id, puzzle);
   if (dailyCache.size > 48) {
@@ -240,9 +260,11 @@ export function findPuzzle(id: string): Puzzle | null {
 }
 
 export function getCatalog(): CatalogEntry[] {
-  return getPuzzles().map(({ id, title, note, theme, chapter, area, board, minimum }) => ({
+  return getPuzzles().map(({ id, title, note, theme, chapter, area, board, minimum, frame, practiceAfter }) => ({
     id, title, note, theme, chapter, area, budget: MAX_EXCHANGES, size: board.length,
     ...(minimum === undefined ? {} : { minimum }),
+    ...(frame === undefined ? {} : { frame }),
+    ...(practiceAfter === undefined ? {} : { practiceAfter }),
   }));
 }
 

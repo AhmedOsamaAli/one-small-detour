@@ -4,8 +4,9 @@ A living daily landscape puzzle. Don't move the traveler: move a little piece
 of the world.
 
 The daily island is the main game: one shared, date-seeded puzzle per UTC day,
-not a finite queue of levels. The separate practice campaign has **203 checked
-places**, preserving the original 200 and adding three late 12x12 landscapes.
+not a finite queue of levels. The separate practice campaign has **212 checked
+places**: the original 203 islands, including three late 12x12 landscapes, plus
+nine gradual lessons for three-square strips, square patches and four-square Ls.
 Proved minimums range from one through fifteen exchanges.
 
 [Public source on GitHub](https://github.com/AhmedOsamaAli/one-small-detour) |
@@ -35,14 +36,16 @@ is a convenience identifier, not production authentication.
 
 1. Follow the displayed journey: **A, then B, then C**, and so on. Later maps
    can include six pinned stops. Use the fewest exchanges you can.
-2. Choose a picture frame matching the required patch area. The buttons show
-   the real map orientation; there is no native dropdown.
+2. Choose a picture frame matching this island's family. Daily and the first
+   tutorial use two-square frames. Later Practice introduces three-square strips,
+   2x2 squares and four-square Ls, one family at a time. The buttons show
+   the real map orientation; the terrain itself never rotates.
 3. Tap a patch, then another matching, non-overlapping patch. They exchange
    immediately on the second valid tap. Neither may include a pinned building
    or a fixed boulder.
 4. Paving, grass, water and decorations move together. There is no separate
-   Exchange confirmation. Tap the first patch again or press Escape to cancel
-   a selection; use Undo to reverse a completed swap.
+   Exchange confirmation. Tap the same starting square again or press Escape
+   to cancel a selection; use Undo to reverse a completed swap.
 5. Make one continuous orthogonal trail in the shown order. It cannot visit a
    later stop early, skip a stop, or revisit a square. Undo remains free.
 6. Wooden bridges connect only along their planks: horizontal bridges connect
@@ -62,8 +65,9 @@ a fresh attempt. Menus and background tabs do not pause elapsed time. Necessary
 error-recovery and save-retry buttons remain available.
 
 First visits open an untimed, skippable walkthrough before any daily attempt is
-created. An original drawn courier speaks beside the board and points to the
-actual frame or patch, without covering playable targets. The lesson guides
+created. An original drawn courier moves near the current frame or starting
+square with a short pointer. The hint may cover inactive scenery, but not the
+current patch, selected patch or controls. The lesson guides
 **three real exchanges**, using tall and wide frames, before the traveler walks
 through A, B and C. Only the last guided repair completes the road. This is a
 teaching sequence, not a claimed optimal score. Guidance follows Undo back to
@@ -71,16 +75,24 @@ the relevant repair; there is no duplicated instruction line at the bottom.
 The stronger arrow and tap ring target only the patch's starting tile, not the
 centre of the two-tile frame. Courier prompts identify the **top** square for a
 tall patch and the **left** square for a wide patch, in both 3D and Flat.
+On-board arrows follow that frame's long axis: down for tall and right for wide
+in Flat, or the corresponding real camera projection in 3D. Their tips remain
+at the first square when the view changes or resizes.
 The welcome explicitly offers **3D (the default)** or **Try Flat** before the
 untimed lesson. Choosing a view does not start a ranked attempt.
-The guide then introduces the tools, views, daily ranking and 203 practice places. New rocks and
+The guide then introduces the tools, views, daily ranking and 212 practice places. New rocks and
 bridges get a short explanation before that island's countdown starts.
 Completing or skipping the guide is remembered; the question-mark help button
 can replay it anytime.
 
 Orange frame **1** is the first patch; blue frame **2** is the second. Solid,
 white-backed borders are confirmed selections; dashed frames are previews.
-Flat view frames the whole rectangular patch, with numbered badges and the same
+Invalid feedback clears after one second, including retained touch hover.
+This applies to fixed homes/boulders, overlapping patches and off-island starts,
+on either pick and in both views. A valid first patch remains selected after a
+bad second pick. Another invalid pick restarts the feedback window.
+Flat view frames the exact occupied patch, leaving an L's notch outside the
+outline, with numbered badges and the same
 orange/blue/red feedback as 3D. Hovering or focusing the next patch previews it;
 frames never intercept tile clicks. A preview on the selected origin is hidden
 so it cannot repaint the confirmed orange patch.
@@ -133,14 +145,15 @@ The completion popup appears only after **1.5 seconds of visible celebration**.
 Menus and background tabs pause this animation time, not the solve clock.
 Earned daily rank and percentage are prominent inside that one popup, only
 after successful saving. Closing it returns to the island and Undo; it does
-not immediately reopen. **Play more** opens the separate unranked practice map.
+not immediately reopen. **Continue your journey** starts the next unfinished
+unranked Practice stop directly; **Practice map** remains available for browsing.
 
 Undo during or after the walk cancels old arrival events and returns the
 traveler to A. There is no partial-delivery or checkpoint history. New attempts
 and puzzles also begin at A. Pending result reveals are cancelled, so a previous
 journey cannot open a popup on a new attempt. Reduced motion preserves the full ordered arrival
 stamps without continuous walking. Help and map overlays pause playback.
-Puzzle rules, certified minimums and existing timed-score keys are unchanged.
+Existing Daily rules, certified minimums and timed-score keys are unchanged.
 
 ### Keyboard and accessibility
 
@@ -151,7 +164,10 @@ Puzzle rules, certified minimums and existing timed-score keys are unchanged.
   screens place the controls beside the map. Completion overlays the scene
   without pushing the board or Undo off-screen.
 - Living maps fit the complete board automatically, including buildings and
-  landmark labels. Zooming and panning are not needed.
+  landmark labels. The 3D stage uses the side gutters when controls are stacked;
+  its camera includes fixed-pixel labels and the courier's possible road
+  positions instead of reserving a blanket zoom margin. Controls and the Flat
+  layout keep their own space. Zooming and panning are not needed.
 - Flat map fits all individually labeled cells to the available width and
   height, for 6x6, 8x8, 10x10 and 12x12 maps. Its cells adapt to the screen; keyboard
   navigation remains available when a narrow pane makes them small.
@@ -192,15 +208,27 @@ the end of a 42-map season:
 - Daily maps range from 6x6 to 10x10, with three to six ordered homes. Advanced maps
   use fixed-rock corridors, directional bridge stock and longer ordered routes.
 - The introductory edition has a certified minimum of one; the following weekly
-  cycle is 2, 3, 4, 5, 7, 10 and 15 exchanges. These are proved minimums, not
-  the number of shuffles used to create a board.
+  cycle originally used 2, 3, 4, 5, 7, 10 and 15 exchanges. All editions through
+  2026-11-15 remain unchanged.
+- From **2026-11-16 UTC**, date-seeded difficulty starts at three moves, varies
+  within 3-5 for its first week and 3-7 for its second, then mixes 3-10 with
+  fewer very hard days. Consecutive minimums change by at most two moves;
+  weekly recovery targets ease the pace. The same schedule applies to everyone.
+  Three/four-move islands use 8x8; harder ones use 10x10. The displayed minimum
+  is proved, not the number of shuffles used to create a board.
 - A bounded generator certifies both solvability and the minimum before serving
   the map. It throws explicitly rather than return unchecked random content.
 - A small server-process cache avoids regenerating frequently requested dates.
-- **203 checked campaign places** follow one continuous scenic road. The original
-  200 keep their easy-to-hard order and IDs; three 12x12 challenges follow them,
-  with certified minimums of 10, 12 and 15 exchanges. Opening islands stay 6x6
-  with a one-exchange repair.
+- **212 checked campaign places** follow one continuous scenic road. The original
+  203 keep their IDs, boards and relative order, including three final 12x12
+  challenges with certified minimums of 10, 12 and 15 exchanges. Opening islands
+  stay 6x6 with a one-exchange repair.
+  New shape lessons begin at stops **13, 40 and 79**: three-square strips, then
+  2x2 squares, then four-square Ls. Each family has one-, two- and three-exchange
+  lessons and only its own frames. Ls have pictured tall/wide orientations;
+  their two notch cells stay behind, including any pinned rock or home there.
+  Existing completion flags use island IDs, so later numbering can shift without
+  erasing discoveries. Daily seeds, frame sizes and rankings are unchanged.
   Finishing the first unfinished stop opens the next. Older discoveries remain
   replayable, but do not skip unfinished earlier stops.
 - **Tap a number to preview, then Play/Replay to start.** The next unfinished
@@ -239,6 +267,9 @@ states whose lower bound rises to the target. For every generated challenge:
 This lower bound relaxes ordered-stop constraints; it does not incorrectly sum
 overlapping paths. The witness is separately checked as a single ordered,
 no-retrace journey. Independent endpoint connectivity is not enough.
+The small square-frame lessons use exhaustive legal replay when that paving
+bound is not tight: every shorter sequence is searched, with an explicit
+20,000-state limit. A repeated shuffle is never accepted as an optimality proof.
 
 The daily generator is shared with the practice-bank tool. Regenerate the
 checked practice fixtures deterministically with:
@@ -274,21 +305,70 @@ The game shows no rank before or during a daily attempt, even if an earlier
 personal best exists. The client does not fetch a saved rank at startup.
 Only after the current attempt finishes its celebration and successfully saves
 does the completion popup prominently reveal the rank and **Top 10% today**.
-A compact line such as **#5 - Top 10% today** remains available on the finished
+A compact line such as **#5 of 50 - Top 10% today** remains available on the finished
 island after the popup is closed.
 The percentage compares unique valid finishers on
 that day's puzzle in this installation, not viewers, all Reddit users or scores
 from different days. It includes everyone whose best result is at least as good
 as yours, so tied results share an inclusive percentage. Displayed whole
 percentages round up, never exaggerating performance; values below 1% show
-**Top <1%**. A sole finisher sees **Rank #1 today**, not an invented
+**Top <1%**. A sole finisher sees **Rank #1 of 1 finisher today**, not an invented
 percentile. There are no leaderboard tables, tickets or metric tabs. Local
 rehearsal is labeled **Local** rather than pretending to be an online community
 ranking. Save errors show an explicit retry state without revealing an older
 rank. Undo and changing attempts hide the comparison again; saved personal
 bests remain intact on the server.
+The popup identifies saved finishers in this community and says that the rank
+is a snapshot when saved, not the day's final position.
 
-Each puzzle fixes its patch area. The frame pictures are orientations, not
+### Ranking system design and scale
+
+The Reddit hot path uses a **Redis sorted set**, not an application-side sort
+of everyone's attempts. Each edition has one member per player. Its integer
+score is `exchanges * (MAX_ATTEMPT_MS + 1) + serverSolveMs`; all supported values
+fit exactly below JavaScript/Redis's 53-bit integer precision. Smaller is better,
+so no duration can outrank a result using fewer exchanges.
+
+- A per-player best-record key is watched with **WATCH/MULTI/EXEC**. A better
+  record and its sorted-set membership commit together. Different players do not
+  watch the shared leaderboard key, avoiding global optimistic-lock contention.
+  Conflict retries are bounded, and failures produce Retry save rather than a
+  fabricated rank.
+- Redis `ZRANK` is **O(log N)** and `ZCARD` is **O(1)**. Equal-score endpoint
+  queries plus a small read transaction preserve competition ranks (1, 1, 3)
+  and the inclusive tied percentile, without downloading a large tie group.
+  Metadata stays server-side; the hot response contains only the personal best,
+  cohort count and percentile, not other players' identities.
+- A normal indexed read uses **13 Redis API operations**, independent of N.
+  Production adds one bounded housekeeping range read; at most four stale
+  account checks are performed, rather than one Reddit lookup per finisher.
+  Deleted-account reconciliation is incremental, not guaranteed instantaneous.
+  Explicit Remove saved scores synchronously removes indexed and legacy records;
+  a 24-hour erasure marker rejects old in-flight saves.
+- Existing score hashes are retained and backfilled resumably, eight records at
+  a time. An incomplete migration returns an explicit retry state, never a
+  partial ranking. New indexed writes keep only the best result per player.
+  Records and index keys expire 30 days after their edition date.
+
+`node --experimental-strip-types --no-warnings=ExperimentalWarning src\server\rankingFixture.ts --benchmark`
+checks 1,000, 10,000 and **100,000 synthetic finishers**. Tests also compare the
+100,000-player result with an independent full-sort oracle and cover concurrent
+updates, ties, legacy backfill, failure responses and erasure. This is an
+**in-memory algorithm/call-count check**, not measured Redis/Reddit latency,
+load capacity or an SLA. The local Docker engine was unavailable; no hosted
+throughput number is claimed.
+
+[Reddit's Redis limits](https://developers.reddit.com/docs/capabilities/server/redis)
+currently document 40,000 commands/second per installation, 20 concurrent
+transaction blocks with a five-second timeout, five-MB requests, 100-MB
+unpublished storage and five-GB published storage. These are platform ceilings,
+not this game's proven requests/second. Storage scales with **unique retained
+finishers across all 30 days**, plus active timers, not only today's cohort.
+Plan capacity using measured Redis memory and RPC timings in the actual
+installation. The algorithm is checked at 100,000 participants per edition;
+native throughput and storage headroom still need a controlled platform load test.
+
+Each puzzle fixes its patch area and family. The frame pictures are orientations, not
 different scoring modes. Legacy footprint APIs/records remain compatible for
 erasure and regression testing, but are not offered as a second player mode.
 
@@ -367,7 +447,7 @@ identity/score forgery, ruleset isolation, API failures, persistence and erasure
 Additional tests cover forbidden stop order, exact arrival times and pauses,
 single-fire celebrations, reduced motion, date determinism, distinct road
 layouts after the old season end, personal-rank data minimization, and an
-independent lower-bound oracle. Campaign tests cover all 203 certificates,
+independent lower-bound oracle. Campaign tests cover all 212 certificates,
 unique layouts, strict ordered unlocking, replay preservation, migration and
 the absence of progression dead ends.
 Browser checks cover automatic two-tap swaps, invalid overlaps, free Undo,
@@ -398,6 +478,16 @@ motion disables scenic and UI animations without changing the puzzle.
 The garden-village art direction uses shared, tested day/night terrain colours
 in 3D, Flat and the preview: recessed cobbled paving, faceted granite, arched
 wood-plank bridges with posts and stone piers, and view-dependent pond glints.
+Ponds sit below the grass, with depth shading, connected shorelines and gentle
+reflections. Seeded flowers vary in position, colour, size and group count across
+grass, with a few subtle fish in open water. Decorations match between views,
+travel with exchanged patches and restore exactly with Undo; they never become
+input targets. Scenic motion pauses behind menus/background tabs and stays still
+under reduced motion.
+Original hand-carved A-F vector letters with small sprout details identify
+homes, their matching filled route badges and guide/preview plaques. Screen
+readers retain the ordinary letters. Expressive self-hosted headings keep
+instructions, buttons and timers in the clean interface face.
 The courier has the same teal coat, amber hat, scarf and satchel across views.
 Its in-game scale is increased by about 35% in 3D and Flat, with tile-relative
 Flat dimensions and a 3D upper cap; the Flat offset keeps it inside edge cells.
@@ -412,6 +502,19 @@ and grass blades. Clicks stay immediate. Idle scenery draws at up to 30 fps;
 swaps, walking, celebrations and interaction invalidations are not held to that
 idle cadence. Menus/background pause, instant reduced motion, and authoritative
 solve timing are unchanged. No new rendering dependencies are required.
+3D lifts are limited to the available viewport headroom, so enlarging the map
+does not cut off exchanged patches. Landing refits the changed landscape, and
+resizing safely settles an exchange before fitting the new viewport.
+Both views use the same board-first layout: larger screens put controls beside
+the island, while phones keep them above and below it. Opaque themed panels
+keep landscape lighting away from text. The 3D backbuffer is pixel-budgeted on
+high-density screens.
+The expanded view measures the visible viewport rather than assuming the full
+phone-screen height, reserves safe-area insets, and refits when browser chrome
+changes. Compact walkthroughs omit the large decorative vignette, not the
+instructions. Dialog actions stay reachable; shorter dialogs scroll internally.
+iPhone 13-sized portrait/landscape, high-density and simulated notch/home-indicator
+cases are browser checks, not a substitute for testing the native Reddit app.
 Completion tests verify the 1500ms visible celebration hold, menu/background
 pausing and cancellation when an attempt is rewound or replaced.
 Browser checks also covered the 3D greeting, paused flat celebration pulses,

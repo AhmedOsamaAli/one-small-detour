@@ -8,18 +8,18 @@ import { isCatalogEntry, isPuzzle, isSwap } from './validation.ts';
 
 const digest = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
-test('adding wide practice preserves every existing island and the original daily sequence', () => {
+test('Practice changes and easier future Dailies preserve every original island and all released editions', () => {
   const puzzles = getPuzzles();
   assert.equal(digest(puzzles.slice(0, 200)), 'b9d2504055c1335dd5482ebaae46ae55b99a6f6c7885bf9cfd6126f36f27cd99');
-  const days = Array.from({ length: 16 }, (_, index) =>
+  const days = Array.from({ length: 5 }, (_, index) =>
     dailyPuzzleForDate(new Date(Date.UTC(2026, 10, 11 + index, 12))));
-  assert.equal(digest(days), 'cfad3ba4fa374d7f853800bfe5868425b006e81b66dc88d254d9706e2fd2c085');
+  assert.equal(digest(days), 'dfed5a8c9f6a972b6e533801d8c017f74f29777b47a07d6f95f2b83a8a15fc6d');
   assert.equal(puzzles[0]?.board.length, 6);
   assert.equal(puzzles[0]?.minimum, 1);
 });
 
 test('late twelve-square islands use the larger terrain and have replayed minimum proofs', () => {
-  const puzzles = getPuzzles().slice(200);
+  const puzzles = getPuzzles().filter((puzzle) => puzzle.board.length === 12);
   assert.equal(puzzles.length, 3);
   assert.deepEqual(puzzles.map((puzzle) => puzzle.minimum), [10, 12, 15]);
   assert.equal(new Set(puzzles.map((puzzle) => boardFingerprint(puzzle.board))).size, puzzles.length);

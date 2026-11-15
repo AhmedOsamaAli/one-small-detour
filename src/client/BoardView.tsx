@@ -1,13 +1,16 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
-import { canTraverse, isAnchor, locate, patchCells, tileAt, walkable } from '../shared/rules.ts';
-import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, JourneyPlayback, JourneyStop, Shape, Swap, Theme } from '../shared/types.ts';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { canTraverse, isAnchor, locate, patchCells, patchOutline, tileAt, walkable } from '../shared/rules.ts';
+import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, GuideTarget, JourneyPlayback, JourneyStop, Shape, Swap, Theme } from '../shared/types.ts';
 import { JourneyPlayer } from '../shared/playback.ts';
 import type { LivingIsland } from './island.ts';
-import { BrandMark, FLAT_AXES, GuideCourier, Icon } from './components.tsx';
+import { BrandMark, FLAT_AXES, GuideCourier, HomeLetter, Icon } from './components.tsx';
 import { COURIER_SCALE, worldCssVariables } from './worldTheme.ts';
 import { animateFlatExchange } from './flatAnimation.ts';
+import { frameArrowPath } from './frameArrow.ts';
+import { sceneryOrigins, tileScenery, waterBanks } from './scenery.ts';
 import type { FlatExchangeAnimation } from './flatAnimation.ts';
+import { viewportSize } from './viewport.ts';
 
 export interface Transition {
   id: number;
@@ -16,10 +19,12 @@ export interface Transition {
 
 interface BoardProps {
   board: Board;
+  moves: readonly Swap[];
   puzzleId: string;
   theme: Theme;
   seed: number;
   shape: Shape;
+  axes: FrameAxes;
   first: Cell | null;
   second: Cell | null;
   hover: Cell | null;
@@ -47,7 +52,7 @@ interface BoardProps {
   onBusy: (busy: boolean) => void;
   onFallback: (message: string) => void;
   onProjection: (axes: FrameAxes) => void;
-  onGuideBounds: (bounds: GuideBounds | null) => void;
+  onGuideBounds: (bounds: GuideTarget | null) => void;
   onArrival: (revision: number, stop: JourneyStop) => void;
   onJourneyEnd: (revision: number) => void;
 }
@@ -58,6 +63,8 @@ interface StartMarker extends GuideBounds {
   number: 1 | 2;
   preview: boolean;
 }
+
+const FLOWER_CSS_COLORS = ['var(--world-flower-one)', 'var(--world-flower-two)', 'var(--world-flower-three)'] as const;
 
 function positionFlatTraveler(map: HTMLDivElement | null, avatar: HTMLSpanElement | null, position: Cell | null): void {
   if (!avatar) return;
@@ -98,6 +105,8 @@ export function BoardView(props: BoardProps) {
   const [worldReady, setWorldReady] = useState(false);
   const [startMarkers, setStartMarkers] = useState<StartMarker[]>([]);
   const size = props.board.length;
+  const origins = useMemo(() => sceneryOrigins(size, props.moves), [size, props.puzzleId, props.moves]);
+  const scenery = useMemo(() => origins.map((origin) => tileScenery(props.seed, origin)), [props.seed, origins]);
   useEffect(() => {
     keyboardCell.current = { row: 0, col: 0 };
   }, [props.puzzleId]);
@@ -193,26 +202,32 @@ export function BoardView(props: BoardProps) {
     if (!world) return;
     const last = previous.current;
     if (last.puzzle !== props.puzzleId || !props.transition || last.board === null) {
-      if (last.board !== props.board || last.puzzle !== props.puzzleId) world.reset(props.board, props.theme, props.seed);
+      if (last.board !== props.board || last.puzzle !== props.puzzleId) world.reset(props.board, props.theme, props.seed, origins);
     } else if (last.transition !== props.transition.id) {
       world.animateSwap(props.transition.move, props.board);
     }
     previous.current = { puzzle: props.puzzleId, transition: props.transition?.id ?? null, board: props.board };
-  }, [props.board, props.puzzleId, props.theme, props.seed, props.transition, props.flat, worldReady]);
+  }, [props.board, props.puzzleId, props.theme, props.seed, props.transition, props.flat, worldReady, origins]);
 
   useEffect(() => { island.current?.setHighlights(props.shape, props.first, props.second, props.hover, props.invalid, props.blockedCells); },
     [props.shape, props.first, props.second, props.hover, props.invalid, props.blockedCells, props.flat, worldReady]);
   useLayoutEffect(() => {
     const element = stage.current;
     if (!element) return;
-    const boundsFor = (cell: Cell): GuideBounds | null => {
-      if (!props.flat) return island.current?.guideBounds(cell) ?? null;
-      const box = flatMap.current?.querySelector<HTMLElement>(
-        `.flat-cell[data-row="${cell.row}"][data-col="${cell.col}"]`)?.getBoundingClientRect();
-      return box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null;
+    const boundsFor = (cell: Cell, shape: Shape = { rows: 1, cols: 1 }): GuideBounds | null => {
+      if (!props.flat) return island.current?.guideBounds(cell, shape) ?? null;
+      const boxes = patchCells(cell, shape).map((part) => flatMap.current?.querySelector<HTMLElement>(
+        `.flat-cell[data-row="${part.row}"][data-col="${part.col}"]`)?.getBoundingClientRect())
+        .filter((box): box is DOMRect => box !== undefined);
+      if (!boxes.length) return null;
+      const x = Math.min(...boxes.map((box) => box.x)), y = Math.min(...boxes.map((box) => box.y));
+      return { x, y, width: Math.max(...boxes.map((box) => box.right)) - x, height: Math.max(...boxes.map((box) => box.bottom)) - y };
     };
     const update = (): void => {
-      callbacks.current.onGuideBounds(props.guide && props.hover ? boundsFor(props.hover) : null);
+      const cell = props.guide && props.hover ? boundsFor(props.hover) : null;
+      const patches = props.guide ? [props.hover, props.first].filter((part): part is Cell => part !== null)
+        .map((part) => boundsFor(part, props.shape)).filter((bounds): bounds is GuideBounds => bounds !== null) : [];
+      callbacks.current.onGuideBounds(cell ? { cell, patches, viewport: viewportSize() } : null);
       const markers: StartMarker[] = [];
       const stageBox = element.getBoundingClientRect();
       const add = (cell: Cell | null, number: 1 | 2, preview: boolean): void => {
@@ -235,11 +250,16 @@ export function BoardView(props: BoardProps) {
           marker.row === next.row && marker.col === next.col && marker.number === next.number && marker.preview === next.preview;
       }) ? current : markers);
     };
-    const observer = new ResizeObserver(update);
+    let frame = 0;
+    const schedule = (): void => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(update);
+    };
+    const observer = new ResizeObserver(schedule);
     observer.observe(element);
-    update();
-    return () => observer.disconnect();
-  }, [props.guide, props.first, props.second, props.hover, props.invalid, props.busy, props.locked, props.shape, props.flat, flatExtent, worldReady]);
+    schedule();
+    return () => { observer.disconnect(); window.cancelAnimationFrame(frame); };
+  }, [props.guide, props.first, props.second, props.hover, props.invalid, props.busy, props.locked, props.shape, props.axes, props.flat, flatExtent, worldReady]);
   useEffect(() => { callbacks.current.onReady(props.flat || worldReady); },
     [props.flat, props.puzzleId, props.readyRevision, worldReady]);
   useEffect(() => { island.current?.setReducedMotion(props.reduced); }, [props.reduced, props.flat, worldReady]);
@@ -334,12 +354,22 @@ export function BoardView(props: BoardProps) {
   const blocked = new Set(props.blockedCells.map((cell) => `${cell.row},${cell.col}`));
   const preview = props.hover && !(props.first && props.first.row === props.hover.row && props.first.col === props.hover.col)
     ? props.hover : null;
+  const arrowPath = frameArrowPath(props.shape, props.flat ? FLAT_AXES : props.axes);
+  const frameContents = (shape: Shape, number: string | number): ReactNode => <>
+    {shape.kind === 'ell' && <svg className="shaped-frame-outline" viewBox={`0 0 ${shape.cols} ${shape.rows}`} preserveAspectRatio="none">
+      <path d={`${patchOutline(shape).map((cell, index) => `${index ? 'L' : 'M'}${cell.col} ${cell.row}`).join('')}Z`}
+        fill="currentColor" fillOpacity=".08" stroke="#fffdf1" strokeWidth="7" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>
+      <path d={`${patchOutline(shape).map((cell, index) => `${index ? 'L' : 'M'}${cell.col} ${cell.row}`).join('')}Z`}
+        fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>
+    </svg>}
+    <span className="flat-frame-badge">{number}</span>
+  </>;
   const flatFrame = (cell: Cell, number: 1 | 2, preview: boolean, invalid = false): ReactNode =>
-    <div key={number} className={`flat-patch-frame patch-${number} ${preview ? 'preview' : 'selected'} ${invalid ? 'invalid' : ''}`}
+    <div key={number} className={`flat-patch-frame patch-${number} ${props.shape.kind === 'ell' ? 'shaped-frame' : ''} ${preview ? 'preview' : 'selected'} ${invalid ? 'invalid' : ''}`}
       data-testid={`flat-frame-${number}`} data-preview={preview} data-invalid={invalid} aria-hidden="true"
       style={{ gridColumn: `${cell.col + 1} / span ${Math.min(props.shape.cols, size - cell.col)}`,
         gridRow: `${cell.row + 1} / span ${Math.min(props.shape.rows, size - cell.row)}` }}>
-      <span className="flat-frame-badge">{invalid ? '!' : number}</span>
+      {frameContents(props.shape, invalid ? '!' : number)}
     </div>;
 
   return <div ref={stage} className={`world-stage theme-${props.theme} ${props.flat ? 'is-flat' : ''} ${size > 6 ? 'large-world' : ''} ${props.locked ? 'input-locked' : ''}`} data-testid="world-stage"
@@ -372,11 +402,23 @@ export function BoardView(props: BoardProps) {
       {Array.from({ length: size * size }, (_, index) => {
         const cell = { row: Math.floor(index / size), col: index % size };
         const tile = tileAt(props.board, cell);
+        const origin = origins[index];
+        if (origin === undefined) throw new Error('The flat scenery is missing a terrain identity.');
+        const decoration = scenery[index];
+        if (!decoration) throw new Error('The flat scenery is missing its decorations.');
+        const watery = tile === '~' || tile === 'h' || tile === 'v';
+        const banks = watery ? waterBanks(props.board, cell) : null;
+        const waterStyle: (CSSProperties & Record<`--shore-${string}`, string>) | undefined = banks ? {
+          '--shore-north': banks.north ? 'var(--world-water-light)' : 'transparent',
+          '--shore-south': banks.south ? 'var(--world-water-light)' : 'transparent',
+          '--shore-west': banks.west ? 'var(--world-water-light)' : 'transparent',
+          '--shore-east': banks.east ? 'var(--world-water-light)' : 'transparent',
+        } : undefined;
         const key = `${cell.row},${cell.col}`;
         const name = isAnchor(tile) ? `Pinned landmark ${tile}` : tile === 'o' ? 'Paving' : tile === '~' ? 'Water' :
           tile === 'x' ? 'Fixed boulder' : tile === 'h' ? 'Bridge, east and west only' : tile === 'v' ? 'Bridge, north and south only' : 'Grass';
         return <button key={key} className={`flat-cell terrain-${tile === '.' ? 'grass' : tile === '~' ? 'water' : tile === 'x' ? 'rock' : tile === 'h' || tile === 'v' ? 'bridge' : 'path'} ${first.has(key) ? 'cut-one' : ''} ${second.has(key) ? 'cut-two' : ''} ${guided.has(key) ? 'guided-cell' : ''} ${blocked.has(key) ? 'blocked-cell' : ''}`}
-          data-row={cell.row} data-col={cell.col} data-tile={tile} data-blocked={blocked.has(key)} disabled={props.locked}
+          data-row={cell.row} data-col={cell.col} data-tile={tile} data-scenery-origin={origin} data-blocked={blocked.has(key)} disabled={props.locked} style={waterStyle}
           aria-label={`Row ${cell.row + 1}, column ${cell.col + 1}: ${name}${first.has(key) ? ', part of selected patch 1' : second.has(key) ? ', part of selected patch 2' : ''}`}
           aria-disabled={props.busy}
           onClick={() => { if (!props.busy) props.onCell(cell); }}
@@ -391,10 +433,19 @@ export function BoardView(props: BoardProps) {
                 data-road-direction={direction.name} aria-hidden="true"/>)}
           </>}
           {isAnchor(tile) ? <span key={`${tile}:${props.celebration?.id ?? 0}`} style={{ fontSize: Math.max(12, Math.min(16, flatExtent / size * 0.52)) }}
-            className={`flat-landmark ${props.celebration?.anchors.includes(tile) ? 'destination-celebration' : ''}`}>{tile}</span> :
-            tile === 'o' ? null : tile === '~' ? <i className="flat-ripples" aria-hidden="true"/> :
+            className={`flat-landmark ${props.celebration?.anchors.includes(tile) ? 'destination-celebration' : ''}`}><HomeLetter anchor={tile}/><span className="sr-only">{tile}</span></span> :
+            tile === 'o' ? null : tile === '~' ? <><i className="flat-ripples" aria-hidden="true"/>
+              {decoration.fish && <i className="flat-fish" style={{ animationDelay: `${-decoration.variant}s` }} aria-hidden="true"/>}</> :
               tile === 'x' ? <i className="flat-rock"/> : tile === 'h' || tile === 'v'
                 ? <i className={`flat-bridge bridge-${tile}`}><Icon name="bridge" size={20}/></i> : <i className="flat-grass"/>}
+          {tile === '.' && decoration.flowers.length > 0 && <svg className="flat-flowers" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            {decoration.flowers.map((flower, index) =>
+              <g key={index} transform={`translate(${16 + flower.x * 32} ${18 + flower.z * 32}) rotate(${flower.rotation * 180 / Math.PI}) scale(${flower.scale})`}>
+                <path d="M0 5V-2" stroke="var(--world-blade)" strokeWidth="1.2"/>
+                <path d="M0-2q-5 0-3-3-2-4 3-3 3-4 4 0 4 3 0 4 0 4-4 2Z" fill={FLOWER_CSS_COLORS[flower.color]}/>
+                <circle cy="-4" r="1.3" fill="#f3d16f"/>
+              </g>)}
+          </svg>}
           {blocked.has(key) && <span className="cell-warning"><Icon name="warning" size={12}/></span>}
         </button>;
       })}
@@ -402,22 +453,23 @@ export function BoardView(props: BoardProps) {
       {!props.busy && props.first && flatFrame(props.first, 1, false)}
       {!props.busy && props.second && flatFrame(props.second, 2, false)}
       {props.busy && props.transition && !props.reduced && <>
-        <div className="flat-patch-frame patch-2 flat-swap-frame" data-flat-swap-patch="a" aria-hidden="true"
+        <div className={`flat-patch-frame patch-2 flat-swap-frame ${props.transition.move.kind === 'ell' ? 'shaped-frame' : ''}`} data-flat-swap-patch="a" aria-hidden="true"
           style={{ gridColumn: `${props.transition.move.a.col + 1} / span ${props.transition.move.cols}`,
-            gridRow: `${props.transition.move.a.row + 1} / span ${props.transition.move.rows}` }}><span className="flat-frame-badge">2</span></div>
-        <div className="flat-patch-frame patch-1 flat-swap-frame" data-flat-swap-patch="b" aria-hidden="true"
+            gridRow: `${props.transition.move.a.row + 1} / span ${props.transition.move.rows}` }}>{frameContents(props.transition.move, 2)}</div>
+        <div className={`flat-patch-frame patch-1 flat-swap-frame ${props.transition.move.kind === 'ell' ? 'shaped-frame' : ''}`} data-flat-swap-patch="b" aria-hidden="true"
           style={{ gridColumn: `${props.transition.move.b.col + 1} / span ${props.transition.move.cols}`,
-            gridRow: `${props.transition.move.b.row + 1} / span ${props.transition.move.rows}` }}><span className="flat-frame-badge">1</span></div>
+            gridRow: `${props.transition.move.b.row + 1} / span ${props.transition.move.rows}` }}>{frameContents(props.transition.move, 1)}</div>
       </>}
       <span ref={flatTraveler} className="flat-traveler" aria-hidden="true"><GuideCourier/></span>
       </div>
     </div>}
-    {startMarkers.length > 0 && <div className="patch-start-markers" aria-hidden="true">
+    {!props.busy && !props.locked && startMarkers.length > 0 && <div className="patch-start-markers" aria-hidden="true">
       {startMarkers.map((marker) => <svg key={marker.number} className={`patch-start-arrow patch-${marker.number}`}
         viewBox="0 0 32 32" data-patch={marker.number} data-row={marker.row} data-col={marker.col} data-preview={marker.preview}
+        data-frame-axis={props.shape.rows > props.shape.cols ? 'row' : 'col'}
         style={{ left: marker.x, top: marker.y, width: marker.width, height: marker.height }}>
-        <path d="M27 5 16 16M16 8v8h8" stroke="#fffdf1" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M27 5 16 16M16 8v8h8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d={arrowPath} stroke="#fffdf1" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d={arrowPath} stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>)}
     </div>}
     {props.overlay}
