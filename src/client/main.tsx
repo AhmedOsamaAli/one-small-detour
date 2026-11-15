@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/dm-sans';
 import '@fontsource-variable/fraunces/full.css';
 import './styles.css';
+import './art.css';
 import App from './App.tsx';
 
 class GameBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {

@@ -4,6 +4,7 @@ export type CampaignGate = { unlocked: true; reason: null } | { unlocked: false;
 
 export function campaignPlaces(catalog: readonly CatalogEntry[]): CatalogEntry[] {
   return [...catalog].sort((a, b) =>
+    Number(a.size === 12) - Number(b.size === 12) ||
     (a.minimum ?? 1) - (b.minimum ?? 1) || a.chapter - b.chapter || a.id.localeCompare(b.id));
 }
 

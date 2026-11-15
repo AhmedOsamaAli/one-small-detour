@@ -4,8 +4,8 @@ A living daily landscape puzzle. Don't move the traveler: move a little piece
 of the world.
 
 The daily island is the main game: one shared, date-seeded puzzle per UTC day,
-not a finite queue of levels. The separate practice campaign has **200 checked
-places**, including the original 42 classic places and three advanced expeditions.
+not a finite queue of levels. The separate practice campaign has **203 checked
+places**, preserving the original 200 and adding three late 12x12 landscapes.
 Proved minimums range from one through fifteen exchanges.
 
 [Public source on GitHub](https://github.com/AhmedOsamaAli/one-small-detour) |
@@ -71,7 +71,9 @@ the relevant repair; there is no duplicated instruction line at the bottom.
 The stronger arrow and tap ring target only the patch's starting tile, not the
 centre of the two-tile frame. Courier prompts identify the **top** square for a
 tall patch and the **left** square for a wide patch, in both 3D and Flat.
-The guide then introduces the tools, views, daily ranking and 200 practice places. New rocks and
+The welcome explicitly offers **3D (the default)** or **Try Flat** before the
+untimed lesson. Choosing a view does not start a ranked attempt.
+The guide then introduces the tools, views, daily ranking and 203 practice places. New rocks and
 bridges get a short explanation before that island's countdown starts.
 Completing or skipping the guide is remembered; the question-mark help button
 can replay it anytime.
@@ -151,13 +153,13 @@ Puzzle rules, certified minimums and existing timed-score keys are unchanged.
 - Living maps fit the complete board automatically, including buildings and
   landmark labels. Zooming and panning are not needed.
 - Flat map fits all individually labeled cells to the available width and
-  height, for 6x6, 8x8 and 10x10 maps. Its cells adapt to the screen; keyboard
+  height, for 6x6, 8x8, 10x10 and 12x12 maps. Its cells adapt to the screen; keyboard
   navigation remains available when a narrow pane makes them small.
 - The device's reduced-motion preference is respected automatically, including
   changes while the game is open. There is no manual motion switch.
-- Light/dark appearance follows the device until the player chooses a mode with
-  the header sun/moon button. That explicit choice is remembered in this browser
-  and overrides later device-theme changes. Both entrypoints, dialogs, flat tiles,
+- Light is the default, including on devices using dark mode. Legacy automatic
+  preferences migrate to Light without discarding progress. A manually chosen
+  Light or Dark mode is remembered in this browser. Both entrypoints, dialogs, flat tiles,
   practice scenery and living-island lighting use the same effective theme
   without resetting the puzzle or recreating the 3D scene. An already open preview
   also reflects saved changes from the game. There is no extra appearance menu.
@@ -187,7 +189,7 @@ the end of a 42-map season:
   solution conditions for every player.
 - A new winding network and checked corruption sequence create the daily map.
   This is not just recoloring grass or rotating a static finished picture.
-- Maps range from 6x6 to 10x10, with three to six ordered homes. Advanced maps
+- Daily maps range from 6x6 to 10x10, with three to six ordered homes. Advanced maps
   use fixed-rock corridors, directional bridge stock and longer ordered routes.
 - The introductory edition has a certified minimum of one; the following weekly
   cycle is 2, 3, 4, 5, 7, 10 and 15 exchanges. These are proved minimums, not
@@ -195,8 +197,10 @@ the end of a 42-map season:
 - A bounded generator certifies both solvability and the minimum before serving
   the map. It throws explicitly rather than return unchecked random content.
 - A small server-process cache avoids regenerating frequently requested dates.
-- **200 checked campaign places** follow one continuous scenic road. Stops are
-  numbered in easy-to-hard order, with certified minimums from 1 to 15 exchanges.
+- **203 checked campaign places** follow one continuous scenic road. The original
+  200 keep their easy-to-hard order and IDs; three 12x12 challenges follow them,
+  with certified minimums of 10, 12 and 15 exchanges. Opening islands stay 6x6
+  with a one-exchange repair.
   Finishing the first unfinished stop opens the next. Older discoveries remain
   replayable, but do not skip unfinished earlier stops.
 - **Tap a number to preview, then Play/Replay to start.** The next unfinished
@@ -244,8 +248,10 @@ node --experimental-strip-types --no-warnings=ExperimentalWarning tools\generate
 ```
 
 The original 45 campaign places are preserved. Regenerate the additional 155
-checked places with `npm run generate:campaign`. The campaign has 200 distinct
-road-decision layouts; independent regeneration is byte-for-byte identical.
+checked places with `npm run generate:campaign`. These original 200 distinct
+road-decision layouts regenerate byte-for-byte identically. Three separately
+seeded, certified 12x12 Practice islands are appended, not mixed into daily
+generation. Snapshot tests protect all original islands and sampled daily editions.
 The daily seed namespace is separate and does not index into this bank.
 
 Changing the generator or fixtures requires rerunning the proof and replay tests.
@@ -361,7 +367,7 @@ identity/score forgery, ruleset isolation, API failures, persistence and erasure
 Additional tests cover forbidden stop order, exact arrival times and pauses,
 single-fire celebrations, reduced motion, date determinism, distinct road
 layouts after the old season end, personal-rank data minimization, and an
-independent lower-bound oracle. Campaign tests cover all 200 certificates,
+independent lower-bound oracle. Campaign tests cover all 203 certificates,
 unique layouts, strict ordered unlocking, replay preservation, migration and
 the absence of progression dead ends.
 Browser checks cover automatic two-tap swaps, invalid overlaps, free Undo,
@@ -388,6 +394,24 @@ The interface uses a consistent field-guide style: original landscape
 illustrations, contextual dialog emblems, semantic status colors, illustrated
 tile rules and a completion seal. Reduced
 motion disables scenic and UI animations without changing the puzzle.
+
+The garden-village art direction uses shared, tested day/night terrain colours
+in 3D, Flat and the preview: recessed cobbled paving, faceted granite, arched
+wood-plank bridges with posts and stone piers, and view-dependent pond glints.
+The courier has the same teal coat, amber hat, scarf and satchel across views.
+Its in-game scale is increased by about 35% in 3D and Flat, with tile-relative
+Flat dimensions and a 3D upper cap; the Flat offset keeps it inside edge cells.
+Dialogs use noninteractive botanical corners, and the landscape backdrop follows
+the chosen appearance. Decorative art never adds puzzle obstacles.
+
+The 3D renderer batches repeated terrain into instanced draws, compacts invisible
+connections out of those draws, reuses frame geometry/materials and caches static
+shadows. Pointer movement is coalesced to animation frames. Conservative tile
+bounds narrow exact hit tests; input layers exclude decorative rock-edge lines
+and grass blades. Clicks stay immediate. Idle scenery draws at up to 30 fps;
+swaps, walking, celebrations and interaction invalidations are not held to that
+idle cadence. Menus/background pause, instant reduced motion, and authoritative
+solve timing are unchanged. No new rendering dependencies are required.
 Completion tests verify the 1500ms visible celebration hold, menu/background
 pausing and cancellation when an attempt is rewound or replaced.
 Browser checks also covered the 3D greeting, paused flat celebration pulses,

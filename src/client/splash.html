@@ -35,7 +35,11 @@
             <linearGradient id="scene-land" x1="0" y1="0" x2="336" y2="208" gradientUnits="userSpaceOnUse"><stop stop-color="var(--scene-grass)"/><stop offset="1" stop-color="var(--scene-grass-soft)"/></linearGradient>
             <pattern id="scene-grid" width="56" height="52" patternUnits="userSpaceOnUse"><path d="M56 0H0v52" stroke="var(--scene-grid)" stroke-width="1.3"/><path d="m14 21 2-5m7 8 2-5" stroke="var(--scene-leaf)" stroke-width="1.5" stroke-linecap="round" opacity=".45"/></pattern>
             <g id="scene-tree"><ellipse cy="32" rx="16" ry="5" fill="#334e3524"/><path d="M0 8v25" stroke="#8e7953" stroke-width="5" stroke-linecap="round"/><circle cx="-7" cy="1" r="13" fill="var(--scene-leaf)"/><circle cx="7" cy="-5" r="16" fill="var(--scene-leaf-light)"/><circle cx="-4" cy="-12" r="13" fill="var(--scene-leaf)"/></g>
-            <g id="scene-paver"><rect x="8" y="9" width="40" height="36" rx="8" fill="var(--scene-stone-edge)"/><rect x="8" y="6" width="40" height="36" rx="8" fill="var(--scene-stone)" stroke="var(--scene-stone-edge)"/><path d="M14 17h12m4 15h10" stroke="var(--scene-stone-edge)" stroke-opacity=".55" stroke-width="2" stroke-linecap="round"/></g>
+            <g id="scene-paver">
+              <rect y="13" width="56" height="31" rx="3" fill="var(--scene-stone-edge)"/>
+              <path d="M1 11h24v13H1V11Zm26 0h28v13H27V11ZM1 26h15v14H1V26Zm17 0h20v14H18V26Zm22 0h15v14H40V26Z" fill="var(--scene-stone)" stroke="var(--scene-stone-edge)" stroke-width=".7" stroke-linejoin="round"/>
+              <path d="M3 13h20m6 0h24M3 28h11m6 0h16m6 0h11" stroke="var(--world-road-light, #fff0cd)" stroke-width="1.5" stroke-linecap="round"/>
+            </g>
           </defs>
           <path d="M23 170C-1 67 99 11 188 41c79-62 237-36 267 71 33 120-91 179-220 162-108 24-188-11-212-104Z" fill="var(--scene-halo)"/>
           <circle class="scene-sun" cx="388" cy="41" r="23" fill="#efcc79"/>
@@ -90,11 +94,12 @@
               <ellipse cx="13" cy="55" rx="13" ry="4" fill="#31483840"/>
               <g class="courier-bob demo-animated">
                 <path d="M5 44v9h8v-9m2 0v9h8v-9" stroke="#354a3e" stroke-width="5" stroke-linecap="round"/>
-                <path d="M2 26q12-8 24 0v20H2V26Z" fill="#668c65" stroke="#3d6048" stroke-width="1.5"/>
+                <path d="M2 26q12-8 24 0v20H2V26Z" fill="#356e73" stroke="#244b51" stroke-width="1.5"/>
                 <path d="m6 26 16 17" stroke="#cba965" stroke-width="4"/>
-                <rect x="15" y="35" width="13" height="12" rx="3" fill="#bc9258" stroke="#81653e"/>
-                <path d="M3 29v12" stroke="#668c65" stroke-width="6" stroke-linecap="round"/><circle cx="3" cy="43" r="3" fill="#eac49a"/>
-                <g transform="translate(25 28)"><g class="courier-wave demo-animated"><path d="M0 0 4-10" stroke="#668c65" stroke-width="6" stroke-linecap="round"/><path d="m4-10 1-7m-1 6 5-4" stroke="#eac49a" stroke-width="4" stroke-linecap="round"/></g></g>
+                <rect x="15" y="35" width="13" height="12" rx="3" fill="#b57e43" stroke="#795431"/>
+                <path d="M3 29v12" stroke="#356e73" stroke-width="6" stroke-linecap="round"/><circle cx="3" cy="43" r="3" fill="#eac49a"/>
+                <g transform="translate(25 28)"><g class="courier-wave demo-animated"><path d="M0 0 4-10" stroke="#356e73" stroke-width="6" stroke-linecap="round"/><path d="m4-10 1-7m-1 6 5-4" stroke="#eac49a" stroke-width="4" stroke-linecap="round"/></g></g>
+                <path d="M6 26q8 5 16 0l-2 5-8 4-6-9Z" fill="#cf8650"/>
                 <ellipse cx="14" cy="17" rx="10" ry="12" fill="#edcba3" stroke="#b58a62"/>
                 <path d="M2 11q0-13 12-13t12 13H2Z" fill="#d6b162" stroke="#9a763d"/>
                 <path d="M-2 10q16-5 32 0v3H-2v-3Z" fill="#e7c981" stroke="#9a763d"/>

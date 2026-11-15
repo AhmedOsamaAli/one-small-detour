@@ -47,68 +47,169 @@ export function BrandMark() {
 }
 
 export function GuideCourier({ portrait = false }: { portrait?: boolean }) {
+  const id = useId();
   return <svg className={`guide-courier ${portrait ? 'courier-portrait' : ''}`} width="64" height="84"
-    viewBox={portrait ? '12 5 50 45' : '0 0 76 100'} fill="none" aria-hidden="true">
-    <ellipse cx="36" cy="94" rx="25" ry="4" fill="#172f2529"/>
-    <path d="m25 74-3 16h12l3-14m5-2 2 16h12l-6-17" fill="#344c42" stroke="#283f35" strokeWidth="2"/>
-    <path d="M20 88h15v6H18q-2-4 2-6Zm24 0h12q4 2 4 6H44v-6Z" fill="#493f32"/>
-    <path d="M20 58q15-12 30 0l6 23H17l3-23Z" fill="#648a62" stroke="#355c44" strokeWidth="2"/>
-    <path d="m22 57 25 22" stroke="#d4ae6d" strokeWidth="5"/>
-    <rect x="39" y="69" width="18" height="16" rx="4" fill="#ba925a" stroke="#795b35" strokeWidth="2"/>
-    <path d="M24 59 12 74l7 6 13-16" fill="#648a62" stroke="#355c44" strokeWidth="2"/>
-    <circle cx="15" cy="78" r="5" fill="#ecc79d" stroke="#b48b64"/>
+    viewBox={portrait ? '12 0 74 68' : '0 0 96 128'} fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id={`${id}-coat`} x1="25" y1="66" x2="70" y2="104" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#428082"/><stop offset="1" stopColor="#204851"/>
+      </linearGradient>
+      <linearGradient id={`${id}-skin`} x1="32" y1="22" x2="65" y2="62" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#f4d5ad"/><stop offset=".6" stopColor="#e9bb93"/><stop offset="1" stopColor="#ce9471"/>
+      </linearGradient>
+      <linearGradient id={`${id}-hat`} x1="27" y1="8" x2="67" y2="34" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#f2d794"/><stop offset=".55" stopColor="#dfb35e"/><stop offset="1" stopColor="#b9873c"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="47" cy="121" rx="31" ry="5" fill="#102c3430"/>
+    <path d="m33 94-4 23h15l6-20m4-3 2 23h15l-7-25" fill="#34454c"/>
+    <path d="m31 98 11 2-3 14h-9m26-15 9-2 4 17H57" fill="#243740"/>
+    <path d="M29 113h15v9H23q-1-6 6-9Zm27 0h13q9 3 9 9H56v-9Z" fill="#664b36"/>
+    <path d="M24 120h20m13 0h20" stroke="#b18c60" strokeWidth="2"/>
+    <path d="M29 67q18-13 36 0l7 35q-25 8-48-1l5-34Z" fill={`url(#${id}-coat)`} stroke="#244b51" strokeWidth="1.5"/>
+    <path d="M45 73v29m-17-6q18 5 40 0" stroke="#78a29a" strokeOpacity=".45" strokeWidth="1.4"/>
+    <path d="m29 69-15 23 8 7 19-24" fill="#366e73" stroke="#244b51" strokeWidth="1.5"/>
+    <path d="m16 88 8 6" stroke="#9fb4a0" strokeWidth="3"/>
+    <circle cx="18" cy="97" r="6" fill={`url(#${id}-skin)`} stroke="#b17e60"/>
     <g className="guide-point">
-      <path d="m47 59 13 9 4 11" stroke="#355c44" strokeWidth="12" strokeLinecap="round"/>
-      <path d="m47 59 13 9 4 11" stroke="#648a62" strokeWidth="8" strokeLinecap="round"/>
-      <path d="M60 77q-1-5 3-5 3 0 3 5l3 7q1 4-2 5l-5-6q-4 0-5-3-1-3 3-3Z" fill="#ecc79d" stroke="#b48b64" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="m65 70 14 12 1 11" stroke="#244b51" strokeWidth="14" strokeLinecap="round"/>
+      <path d="m65 70 14 12 1 11" stroke="#39777a" strokeWidth="10" strokeLinecap="round"/>
+      <path d="m76 91 8-1" stroke="#9fb4a0" strokeWidth="3"/>
+      <path d="M77 98v-8q0-5 4-5t4 5l2 11q0 5-4 7l-6-8q-5 0-7-4-1-4 3-4l4 6Z" fill={`url(#${id}-skin)`} stroke="#b17e60" strokeWidth="1.2"/>
     </g>
-    <path d="M25 42h24v13q-12 10-24 0V42Z" fill="#dfb58c"/>
-    <ellipse cx="37" cy="32" rx="19" ry="22" fill="#edcba3" stroke="#b28b62" strokeWidth="1.5"/>
-    <path d="M18 29q-3-24 20-23 21 1 19 25l-6-10-30 3-3 5Z" fill="#796043"/>
-    <path d="M16 23q0-19 20-19 20 0 20 19H16Z" fill="#d5ae60" stroke="#98743a" strokeWidth="1.5"/>
-    <path d="M11 23q24-9 49 0-22 8-49 2v-2Z" fill="#e1c47c" stroke="#98743a" strokeWidth="1.5"/>
-    <path d="m26 32 4-1m14 0 4 1" stroke="#795b3e" strokeWidth="2" strokeLinecap="round"/>
-    <circle cx="29" cy="36" r="2" fill="#304b3d"/><circle cx="45" cy="36" r="2" fill="#304b3d"/>
-    <path d="M33 44q4 4 8 0" stroke="#9e684c" strokeWidth="2" strokeLinecap="round"/>
-    <circle cx="24" cy="42" r="3" fill="#e4ab83" fillOpacity=".65"/><circle cx="50" cy="42" r="3" fill="#e4ab83" fillOpacity=".65"/>
+    <path d="m32 69 29 28" stroke="#183d44" strokeWidth="8"/>
+    <path d="m32 68 29 28" stroke="#d6b074" strokeWidth="5"/>
+    <rect x="52" y="86" width="22" height="20" rx="5" fill="#a96f3d" stroke="#694d34" strokeWidth="1.5"/>
+    <path d="M53 88h20v7q-10 5-20 0v-7Z" fill="#cf9857"/>
+    <path d="M55 103h16" stroke="#d6ab72" strokeWidth="1.2" strokeDasharray="2 2"/>
+    <rect x="61" y="93" width="5" height="6" rx="1" fill="#f3d58c" stroke="#8c6938"/>
+    <path d="M36 53h25v14q-12 9-25-1V53Z" fill="#d9a67e"/>
+    <path d="M32 63q16 9 33 0l-2 9q-17 8-31-1v-8Z" fill="#c77742"/>
+    <path d="m34 69 10 4-9 18-7-7 6-15Z" fill="#df9a58"/>
+    <path d="m30 83 7 4" stroke="#f4c888" strokeWidth="2"/>
+    <ellipse cx="48" cy="38" rx="23" ry="26" fill={`url(#${id}-skin)`} stroke="#b98462" strokeWidth="1.2"/>
+    <path d="M26 34q-3-27 21-27 25-1 24 29l-7-10-32 1-6 7Z" fill="#6b4c35"/>
+    <path d="M25 25q0-21 23-21 24-1 24 22l-47-1Z" fill={`url(#${id}-hat)`} stroke="#9d7538" strokeWidth="1.2"/>
+    <path d="M25 21q23-6 47 0v8H25v-8Z" fill="#765238"/>
+    <path d="M16 28q32-11 65 0-12 12-61 7-6 0-4-7Z" fill="#eac77e" stroke="#a47c40" strokeWidth="1.3"/>
+    <path d="M20 29q29-7 57 0" stroke="#fff0bc" strokeWidth="2" strokeLinecap="round"/>
+    <path d="m35 40 6-1m15 0 6 2" stroke="#795239" strokeWidth="2" strokeLinecap="round"/>
+    <ellipse cx="38" cy="45" rx="2.6" ry="3" fill="#253b3e"/><ellipse cx="59" cy="45" rx="2.6" ry="3" fill="#253b3e"/>
+    <circle cx="37" cy="44" r=".9" fill="#fff5da"/><circle cx="58" cy="44" r=".9" fill="#fff5da"/>
+    <path d="m48 46-2 6 4 1" stroke="#bb805e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M42 57q6 5 13-1" stroke="#975f49" strokeWidth="2" strokeLinecap="round"/>
+    <ellipse cx="32" cy="53" rx="4" ry="2.5" fill="#cf8a70" fillOpacity=".55"/>
+    <ellipse cx="65" cy="53" rx="4" ry="2.5" fill="#cf8a70" fillOpacity=".55"/>
   </svg>;
+}
+
+export function BotanicalFrame() {
+  return <div className="botanical-frame" aria-hidden="true">{['tl', 'tr', 'bl', 'br'].map((corner) =>
+    <svg key={corner} className={`botanical-corner corner-${corner}`} viewBox="0 0 64 64" fill="none">
+      <path d="M7 59V25Q7 7 25 7h34" stroke="var(--bark)" strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M7 48Q24 47 20 34 8 32 7 48Zm0-17Q-1 25 3 17q12 2 8 12M19 9Q18 24 32 22 35 9 19 9Zm18-2Q42-1 51 3q-2 12-14 8"
+        fill="var(--leaf)" stroke="var(--leaf-light)" strokeWidth=".7"/>
+      <path d="m8 45 9-8M23 11l7 8M38 9l10-4" stroke="var(--leaf-light)" strokeWidth=".8" strokeLinecap="round"/>
+      <path d="m7 58 2-5 2 5-2 3-2-3Zm47-51 4-2 3 2-3 2-4-2Z" fill="var(--accent-border)"/>
+      <circle cx="10" cy="11" r="2.2" fill="var(--accent-border)"/>
+    </svg>)}</div>;
+}
+
+export function ScenicBackdrop() {
+  const id = useId();
+  return <div className="world-backdrop" aria-hidden="true">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" fill="none">
+      <defs>
+        <linearGradient id={`${id}-sky`} x2="0" y2="1">
+          <stop stopColor="var(--sky-top)"/><stop offset="1" stopColor="var(--sky-bottom)"/>
+        </linearGradient>
+        <radialGradient id={`${id}-glow`}><stop stopColor="var(--sky-glow)" stopOpacity=".4"/><stop offset="1" stopColor="var(--sky-glow)" stopOpacity="0"/></radialGradient>
+      </defs>
+      <path d="M0 0h1440v900H0Z" fill={`url(#${id}-sky)`}/>
+      <ellipse cx="1120" cy="180" rx="420" ry="350" fill={`url(#${id}-glow)`}/>
+      <g className="art-sun"><circle cx="1270" cy="150" r="34" fill="var(--sky-glow)" opacity=".55"/><circle cx="1270" cy="150" r="45" stroke="var(--sky-glow)" opacity=".2"/></g>
+      <g className="art-moon" fill="var(--sky-glow)"><path d="M1295 120a31 31 0 1 1-39 40 31 31 0 0 0 39-40Z"/>
+        <path d="m1096 108 2-6 2 6 6 2-6 2-2 6-2-6-6-2 6-2Zm218 151 2-5 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z"/></g>
+      <g stroke="var(--edge-light)" strokeWidth="10" strokeLinecap="round" opacity=".65">
+        <path d="M72 172h90m-29 17h61m935 91h70m-17 17h49"/>
+      </g>
+      <path d="M0 646Q125 518 294 654t290 17q217-143 438-19 237-171 418-72v320H0V646Z" fill="var(--hill-far)" opacity=".32"/>
+      <path d="M0 759q196-154 390-28t387 9q166-120 367-27 187-162 296-95v282H0V759Z" fill="var(--hill-mid)" opacity=".38"/>
+      <path d="M0 846q178-129 381-23t424 5q231-103 420-33 113-90 215-85v190H0v-54Z" fill="var(--hill-near)" opacity=".28"/>
+      <g stroke="var(--hill-near)" strokeLinecap="round" opacity=".23">
+        <path d="M59 900V779m0 72-31-28m31 11 30-28m1241 94V756m0 68-28-24m28 8 27-27" strokeWidth="8"/>
+        <path d="m23 808 36-79 39 79H23Zm1276-29 31-71 33 71h-64Z" fill="var(--hill-near)" stroke="none"/>
+      </g>
+    </svg>
+  </div>;
 }
 
 export function LandscapeIllustration({ theme = 'meadow' }: { theme?: Theme }) {
   const orchard = theme === 'orchard';
   const coast = theme === 'coast';
-  return <svg className="landscape-illustration" width="180" height="112" viewBox="0 0 180 112" fill="none" aria-hidden="true">
-    <path d="M12 80C-2 34 31 9 84 14c35-21 92-4 85 39 20 38-21 55-69 45-45 16-84 6-88-18Z"
-      fill={coast ? '#dcece4' : orchard ? '#f0ebce' : '#e5ecd6'}/>
-    <circle cx="142" cy="24" r="13" fill="#edcf86"/>
-    <path d="M15 75q30-48 65-19c25-41 62-27 89 2v32H15V75Z" fill={coast ? '#b5c9b3' : '#c1d19e'}/>
-    <path d="M12 85q48-39 90-14c25-21 50-16 67-6v27H12v-7Z" fill={orchard ? '#b4c38d' : '#a9c29a'}/>
-    {coast && <><path d="M16 84q48-13 68 3t81-1v11H17L16 84Z" fill="#92c4c0"/>
-      <path d="M30 90h24m53 3h23m12-6h14" stroke="#e0f0df" strokeWidth="2" strokeLinecap="round"/></>}
-    <path d="M38 85h29q21 0 21-21t23-21h22" stroke="#fdf2d5" strokeWidth="12" strokeLinecap="round"/>
-    <path d="M38 85h29q21 0 21-21t23-21h22" stroke="#bea97d" strokeWidth="1.5" strokeDasharray="3 5"/>
-    <path d="M25 86V66h25v20H25Z" fill="#fff6de" stroke="#a49d7d"/>
-    <path d="m20 67 18-16 17 16H20Z" fill="#628b73"/>
-    <path d="M33 86V75h7v11" fill="#9c7d52"/>
-    <rect x="43" y="70" width="4" height="5" rx="1" fill="#e1ba67"/>
-    <path d="M121 45V29h22v16h-22Z" fill="#fff6de" stroke="#a49d7d"/>
-    <path d="m117 30 15-14 16 14h-31Z" fill="#bb8669"/>
-    <path d="M129 45V35h6v10" fill="#9c7d52"/>
-    <path d="M155 71V51M17 49V33" stroke="#9c895e" strokeWidth="3" strokeLinecap="round"/>
-    <circle cx="155" cy="48" r="11" fill="#7fa178"/><circle cx="151" cy="39" r="9" fill="#9ab780"/>
-    <circle cx="17" cy="28" r="10" fill="#95b283"/>
-    {orchard && <><circle cx="151" cy="47" r="2" fill="#cc8c5c"/><circle cx="159" cy="43" r="2" fill="#cc8c5c"/></>}
-    <path d="m100 76 8-3 5 5-10 4-3-6Z" fill="#d5aa59"/><path d="M103 81v7h7v-8" fill="#4a7562"/>
-    <circle cx="107" cy="75" r="3" fill="#e8c69d"/>
-    <path d="M57 37h15m-4-10h18" stroke="#fbf8e9" strokeWidth="4" strokeLinecap="round"/>
-    <path d="m57 98 3-5m6 5 2-4m63 2 3-4" stroke="#839d68" strokeWidth="2" strokeLinecap="round"/>
+  const id = useId();
+  return <svg className={`landscape-illustration art-${theme}`} width="180" height="112" viewBox="0 0 240 150" fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id={`${id}-land`} x2=".8" y2="1">
+        <stop stopColor="var(--map-land-one)"/><stop offset="1" stopColor="var(--map-land-three)"/>
+      </linearGradient>
+      <linearGradient id={`${id}-wall`}><stop stopColor="#fff1cd"/><stop offset="1" stopColor="#d8bd8b"/></linearGradient>
+    </defs>
+    <ellipse cx="119" cy="129" rx="97" ry="12" fill="var(--art-shadow)"/>
+    <path d="M14 79Q-6 30 64 23q58-35 116 2 65 10 44 62 2 54-102 44Q31 146 14 79Z" fill="var(--surface-soft)"/>
+    <circle className="art-sun" cx="187" cy="25" r="16" fill="#eac67a"/>
+    <path className="art-moon" d="M199 13a16 16 0 1 1-22 22 16 16 0 0 0 22-22Z" fill="#e3dfab"/>
+    <path d="m19 83 94-48 109 47v15l-99 47L19 98V83Z" fill="var(--world-soil, #8d6242)"/>
+    <path d="m19 91 104 45 99-46" stroke="var(--world-soil-edge, #bd945e)" strokeWidth="3"/>
+    <path d="m19 81 94-48 109 47-99 49L19 81Z" fill={`url(#${id}-land)`} stroke="var(--map-border)" strokeWidth="1.2" strokeLinejoin="round"/>
+    {coast && <><path d="m140 94 48-23 30 12-61 30-17-19Z" fill="var(--world-water, #236f7f)"/>
+      <path d="m157 98 14-7m8 5 15-7" stroke="var(--world-foam, #d4eee2)" strokeWidth="1.7" strokeLinecap="round"/></>}
+    <path d="m63 102 39-20q12-6 24 0l8 3q8 3 17-2l28-15" stroke="var(--world-mortar, #816849)" strokeWidth="13" strokeLinejoin="round"/>
+    <path d="m63 100 39-20q12-6 24 0l8 3q8 3 17-2l28-15" stroke="var(--world-road, #efd8a7)" strokeWidth="10" strokeLinejoin="round"/>
+    <path d="m85 85 4 8m16-18 2 10m15-9-3 9m18-6-1 9m17-13 3 8m12-15 4 8" stroke="var(--world-road-shade, #b59464)" strokeWidth="1.5"/>
+    <g transform="translate(49 61)">
+      <ellipse cx="7" cy="35" rx="26" ry="7" fill="#193a3429"/>
+      <path d="m-12 11 25-8 17 9v24l-17 7-25-13V11Z" fill={`url(#${id}-wall)`} stroke="#b39a70"/>
+      <path d="m13 3 17 9v24l-17 7V3Z" fill="#c9ae80"/>
+      <path d="m-18 12 20-25 31 21-20 9-31-5Z" fill="#326b59" stroke="#274e45" strokeLinejoin="round"/>
+      <path d="m2-13 13 26 18-5L2-13Z" fill="#497f63"/>
+      <path d="m-10 3 28 8m-23-15 28 10" stroke="#8caf7e" strokeOpacity=".6"/>
+      <path d="m-3 35 9 4V21l-9-4v18Z" fill="#795333"/>
+      <path d="m17 18 7-3v8l-7 3v-8Z" fill="#f1c768" stroke="#98733d"/>
+      <path d="m-8 15 7 3v7l-7-3v-7Z" fill="#e7bc65"/>
+      <path d="m21 0 1-14 6 2v14" fill="#b68e64"/>
+    </g>
+    <g transform="translate(166 39) scale(.8)">
+      <path d="m-10 13 23-9 18 10v26l-18 7-23-13V13Z" fill={`url(#${id}-wall)`} stroke="#b39a70"/>
+      <path d="m13 4 18 10v26l-18 7V4Z" fill="#c9ae80"/>
+      <path d="m-17 14 18-25 34 23-22 8-30-6Z" fill="#a95740" stroke="#884832" strokeLinejoin="round"/>
+      <path d="m1-25 14 31 20-5L1-25Z" fill="#c47b52" transform="translate(0 14)"/>
+      <path d="m0 40 7 3V23l-7-4v21Z" fill="#795333"/>
+      <path d="m18 21 7-3v8l-7 3v-8Z" fill="#f1c768"/>
+    </g>
+    {[{ x: 34, y: 58, s: 0.8 }, { x: 98, y: 45, s: 0.9 }, { x: 203, y: 101, s: 0.8 }].map(({ x, y, s }) =>
+      <g key={x} transform={`translate(${x} ${y}) scale(${s})`}>
+        <ellipse cy="17" rx="15" ry="5" fill="#17382e25"/><path d="M0 17V-9" stroke="#8e6e45" strokeWidth="4"/>
+        <path d="M-14-1q-6-16 8-23 9-11 18 0 15 5 6 23-14 12-32 0Z" fill="var(--leaf)"/>
+        <path d="M-6-22Q9-35 16-17q6 11-2 15-14-2-20-20Z" fill="var(--leaf-light)"/>
+        {orchard && <><circle cx="-8" cy="-4" r="3" fill="#d4874d"/><circle cx="9" cy="-10" r="3" fill="#dba45e"/></>}
+      </g>)}
+    <g transform="translate(116 75) scale(.24)"><GuideCourier/></g>
+    <path d="m35 108 3-6m5 9 3-7m126 17 3-6m6 2 3-6" stroke="var(--leaf)" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M113 17h22m-9 9h24" stroke="var(--edge-light)" strokeWidth="3" strokeLinecap="round"/>
   </svg>;
 }
 
 export function CompletionSeal({ perfect }: { perfect: boolean }) {
+  const id = useId();
   return <svg className="completion-seal" width="64" height="64" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+    <defs><linearGradient id={`${id}-metal`} x1="12" y1="8" x2="66" y2="68" gradientUnits="userSpaceOnUse">
+      <stop stopColor={perfect ? '#fae9ad' : '#dbe6bd'}/><stop offset=".4" stopColor={perfect ? '#d4a84e' : '#88ab78'}/>
+      <stop offset=".55" stopColor={perfect ? '#fff1be' : '#e5edcc'}/><stop offset="1" stopColor={perfect ? '#b78632' : '#64895f'}/>
+    </linearGradient></defs>
     <path d="m20 56-3 22 14-6 9 5 2-19m18-3 3 23-14-6-9 5-2-19" fill={perfect ? '#cba762' : '#94b28b'} stroke="#fff8e7" strokeWidth="2"/>
-    <circle cx="40" cy="36" r="32" fill={perfect ? '#f6e6b9' : '#e4ecd7'} stroke={perfect ? '#b28a3e' : '#789b72'} strokeWidth="2"/>
+    <circle cx="40" cy="36" r="32" fill={`url(#${id}-metal)`} stroke={perfect ? '#9a722e' : '#50704e'} strokeWidth="2"/>
+    <circle cx="40" cy="36" r="28.5" stroke="#fff4d1" strokeOpacity=".8"/>
     <circle cx="40" cy="36" r="26" stroke="#fffaf0" strokeWidth="2" strokeDasharray="3 4"/>
     <path d="M19 45h12q8 0 8-9t9-9h13" stroke="#fff8e9" strokeWidth="7" strokeLinecap="round"/>
     <path d="M19 45h12q8 0 8-9t9-9h13" stroke={perfect ? '#aa8541' : '#6f9164'} strokeWidth="2" strokeLinecap="round"/>
@@ -122,17 +223,19 @@ function TileGlyph({ tile }: { tile: Tile }) {
   const bridge = tile === 'h' || tile === 'v';
   return <svg className="tile-guide-glyph" width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
     <rect x="1" y="1" width="30" height="30" rx="6"
-      fill={tile === '~' || bridge ? '#8fc2bf' : tile === 'x' ? '#b2b7a0' : '#a9bd86'} stroke="#819578"/>
-    {tile === 'o' && <><path d="M16 1v30M1 16h30" stroke="#e8dfca" strokeWidth="10"/>
-      <rect x="6" y="6" width="20" height="20" rx="4" fill="#f1e8d4" stroke="#c8bba0"/>
-      <path d="M10 13h5m2 6h5" stroke="#d7ceb9" strokeWidth="2"/></>}
-    {tile === '~' && <path d="M5 11q4-4 8 0t8 0m-12 9q4-4 8 0t8 0" stroke="#d4ece1" strokeWidth="2" strokeLinecap="round"/>}
-    {tile === '.' && <path d="m7 22 2-6m4 7 2-8m5 8 2-6" stroke="#718a56" strokeWidth="2" strokeLinecap="round"/>}
-    {tile === 'x' && <><path d="m9 6 14 1 5 9-5 10-13 1-6-9L9 6Z" fill="#8a9b89" stroke="#526c5c"/>
-      <path d="m9 6 7 11 7-10m-7 10 7 9m-7-9-12 1" stroke="#aab5a0" strokeWidth="2"/></>}
+      fill={tile === '~' || bridge ? 'var(--world-water, #236f7f)' : 'var(--world-grass, #426f46)'} stroke="var(--world-grass-deep, #386942)"/>
+    {tile === 'o' && <><path d="M16 1v30M1 16h30" stroke="var(--world-road, #efd8a7)" strokeWidth="10"/>
+      <rect x="6" y="6" width="20" height="20" rx="3" fill="var(--world-road, #efd8a7)" stroke="var(--world-mortar, #816849)"/>
+      <path d="M6 13h20M6 20h20m-11-14v7m5 0v7m-6 0v6" stroke="var(--world-road-shade, #b59464)" strokeWidth="1.4"/></>}
+    {tile === '~' && <path d="M5 11q4-4 8 0t8 0m-12 9q4-4 8 0t8 0" stroke="var(--world-foam, #d4eee2)" strokeWidth="1.5" strokeLinecap="round"/>}
+    {tile === '.' && <path d="m7 22 2-6m4 7 2-8m5 8 2-6" stroke="var(--world-blade, #8cab61)" strokeWidth="1.8" strokeLinecap="round"/>}
+    {tile === 'x' && <><path d="m9 5 14 2 5 11-6 9-14-1-5-9L9 5Z" fill="var(--world-rock, #87979d)" stroke="var(--world-rock-shade, #415663)"/>
+      <path d="m9 5 8 10 6-8-14-2Z" fill="var(--world-rock-light, #d4d6cc)"/>
+      <path d="m17 15 5 12 6-9-11-3Z" fill="var(--world-rock-shade, #415663)"/>
+      <path d="m9 5 8 10-14 2m14-2 5 12" stroke="var(--world-rock-light, #d4d6cc)" strokeWidth=".8"/></>}
     {bridge && <g transform={tile === 'v' ? 'rotate(90 16 16)' : undefined}>
-      <rect x="1" y="8" width="30" height="16" rx="2" fill="#dec493" stroke="#997a4f" strokeWidth="2"/>
-      <path d="M8 9v14m8-14v14m8-14v14" stroke="#b79865"/>
+      <rect x="1" y="8" width="30" height="16" rx="2" fill="var(--world-wood-light, #edc688)" stroke="var(--world-wood-shade, #765331)" strokeWidth="2"/>
+      <path d="M8 9v14m8-14v14m8-14v14" stroke="var(--world-wood, #c38d4c)"/>
       <g transform="translate(4 4)" stroke="#5b573f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths.bridge}</g>
     </g>}
     {isAnchor(tile) && <><rect x="8" y="13" width="16" height="14" rx="1" fill="#fff2db" stroke="#a99a7b"/>
@@ -159,16 +262,16 @@ export function TileGuide({ only }: { only?: readonly GuideTopic[] }) {
   </section>;
 }
 
-export function WalkthroughFeatures({ section }: { section: 'tools' | 'places' }) {
+export function WalkthroughFeatures({ section, places }: { section: 'tools' | 'places'; places: number }) {
   const entries: { icon: IconName; title: string; text: string }[] = section === 'tools' ? [
     { icon: 'undo', title: 'One tap back', text: 'Reverse the last exchange. Fix a mistaken tap.' },
     { icon: 'sound', title: 'A little sound', text: 'Tap the speaker to listen or mute. Sound is optional.' },
-    { icon: 'cube', title: 'Your point of view', text: 'Switch 3D / Flat. Use the top sun or moon to choose light or dark.' },
+    { icon: 'cube', title: 'Two ways to see it', text: '3D is the default. Try Flat for a simpler top-down map. Switch below the island any time.' },
     { icon: 'swap', title: 'Choose a frame', text: 'Picture buttons choose a tall or wide patch. Tiles do not rotate.' },
   ] : [
     { icon: 'sun', title: 'One daily island', text: 'One shared UTC puzzle. Its countdown starts after this practice.' },
     { icon: 'trophy', title: 'Earn your comparison', text: 'Shown after a saved finish. Fewest moves, then fastest time.' },
-    { icon: 'map', title: 'Practice: 200 places', text: 'Preview, then play. Finish one unranked stop to open the next.' },
+    { icon: 'map', title: `Practice: ${places} places`, text: 'Start with easy islands. Bigger 12 x 12 landscapes wait at the end. Finish a stop to open the next.' },
     { icon: 'help', title: 'A guide nearby', text: 'Tap the top question mark to replay this walkthrough or read every tile rule.' },
   ];
   return <div className="tour-feature-grid">{entries.map((entry) =>
@@ -227,6 +330,7 @@ export function Modal({ title, children, onClose, wide = false, className = '', 
   const identity = dialogIdentity[kind];
   return <dialog ref={ref} className={`dialog dialog-${kind} ${wide ? 'dialog-wide' : ''} ${className}`} aria-labelledby={id}
     onCancel={(event) => { event.preventDefault(); onClose(); }}>
+    <BotanicalFrame/>
     <div className="dialog-heading">
       <span className="dialog-emblem">{emblem ?? <Icon name={identity.icon} size={25}/>}</span>
       <div className="dialog-title"><p className="eyebrow">{identity.label}</p><h2 id={id}>{title}</h2></div>
@@ -238,13 +342,23 @@ export function Modal({ title, children, onClose, wide = false, className = '', 
 
 export function GuideIllustration({ step }: { step: number }) {
   return <svg className="guide-picture" viewBox="0 0 150 100" fill="none" aria-hidden="true">
-    <rect x="19" y="18" width="112" height="66" rx="10" fill="#e4e6d3"/>
-    {Array.from({ length: 6 }, (_, index) => <rect key={index} x={27 + index % 3 * 34} y={26 + Math.floor(index / 3) * 26} width="28" height="22" rx="5" fill={index === 2 ? '#a4d3d5' : '#faf5e8'} stroke="#cfccb8"/>)}
-    {step === 1 && <><rect x="23" y="22" width="66" height="30" rx="7" stroke="#c58f4a" strokeWidth="3"/><path d="M45 37h12" stroke="#adab94" strokeWidth="3"/></>}
-    {step === 2 && <><path d="M41 38h64m-8-7 8 7-8 7" stroke="#789b88" strokeWidth="3"/><rect x="57" y="49" width="67" height="28" rx="7" stroke="#789b88" strokeDasharray="5 4" strokeWidth="2"/></>}
-    {step === 3 && <><path d="M38 37h34v26h34" stroke="#6b9875" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="18" y="23" width="114" height="65" rx="10" fill="var(--world-soil, #8d6242)"/>
+    <rect x="18" y="18" width="114" height="65" rx="10" fill="var(--world-grass-deep, #386942)" stroke="var(--world-soil-edge, #bd945e)"/>
+    {Array.from({ length: 6 }, (_, index) => <g key={index} transform={`translate(${25 + index % 3 * 34} ${25 + Math.floor(index / 3) * 26})`}>
+      <rect width="31" height="23" rx="4" fill={index === 2 ? 'var(--world-water, #236f7f)' : 'var(--world-grass, #426f46)'}/>
+      {index === 2 ? <path d="M5 10q5-4 10 0t10 0" stroke="var(--world-foam, #d4eee2)" strokeWidth="1.5"/> :
+        <><rect x="3" y="3" width="25" height="17" rx="2" fill="var(--world-road, #efd8a7)" stroke="var(--world-mortar, #816849)"/>
+          <path d="M4 11h23M14 4v7m5 0v8" stroke="var(--world-road-shade, #b59464)" strokeWidth="1.2"/></>}
+    </g>)}
+    {step === 1 && <><rect x="22" y="21" width="68" height="31" rx="6" stroke="#fff7de" strokeWidth="6"/>
+      <rect x="22" y="21" width="68" height="31" rx="6" stroke="#a9530b" strokeWidth="3"/>
+      <path d="m43 27-9 9m0-7v7h7" stroke="#a9530b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></>}
+    {step === 2 && <><path d="M42 38q28-20 62 15m-1-9 1 9-9-1" stroke="#fff7de" strokeWidth="6" strokeLinecap="round"/>
+      <path d="M42 38q28-20 62 15m-1-9 1 9-9-1" stroke="#11649a" strokeWidth="2.5" strokeLinecap="round"/>
+      <rect x="57" y="49" width="68" height="29" rx="6" stroke="#11649a" strokeDasharray="4 3" strokeWidth="2.5"/></>}
+    {step === 3 && <><path d="M40 37h34v26h34" stroke="#f9edc8" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
       {[{ x: 38, y: 37, label: 'A' }, { x: 72, y: 63, label: 'B' }, { x: 106, y: 63, label: 'C' }].map((stop) =>
-        <g key={stop.label}><circle cx={stop.x} cy={stop.y} r="10" fill="#fff6de" stroke="#7d9872"/>
-          <text x={stop.x} y={stop.y + 4} textAnchor="middle" fill="#446c50" fontSize="11" fontFamily="sans-serif" fontWeight="bold">{stop.label}</text></g>)}</>}
+        <g key={stop.label}><circle cx={stop.x} cy={stop.y} r="10" fill="#fff0cd" stroke="#56794b" strokeWidth="1.5"/>
+          <text x={stop.x} y={stop.y + 4} textAnchor="middle" fill="#213b34" fontSize="11" fontFamily="sans-serif" fontWeight="bold">{stop.label}</text></g>)}</>}
   </svg>;
 }

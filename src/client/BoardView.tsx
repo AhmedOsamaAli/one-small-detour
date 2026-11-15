@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { isAnchor, locate, patchCells, tileAt } from '../shared/rules.ts';
+import { canTraverse, isAnchor, locate, patchCells, tileAt, walkable } from '../shared/rules.ts';
 import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, JourneyPlayback, JourneyStop, Shape, Swap, Theme } from '../shared/types.ts';
 import { JourneyPlayer } from '../shared/playback.ts';
 import type { LivingIsland } from './island.ts';
-import { BrandMark, FLAT_AXES, Icon } from './components.tsx';
+import { BrandMark, FLAT_AXES, GuideCourier, Icon } from './components.tsx';
+import { COURIER_SCALE, worldCssVariables } from './worldTheme.ts';
 import { animateFlatExchange } from './flatAnimation.ts';
 import type { FlatExchangeAnimation } from './flatAnimation.ts';
 
@@ -69,10 +70,10 @@ function positionFlatTraveler(map: HTMLDivElement | null, avatar: HTMLSpanElemen
   const style = getComputedStyle(map);
   const colGap = parseFloat(style.columnGap) || 0;
   const rowGap = parseFloat(style.rowGap) || 0;
-  const width = Math.min(13, box.width * 0.35);
-  const height = Math.min(17, box.height * 0.50);
-  const x = firstCell.offsetLeft + box.width * 0.70 + position.col * (box.width + colGap);
-  const y = firstCell.offsetTop + box.height * 0.70 + position.row * (box.height + rowGap);
+  const width = Math.min(13 * COURIER_SCALE, box.width * 0.48);
+  const height = Math.min(17 * COURIER_SCALE, box.height * 0.68);
+  const x = firstCell.offsetLeft + box.width * 0.74 + position.col * (box.width + colGap);
+  const y = firstCell.offsetTop + box.height * 0.65 + position.row * (box.height + rowGap);
   avatar.style.visibility = 'visible';
   avatar.style.width = `${width}px`;
   avatar.style.height = `${height}px`;
@@ -342,6 +343,7 @@ export function BoardView(props: BoardProps) {
     </div>;
 
   return <div ref={stage} className={`world-stage theme-${props.theme} ${props.flat ? 'is-flat' : ''} ${size > 6 ? 'large-world' : ''} ${props.locked ? 'input-locked' : ''}`} data-testid="world-stage"
+    style={worldCssVariables(props.theme, props.dark)}
     data-size={size} data-playback={props.playback ? 'active' : 'idle'} data-celebration={props.celebration?.complete ? 'complete' : props.celebration ? 'destination' : 'none'}>
     {!props.flat && <div ref={container} className="world-canvas-wrap" role="application" tabIndex={0}
       aria-busy={!worldReady}
@@ -380,9 +382,17 @@ export function BoardView(props: BoardProps) {
           onClick={() => { if (!props.busy) props.onCell(cell); }}
           onFocus={() => { if (!props.busy) props.onHover(cell); }}
           onPointerEnter={() => { if (!props.busy) props.onHover(cell); }}>
+          {walkable(tile) && <>
+            {tile !== 'h' && tile !== 'v' && <i className="flat-stone" aria-hidden="true"/>}
+            {[{ row: -1, col: 0, name: 'north' }, { row: 1, col: 0, name: 'south' },
+              { row: 0, col: -1, name: 'west' }, { row: 0, col: 1, name: 'east' }].filter((direction) =>
+              canTraverse(props.board, cell, { row: cell.row + direction.row, col: cell.col + direction.col })).map((direction) =>
+              <i key={direction.name} className={`flat-road-link road-${direction.name} ${tile === 'h' || tile === 'v' ? 'wooden-link' : ''}`}
+                data-road-direction={direction.name} aria-hidden="true"/>)}
+          </>}
           {isAnchor(tile) ? <span key={`${tile}:${props.celebration?.id ?? 0}`} style={{ fontSize: Math.max(12, Math.min(16, flatExtent / size * 0.52)) }}
             className={`flat-landmark ${props.celebration?.anchors.includes(tile) ? 'destination-celebration' : ''}`}>{tile}</span> :
-            tile === 'o' ? <i className="flat-stone"/> : tile === '~' ? <span aria-hidden="true">~</span> :
+            tile === 'o' ? null : tile === '~' ? <i className="flat-ripples" aria-hidden="true"/> :
               tile === 'x' ? <i className="flat-rock"/> : tile === 'h' || tile === 'v'
                 ? <i className={`flat-bridge bridge-${tile}`}><Icon name="bridge" size={20}/></i> : <i className="flat-grass"/>}
           {blocked.has(key) && <span className="cell-warning"><Icon name="warning" size={12}/></span>}
@@ -399,7 +409,7 @@ export function BoardView(props: BoardProps) {
           style={{ gridColumn: `${props.transition.move.b.col + 1} / span ${props.transition.move.cols}`,
             gridRow: `${props.transition.move.b.row + 1} / span ${props.transition.move.rows}` }}><span className="flat-frame-badge">1</span></div>
       </>}
-      <span ref={flatTraveler} className="flat-traveler" aria-hidden="true"/>
+      <span ref={flatTraveler} className="flat-traveler" aria-hidden="true"><GuideCourier/></span>
       </div>
     </div>}
     {startMarkers.length > 0 && <div className="patch-start-markers" aria-hidden="true">

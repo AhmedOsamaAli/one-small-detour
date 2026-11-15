@@ -2,7 +2,7 @@ import { isGuideTopics } from '../shared/guidance.ts';
 import { isRecord } from '../shared/validation.ts';
 import type { GuideTopic } from '../shared/types.ts';
 
-export type AppearancePreference = 'system' | 'light' | 'dark';
+export type AppearancePreference = 'light' | 'dark';
 
 export interface Preferences {
   flat: boolean;
@@ -14,13 +14,13 @@ export interface Preferences {
 
 export const PREF_KEY = 'detour:preferences:1';
 
-export function resolveAppearance(preference: AppearancePreference, systemDark: boolean): 'light' | 'dark' {
-  return preference === 'system' ? systemDark ? 'dark' : 'light' : preference;
+export function resolveAppearance(preference: AppearancePreference | 'system'): AppearancePreference {
+  return preference === 'dark' ? 'dark' : 'light';
 }
 
 export function loadPreferences(storage?: Pick<Storage, 'getItem'>): { value: Preferences; warning: string | null } {
   const defaults: Preferences = {
-    flat: false, completed: [], soundWanted: false, seenGuides: [], appearance: 'system',
+    flat: false, completed: [], soundWanted: false, seenGuides: [], appearance: 'light',
   };
   try {
     const text = (storage ?? localStorage).getItem(PREF_KEY);
@@ -38,13 +38,13 @@ export function loadPreferences(storage?: Pick<Storage, 'getItem'>): { value: Pr
         warnings.push('The walkthrough choices could not be read. Other progress is safe; the guide may appear again.');
       }
     }
-    let appearance: AppearancePreference = 'system';
+    let appearance: AppearancePreference = 'light';
     if (value['appearance'] !== undefined) {
       if (value['appearance'] === 'system' || value['appearance'] === 'light' || value['appearance'] === 'dark') {
-        appearance = value['appearance'];
+        appearance = resolveAppearance(value['appearance']);
       } else {
         console.warn('The saved appearance choice could not be read.');
-        warnings.push('The saved appearance could not be read. Device theme is being used; other progress is safe.');
+        warnings.push('The saved appearance could not be read. Light mode is being used; other progress is safe.');
       }
     }
     return {

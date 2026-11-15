@@ -41,12 +41,12 @@ function roadSegment(a: Point, b: Point, width: number, rowGap: number): { path:
 
 function MapTree({ x, y, orchard = false }: { x: number; y: number; orchard?: boolean }) {
   return <g transform={`translate(${x} ${y})`}>
-    <ellipse cy="15" rx="14" ry="5" fill="#426d5517"/>
-    <path d="M0 14V-8" stroke="#95805a" strokeWidth="5" strokeLinecap="round"/>
-    <circle cx="-7" cy="-12" r="13" fill="#87a579"/>
-    <circle cx="7" cy="-16" r="14" fill="#9db581"/>
-    <circle cy="-27" r="12" fill="#b3c58f"/>
-    {orchard && <><circle cx="-10" cy="-11" r="3" fill="#c98c65"/><circle cx="9" cy="-20" r="3" fill="#d39a67"/></>}
+    <ellipse cy="15" rx="15" ry="5" fill="var(--art-shadow)"/>
+    <path d="M0 14V-8" stroke="var(--bark)" strokeWidth="5" strokeLinecap="round"/>
+    <path d="M-17-5q-8-18 7-25 9-16 21-4 22 3 16 24Q14 8-7 4L-17-5Z" fill="var(--leaf)"/>
+    <path d="M-6-29q9-17 20-3 15 1 11 18Q6-8-6-29Z" fill="var(--leaf-light)"/>
+    <path d="m0 1-7-11m7 4 9-13" stroke="var(--map-border)" strokeWidth="1.5" strokeLinecap="round"/>
+    {orchard && <><circle cx="-10" cy="-11" r="3" fill="#c47b44"/><circle cx="9" cy="-20" r="3" fill="#e3ac59"/></>}
   </g>;
 }
 
@@ -221,7 +221,7 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
       <svg className="adventure-art" viewBox={`0 ${panY} ${w} ${viewport.height}`} aria-hidden="true">
         <defs>
           <pattern id="adventure-waves" width="72" height="52" patternUnits="userSpaceOnUse">
-            <path className="campaign-wave" d="M10 26q14-7 28 0" fill="none" stroke="#94b7ac" strokeWidth="1.5"/>
+            <path className="campaign-wave" d="M10 26q14-7 28 0" fill="none" stroke="var(--world-foam)" strokeWidth="1.2" opacity=".35"/>
           </pattern>
           <linearGradient id="campaign-land" x1="0" y1="0" x2="0" y2={worldHeight} gradientUnits="userSpaceOnUse">
             <stop stopColor="var(--map-land-one)"/><stop offset=".5" stopColor="var(--map-land-two)"/><stop offset="1" stopColor="var(--map-land-three)"/>

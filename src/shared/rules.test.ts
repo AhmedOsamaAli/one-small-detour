@@ -27,11 +27,11 @@ test('all fourteen original places start unsolved and have a legal winning witne
   }
 });
 
-test('the 200 campaign places are distinct, cached and solvable while the classic 42 remain', () => {
+test('the 203 campaign places are distinct, cached and solvable while the classic 42 remain', () => {
   const puzzles = getPuzzles();
   assert.equal(getSeasonPuzzles().length, 42);
-  assert.equal(puzzles.length, 200);
-  assert.equal(new Set(puzzles.map((puzzle) => boardFingerprint(puzzle.board))).size, 200);
+  assert.equal(puzzles.length, 203);
+  assert.equal(new Set(puzzles.map((puzzle) => boardFingerprint(puzzle.board))).size, 203);
   for (const puzzle of puzzles) {
     assertBoard(puzzle.board);
     assert.equal(checkRoutes(puzzle.board, puzzle.goals).solved, false, puzzle.id);

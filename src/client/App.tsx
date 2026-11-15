@@ -3,7 +3,8 @@ import { gameApi, takeStorageNotice } from './api.ts';
 import { IslandAudio } from './audio.ts';
 import { BoardView } from './BoardView.tsx';
 import type { Transition } from './BoardView.tsx';
-import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, Icon, LandscapeIllustration, Modal, ShapeGlyph, TileGuide, WalkthroughFeatures } from './components.tsx';
+import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, Icon, LandscapeIllustration, Modal, ScenicBackdrop, ShapeGlyph, TileGuide, WalkthroughFeatures } from './components.tsx';
+import { worldCssVariables } from './worldTheme.ts';
 import { applySwap, checkPuzzle, patchCells, RuleError, rulesFor, selectionIssue, shapesFor, tileAt } from '../shared/rules.ts';
 import type { PatchIssue } from '../shared/rules.ts';
 import { difficultyLabel } from '../shared/difficulty.ts';
@@ -75,8 +76,7 @@ export default function App() {
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const systemDark = useMediaQuery('(prefers-color-scheme: dark)');
-  const appearance = resolveAppearance(preferences.appearance, systemDark);
+  const appearance = resolveAppearance(preferences.appearance);
   const dark = appearance === 'dark';
   useLayoutEffect(() => { document.documentElement.dataset['appearance'] = appearance; }, [appearance]);
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
@@ -600,11 +600,13 @@ export default function App() {
       `Tap ${guideMove?.rows === 1 ? 'left' : 'top'} ${guideStage === 'second' ? 'blue' : 'orange'} square.`;
 
   return <div className={`app-shell focused-game direct-play viewport-fit ${reducedMotion ? 'reduce-motion' : ''}`}
+    style={worldCssVariables(run?.puzzle.theme ?? pendingRun?.puzzle.theme ?? 'meadow', dark)}
     data-appearance={dark ? 'dark' : 'light'} data-onboarding={run?.kind === 'guide' ? 'practice' : dialog === 'tiles' ? 'tiles' : 'complete'}
     data-guide-step={run?.kind === 'guide' ? guideStage : undefined}
     data-guide-exchange={run?.kind === 'guide' ? Math.min(moves.length + 1, TUTORIAL_MOVES.length) : undefined}
     data-timer-phase={timer.phase} data-score-state={publishing ? 'saving' : published ? 'saved' : saveError ? 'error' : 'idle'}
     data-completion-state={won ? 'result' : allHomesArrived ? 'celebrating' : roadReady ? 'walking' : 'repairing'}>
+    <ScenicBackdrop/>
     <a className="skip-link" href="#game-controls">Skip to game controls</a>
     <header className="site-header">
       <button className="wordmark" onClick={visitToday} aria-label="One Small Detour, today's island">
@@ -620,7 +622,7 @@ export default function App() {
         <button className="icon-button theme-toggle" aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
           title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
           onClick={() => setPreferences((current) => ({ ...current,
-            appearance: resolveAppearance(current.appearance, systemDark) === 'dark' ? 'light' : 'dark' }))}>
+            appearance: resolveAppearance(current.appearance) === 'dark' ? 'light' : 'dark' }))}>
           <Icon name={dark ? 'sun' : 'moon'} size={21}/>
         </button>
         <button className="icon-button help-toggle" onClick={() => setDialog('guide')} aria-label="How to play and tile rules" title="How to play and tile rules"><Icon name="help" size={22}/></button>
@@ -762,7 +764,17 @@ export default function App() {
     {notice && <div className={`toast ${notice.error ? 'toast-error' : ''}`} role={notice.error ? 'alert' : 'status'}><Icon name={notice.error ? 'warning' : 'check'} size={18}/><span>{notice.message}</span><button aria-label="Dismiss message" onClick={() => setNotice(null)}><Icon name="close" size={15}/></button></div>}
 
     {dialog === 'welcome' && <Modal title="Move a little world." kind="guide" className="walkthrough-dialog" onClose={() => finishWalkthrough(true)}>
+      <div className="welcome-vignette"><LandscapeIllustration/></div>
       <p className="tour-eyebrow">1 / 3 · A LITTLE PRACTICE</p>
+      <div className="welcome-view-choice">
+        <p><strong>Start in 3D.</strong> Prefer a simpler top-down map? Try Flat. You can switch below the island at any time.</p>
+        <div role="group" aria-label="Choose your practice view">
+          <button className="secondary-button" aria-label="Use 3D for this practice" aria-pressed={!preferences.flat}
+            onClick={() => setPreferences((current) => ({ ...current, flat: false }))}><Icon name="cube" size={18}/>3D <span>Default</span></button>
+          <button className="secondary-button" aria-label="Try Flat for this practice" aria-pressed={preferences.flat}
+            onClick={() => setPreferences((current) => ({ ...current, flat: true }))}><Icon name="grid" size={18}/>Try Flat</button>
+        </div>
+      </div>
       <div className="dialog-welcome"><GuideCourier/><p className="dialog-intro"><strong>I'll show you the way.</strong>
         I'll guide three little exchanges to connect A, then B, then C. Choose the glowing frame and follow my next tap. Homes stay fixed.</p></div>
       <p className="tour-reassurance"><Icon name="clock" size={18}/>This practice has no timer and cannot affect your rank.</p>
@@ -774,7 +786,7 @@ export default function App() {
       title={dialog === 'tour-tools' ? 'Your little toolkit.' : 'A new way, every day.'}
       kind="guide" className="walkthrough-dialog" emblem={<GuideCourier portrait/>} wide onClose={() => finishWalkthrough(true)}>
       <p className="tour-eyebrow">{dialog === 'tour-tools' ? '2 / 3 · MAKE IT YOURS' : '3 / 3 · CHOOSE YOUR ROAD'}</p>
-      <WalkthroughFeatures section={dialog === 'tour-tools' ? 'tools' : 'places'}/>
+      <WalkthroughFeatures section={dialog === 'tour-tools' ? 'tools' : 'places'} places={campaign.length}/>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
         <button className="primary-button" onClick={() => dialog === 'tour-tools' ? setDialog('tour-places') : finishWalkthrough(false)}>
           {dialog === 'tour-tools' ? 'Continue' : bootstrap?.edition ? 'Play today' : 'Explore'}<Icon name="arrow" size={17}/></button></div>

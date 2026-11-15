@@ -115,6 +115,29 @@ let seasonChecked = false;
 const dailyCache = new Map<string, AuthoredPuzzle>();
 let expeditions: readonly AuthoredPuzzle[] | null = null;
 let campaign: readonly AuthoredPuzzle[] | null = null;
+let widePractice: readonly AuthoredPuzzle[] | null = null;
+
+function getWidePractice(): readonly AuthoredPuzzle[] {
+  if (!widePractice) {
+    const places: { title: string; minimum: number; theme: Theme }[] = [
+      { title: 'The wider meadow', minimum: 10, theme: 'meadow' },
+      { title: 'The old river crossing', minimum: 12, theme: 'coast' },
+      { title: 'The far orchard', minimum: 15, theme: 'orchard' },
+    ];
+    const preservedCount = CHALLENGES.length + getExpeditions().length + CAMPAIGN_ADDITIONS.length;
+    widePractice = places.map((place, index) => {
+      const id = `wide-practice-v${RULE_VERSION}-${index + 1}`;
+      return {
+        ...generateDailyChallenge({
+          id, title: place.title, minimum: place.minimum, size: 12,
+          seed: seedOf(`detour:${id}`), chapter: preservedCount + index + 1,
+        }),
+        theme: place.theme,
+      };
+    });
+  }
+  return widePractice;
+}
 
 export function getExpeditions(): readonly AuthoredPuzzle[] {
   if (!expeditions) {
@@ -151,7 +174,7 @@ export function getSeasonPuzzles(): readonly AuthoredPuzzle[] {
 
 export function getPuzzles(): readonly AuthoredPuzzle[] {
   if (!campaign) {
-    const puzzles = [...getSeasonPuzzles(), ...getExpeditions(), ...CAMPAIGN_ADDITIONS];
+    const puzzles = [...getSeasonPuzzles(), ...getExpeditions(), ...CAMPAIGN_ADDITIONS, ...getWidePractice()];
     const ids = new Set<string>();
     const roads = new Set<string>();
     for (const puzzle of puzzles) {

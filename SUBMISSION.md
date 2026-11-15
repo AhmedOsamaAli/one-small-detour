@@ -43,10 +43,12 @@ the practice collection. Difficulty cycles through checked minimums of 2, 3, 4,
 
 ### A daily ritual, not a feed of level cards
 
-The daily puzzle opens directly. A separate practice campaign has **200 checked
+The daily puzzle opens directly. A separate practice campaign has **203 checked
 places** on one continuous, winding landscape. The numbered road progresses
 from one-exchange repairs to 15-exchange expeditions. Completing each unfinished
-stop unlocks the next; older discoveries stay replayable.
+stop unlocks the next; older discoveries stay replayable. The original 200 keep
+their order and IDs; three certified 12x12 landscapes come last. Daily editions
+are unchanged.
 
 Tapping a number previews the stop, with its illustrated goal card and visible
 Ready/Completed/Locked state. A clear Play or Replay button starts it.
@@ -82,7 +84,7 @@ light/dark mode with a sun/moon. A small
 3D/Flat selector beside the board defaults to 3D; Undo stays directly
 reachable. There is no Settings or scoreboard navigation. Saved-data removal
 remains available in the guide, and device reduced motion is handled automatically.
-Light/dark appearance starts with the device theme; a chosen mode is remembered
+Appearance starts in Light, even on dark-mode devices; a chosen mode is remembered
 in the browser and applies to the whole UI and matching island lighting rather
 than an inversion filter. Theme changes do not reset moves or timing. First visits begin with skippable, untimed hands-on
 practice and a short feature walkthrough before the daily countdown. An original
@@ -144,16 +146,16 @@ Do not present the local rehearsal as a live Reddit installation.
 | 20-30 s | A boulder and a directional bridge | "Homes and boulders stay put. Bridges must face the right way." |
 | 30-40 s | The whole road connects; courier visits the ordered homes | "Finish the whole road first. Then watch every arrival." |
 | 40-48 s | Frozen solve time and earned-rank popup after a saved daily finish | "Fewest exchanges first. Time breaks ties. Your score saves itself." |
-| 48-57 s | The 200-stop winding road, preview card and one-click mute | "One connected campaign. Preview a stop, then play. The daily island stays available." |
+| 48-57 s | The 203-stop winding road, preview card and one-click mute | "One connected campaign. Preview a stop, then play. The daily island stays available." |
 
 Use genuine recorded gameplay. Do not invent player counts, scores or community
 activity. Keep the final video below the event's stated one-minute ceiling.
 
 ## Local verification evidence
 
-- Current local release check: **71 tests passed**, all three TypeScript checks passed,
+- Current local release check: **82 tests passed**, all three TypeScript checks passed,
   and the production build passed.
-- The combined preview/onboarding/result/header/movement flow passed **104 isolated browser
+- The combined preview/onboarding/result/header/movement/selection flow passed **198 isolated browser
   assertions**, including light/dark inline layouts, explicit Play and error
   behavior, static reduced motion, natural feed scrolling and offscreen pause,
   three guided repairs, unblocked tap targets and the earned-rank popup.
@@ -162,6 +164,24 @@ activity. Keep the final video below the event's stated one-minute ceiling.
   verify manual theme overrides, preserved preferences and live attempts,
   question-mark help, and actual clicks on all six start-square markers in both
   3D and Flat (including resized 3D views).
+- Fresh game and preview visits start Light even on dark-mode devices. Saved
+  manual Dark choices survive reload, and legacy automatic settings migrate
+  without resetting other preferences. Enlarged couriers are checked against
+  actual 3D camera bounds and Flat map bounds on all four supported board sizes.
+- The selection matrix compares accelerated 3D hit testing with full semantic
+  geometry at **1,720 cell/edge samples** across real 6x6, 8x8, 10x10 and 12x12
+  islands. Both views exercise every available first/second hover issue category:
+  valid, fixed home, boulder, overlap and bounds. Separate rule tests enumerate
+  every first/second placement pair on representative boards of all four sizes.
+  This is a finite scenario matrix, not a claim about every possible device,
+  pointer coordinate or future daily island.
+- Shared text/surface token pairs pass 4.5:1 contrast checks in both palettes.
+  Actual representative 3D road/grass pixel samples measure **3.12:1 in light**
+  and **3.51:1 in dark**; raw terrain palettes are checked for every landscape
+  theme. These checks are not a full accessibility certification.
+- All 12x12 Practice controls and fitting are checked at nine portrait/landscape
+  sizes, in both views and appearances. The original 200 puzzle objects and 16
+  sampled daily editions match pre-change fingerprints exactly.
 - Dedicated motion checks verify ordinary-play in-board arrows, real intermediate
   Flat positions, paired terrain identity, reverse Undo, input gating, menu and
   simulated visibility-event pauses, reduced motion, resize/new-attempt cleanup
@@ -174,7 +194,7 @@ activity. Keep the final video below the event's stated one-minute ceiling.
 - The latest date audit covers **14 November 2026 through 13 November 2027**:
   365 distinct terrain layouts, 365 distinct road-decision layouts and 365
   independent regenerations. No solution witness appeared in a public edition.
-- The campaign has **200 distinct road-decision layouts**, all certified, and
+- The campaign has **203 distinct road-decision layouts**, all certified, and
   preserves every original place and discovery ID. Regenerating the 155 added
   places independently produces byte-for-byte identical content. The year of
   daily editions has no repeated campaign layout.
@@ -201,16 +221,18 @@ activity. Keep the final video below the event's stated one-minute ceiling.
   cancelling a full-road walk back to A without ghost arrivals. Boulder and
   overlap feedback identify the same offending cells in the living and flat
   views. The timer still freezes before the final walking celebration.
-- Campaign tests prove all 200 stops unlock in order without a progression
+- Campaign tests prove all 203 stops unlock in order without a progression
   dead end. Browser wins were used to check actual unlock transitions.
 - Browser checks cover previewing without starting, explicit Play/Replay,
   locked-stop messaging, camera navigation to stop 200, touch drags without
   accidental selections and reduced-motion behavior.
 - Checked viewport sizes: 320x568, 390x844, 844x390, 1024x768, 1440x900,
   568x360 and a narrow 248x568 pane. Controls, cells and result actions fit;
-  common small-phone flat cells measure at least 24.6px.
-- A local browser frame sample was approximately 17ms median/p95 on the
-  10x10 expedition. This is not an iOS/Android or native Devvit benchmark.
+  primary controls remain at least 44px. Grid cells adapt to board size and can
+  be small on narrow 12x12 layouts; Flat and keyboard navigation remain available.
+- Renderer diagnostics use isolated headless Edge with SwiftShader on a shared
+  machine. Draw/triangle counts, hit-test timings and frame samples are recorded
+  separately; they are not physical-phone or native Devvit frame-rate evidence.
 - Existing score records are retained under earlier ruleset keys rather than
   compared with the changed version-4 mechanics.
 
@@ -233,10 +255,11 @@ them with native screenshots from the authorized playtest.
 - [Start-square arrows during ordinary play](submission-assets/board-start-arrows-mobile.png)
 - [A Flat exchange in flight](submission-assets/flat-swap-mobile.png)
 - [Daily island, portrait](submission-assets/daily-mobile.png)
+- [Moonlit island, portrait](submission-assets/daily-dark-mobile.png)
 - [Daily island, desktop](submission-assets/daily-desktop.png)
+- [A late 12x12 Practice island](submission-assets/wide-practice-mobile.png)
+- [Plant-framed welcome with a choice of views](submission-assets/welcome-mobile.png)
 - [Connected campaign with a clear stop preview](submission-assets/campaign-mobile.png)
-- [Clear fixed-boulder feedback](submission-assets/tile-feedback-mobile.png)
-- [Illustrated tile rules](submission-assets/tile-rules-mobile.png)
 - [Numbered whole-patch flat selection](submission-assets/flat-selection-mobile.png)
 - [Prominent earned-rank popup](submission-assets/completion-mobile.png)
 - [Illustrated how-to-play guide](submission-assets/guide-mobile.png)

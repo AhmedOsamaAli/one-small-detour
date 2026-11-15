@@ -1,8 +1,8 @@
 import type { Anchor, Board, Cell, Goal, JourneyPlan, Mode, Puzzle, Repair, RouteCheck, Rules, Shape, Swap, Tile } from './types.ts';
 
 export const RULE_VERSION = '4';
-export const BOARD_SIZES = [6, 8, 10] as const;
-export const MAX_BOARD_SIZE = 10;
+export const BOARD_SIZES = [6, 8, 10, 12] as const;
+export const MAX_BOARD_SIZE = 12;
 export const MAX_EXCHANGES = 2000;
 
 export function boardSize(board: Board): number {

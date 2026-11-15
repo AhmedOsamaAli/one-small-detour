@@ -10,42 +10,46 @@ const saved = (value: unknown) => ({
   },
 });
 
-test('existing preferences gain device appearance without losing discoveries, sound or guide choices', () => {
-  assert.deepEqual(loadPreferences(saved(existing)), { value: { ...existing, appearance: 'system' }, warning: null });
-  assert.equal(loadPreferences({ getItem: () => null }).value.appearance, 'system');
+test('new and existing preferences default to light without losing discoveries, sound or guide choices', () => {
+  assert.deepEqual(loadPreferences(saved(existing)), { value: { ...existing, appearance: 'light' }, warning: null });
+  assert.equal(loadPreferences({ getItem: () => null }).value.appearance, 'light');
 });
 
-test('explicit light and dark choices override the device, while first use follows it', () => {
-  for (const systemDark of [false, true]) {
-    assert.equal(resolveAppearance('light', systemDark), 'light');
-    assert.equal(resolveAppearance('dark', systemDark), 'dark');
-    assert.equal(resolveAppearance('system', systemDark), systemDark ? 'dark' : 'light');
-  }
-  for (const appearance of ['light', 'dark', 'system'] as const) {
+test('explicit light and dark choices remain unchanged', () => {
+  for (const appearance of ['light', 'dark'] as const) {
+    assert.equal(resolveAppearance(appearance), appearance);
     assert.deepEqual(loadPreferences(saved({ ...existing, appearance })), {
       value: { ...existing, appearance }, warning: null,
     });
   }
 });
 
+test('legacy automatic appearance migrates to light without resetting any other preference', () => {
+  assert.equal(resolveAppearance('system'), 'light');
+  assert.deepEqual(loadPreferences(saved({ ...existing, appearance: 'system' })), {
+    value: { ...existing, appearance: 'light' }, warning: null,
+  });
+});
+
 test('an invalid appearance is reported without discarding other progress', (t) => {
   const warning = t.mock.method(console, 'warn', () => {});
   const result = loadPreferences(saved({ ...existing, appearance: 'unknown' }));
-  assert.deepEqual(result.value, { ...existing, appearance: 'system' });
+  assert.deepEqual(result.value, { ...existing, appearance: 'light' });
   assert.match(result.warning ?? '', /saved appearance/i);
+  assert.match(result.warning ?? '', /Light mode/);
   assert.equal(warning.mock.calls.length, 1);
 });
 
 test('invalid guides and appearance are reported independently, preserving valid settings', (t) => {
   const warning = t.mock.method(console, 'warn', () => {});
   const result = loadPreferences(saved({ ...existing, seenGuides: ['unknown'], appearance: null }));
-  assert.deepEqual(result.value, { ...existing, seenGuides: [], appearance: 'system' });
+  assert.deepEqual(result.value, { ...existing, seenGuides: [], appearance: 'light' });
   assert.match(result.warning ?? '', /walkthrough/i);
   assert.match(result.warning ?? '', /appearance/i);
   assert.equal(warning.mock.calls.length, 2);
 });
 
-test('unreadable storage and malformed JSON remain explicit failures with safe device defaults', (t) => {
+test('unreadable storage and malformed JSON remain explicit failures with safe light defaults', (t) => {
   const warning = t.mock.method(console, 'warn', () => {});
   for (const storage of [
     { getItem: () => { throw new Error('Storage access denied.'); } },
@@ -53,7 +57,7 @@ test('unreadable storage and malformed JSON remain explicit failures with safe d
     saved({ appearance: 'dark' }),
   ]) {
     const result = loadPreferences(storage);
-    assert.equal(result.value.appearance, 'system');
+    assert.equal(result.value.appearance, 'light');
     assert.match(result.warning ?? '', /could not be read/);
   }
   assert.equal(warning.mock.calls.length, 3);

@@ -163,9 +163,12 @@ function orientLandscape(puzzle: AuthoredPuzzle, random: () => number): Authored
   return result;
 }
 
-export function generateDailyChallenge(request: ChallengeRequest): AuthoredPuzzle {
+export function generateDailyChallenge(request: ChallengeRequest & { size?: 12 }): AuthoredPuzzle {
   if (!Number.isInteger(request.minimum) || request.minimum < 1 || request.minimum > 15) {
     throw new Error('Daily landscapes support certified minimums from one through fifteen.');
+  }
+  if (request.size !== undefined && (request.size !== 12 || request.minimum <= 6)) {
+    throw new Error('Wide practice landscapes require size twelve and a certified minimum above six.');
   }
   const random = randomSource(request.seed ^ 0x7f4a7c15);
   if (request.minimum <= 6) {
@@ -184,13 +187,17 @@ export function generateDailyChallenge(request: ChallengeRequest): AuthoredPuzzl
     return orientLandscape({ ...classic, board, budget: MAX_EXCHANGES }, random);
   }
 
-  const size = 10;
+  const size = request.size ?? 10;
+  const stockStart = size - 3;
   const grid = Array.from({ length: size }, () => Array<string>(size).fill('x'));
   const path: Cell[] = [{ row: 0, col: 0 }];
   const spiral = request.minimum > 10 || random() < 0.5;
-  const corners = spiral
-    ? [[0, 5], [9, 5], [9, 0], [2, 0], [2, 3], [7, 3], [7, 2]]
-    : [[0, 5], [2, 5], [2, 0], [4, 0], [4, 5], [6, 5], [6, 0], [8, 0], [8, 5]];
+  const corners = size === 12 ? spiral
+    ? [[0, 7], [11, 7], [11, 0], [2, 0], [2, 5], [9, 5], [9, 2], [4, 2], [4, 3]]
+    : [[0, 7], [2, 7], [2, 0], [4, 0], [4, 7], [6, 7], [6, 0], [8, 0], [8, 7], [10, 7]]
+    : spiral
+      ? [[0, 5], [9, 5], [9, 0], [2, 0], [2, 3], [7, 3], [7, 2]]
+      : [[0, 5], [2, 5], [2, 0], [4, 0], [4, 5], [6, 5], [6, 0], [8, 0], [8, 5]];
   let row = 0;
   let col = 0;
   for (const [r, c] of corners) {
@@ -216,7 +223,7 @@ export function generateDailyChallenge(request: ChallengeRequest): AuthoredPuzzl
     grid[cell.row]![cell.col] = anchor;
   });
   for (let r = 0; r < size; r++) {
-    for (let c = 7; c < size; c++) {
+    for (let c = stockStart; c < size; c++) {
       const line = grid[r];
       if (!line) throw new Error('The stock garden lost a row.');
       line[c] = random() < 0.22 ? '~' : '.';
@@ -244,16 +251,16 @@ export function generateDailyChallenge(request: ChallengeRequest): AuthoredPuzzl
     selected = shuffle(selected, random);
   }
   const horizontal = selected.filter((pair) => pair.rows === 1).length;
-  if (horizontal > 10) throw new Error('The long trail needs more horizontal stock than the garden can hold.');
+  if (horizontal > size) throw new Error('The long trail needs more horizontal stock than the garden can hold.');
   const stockHorizontal: Cell[] = [];
   const stockVertical: Cell[] = [];
   let remainingHorizontal = horizontal;
   for (let r = 0; r < size; r += 2) {
     const count = Math.min(2, remainingHorizontal);
-    if (count) stockHorizontal.push({ row: r, col: 7 });
-    if (count === 2) stockHorizontal.push({ row: r + 1, col: 7 });
-    if (!count) stockVertical.push({ row: r, col: 7 }, { row: r, col: 8 });
-    stockVertical.push({ row: r, col: 9 });
+    if (count) stockHorizontal.push({ row: r, col: stockStart });
+    if (count === 2) stockHorizontal.push({ row: r + 1, col: stockStart });
+    if (!count) stockVertical.push({ row: r, col: stockStart }, { row: r, col: stockStart + 1 });
+    stockVertical.push({ row: r, col: stockStart + 2 });
     remainingHorizontal -= count;
   }
   const horizontalStock = shuffle(stockHorizontal, random);

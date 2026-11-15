@@ -32,8 +32,10 @@ For signed-in players, these flags are also linked to the platform identifier
 within this community's installation. Native flags expire within 31 days of
 their last update. Guest choices stay in browser storage only; the local
 development server keeps its synced flags in memory. Failed sync is reported,
-and does not prevent play. Device appearance and motion preferences are read
-locally. A chosen appearance stays in browser storage, is not synced to the
+and does not prevent play. The device motion preference is read locally.
+Appearance starts in Light, independently of the device theme; manually saved
+Light/Dark choices are preserved, and legacy automatic settings migrate to Light.
+A chosen appearance stays in browser storage, is not synced to the
 server, and is shared only between this app's same-origin preview and game.
 Existing local progress is preserved when the new preference is introduced.
 No appearance-tracking record is collected.
