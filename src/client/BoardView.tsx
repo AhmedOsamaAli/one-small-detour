@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { isAnchor, locate, patchCells, tileAt } from '../shared/rules.ts';
-import type { Anchor, Board, Celebration, Cell, FrameAxes, JourneyPlayback, JourneyStop, Shape, Swap, Theme } from '../shared/types.ts';
+import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, JourneyPlayback, JourneyStop, Shape, Swap, Theme } from '../shared/types.ts';
 import { JourneyPlayer } from '../shared/playback.ts';
 import type { LivingIsland } from './island.ts';
 import { BrandMark, FLAT_AXES, Icon } from './components.tsx';
@@ -44,6 +44,7 @@ interface BoardProps {
   onBusy: (busy: boolean) => void;
   onFallback: (message: string) => void;
   onProjection: (axes: FrameAxes) => void;
+  onGuideBounds: (bounds: GuideBounds | null) => void;
   onArrival: (revision: number, stop: JourneyStop) => void;
   onJourneyEnd: (revision: number) => void;
 }
@@ -148,6 +149,29 @@ export function BoardView(props: BoardProps) {
 
   useEffect(() => { island.current?.setHighlights(props.shape, props.first, props.second, props.hover, props.invalid, props.blockedCells); },
     [props.shape, props.first, props.second, props.hover, props.invalid, props.blockedCells, props.flat, worldReady]);
+  useLayoutEffect(() => {
+    const element = stage.current;
+    if (!element) return;
+    const update = (): void => {
+      if (!props.guide || !props.hover) { callbacks.current.onGuideBounds(null); return; }
+      if (!props.flat) {
+        callbacks.current.onGuideBounds(island.current?.guideBounds(props.hover, props.shape) ?? null);
+        return;
+      }
+      const parts = patchCells(props.hover, props.shape).map((cell) =>
+        flatMap.current?.querySelector<HTMLElement>(`[data-row="${cell.row}"][data-col="${cell.col}"]`)?.getBoundingClientRect());
+      const boxes = parts.filter((box): box is DOMRect => box !== undefined);
+      if (boxes.length !== props.shape.rows * props.shape.cols) { callbacks.current.onGuideBounds(null); return; }
+      const x = Math.min(...boxes.map((box) => box.x));
+      const y = Math.min(...boxes.map((box) => box.y));
+      callbacks.current.onGuideBounds({ x, y, width: Math.max(...boxes.map((box) => box.right)) - x,
+        height: Math.max(...boxes.map((box) => box.bottom)) - y });
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    update();
+    return () => observer.disconnect();
+  }, [props.guide, props.hover, props.shape, props.flat, flatExtent, worldReady]);
   useEffect(() => { callbacks.current.onReady(props.flat || worldReady); },
     [props.flat, props.puzzleId, props.readyRevision, worldReady]);
   useEffect(() => { island.current?.setReducedMotion(props.reduced); }, [props.reduced, props.flat, worldReady]);

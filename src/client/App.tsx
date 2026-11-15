@@ -9,13 +9,14 @@ import type { PatchIssue } from '../shared/rules.ts';
 import { difficultyLabel } from '../shared/difficulty.ts';
 import { CelebrationHold } from '../shared/playback.ts';
 import { campaignPlaces, nextCampaignPlace, practiceGate } from '../shared/progression.ts';
-import { TUTORIAL, TUTORIAL_MOVE, TUTORIAL_START_SHAPE, tutorialStage } from '../shared/tutorial.ts';
+import { TUTORIAL, TUTORIAL_MOVES, TUTORIAL_START_SHAPE, tutorialStage } from '../shared/tutorial.ts';
+import { TutorialCoach } from './TutorialCoach.tsx';
 import { AdventureMap } from './AdventureMap.tsx';
 import { useSolveTimer } from './useSolveTimer.ts';
 import { formatSolveTime } from '../shared/timing.ts';
 import { isRecord } from '../shared/validation.ts';
 import { isGuideTopics, mergeGuideTopics, newTileGuides } from '../shared/guidance.ts';
-import type { Anchor, Board, Bootstrap, Celebration, Cell, FrameAxes, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
+import type { Anchor, Board, Bootstrap, Celebration, Cell, FrameAxes, GuideBounds, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
 
 type Kind = 'daily' | 'studio' | 'guide';
 type Dialog = 'guide' | 'atlas' | 'erase' | 'welcome' | 'tour-tools' | 'tour-places' | 'tiles' | null;
@@ -143,6 +144,8 @@ export default function App() {
   const [travelerMoving, setTravelerMoving] = useState(false);
   const [arrivalComplete, setArrivalComplete] = useState(false);
   const [resultRevealed, setResultRevealed] = useState(false);
+  const [resultDismissed, setResultDismissed] = useState(false);
+  const [guideBounds, setGuideBounds] = useState<GuideBounds | null>(null);
   const celebrationHold = useRef<{ revision: number; flat: boolean; clock: CelebrationHold } | null>(null);
   const [frameAxes, setFrameAxes] = useState<FrameAxes>(FLAT_AXES);
   const guideWrites = useRef(new Set<Promise<void>>());
@@ -171,6 +174,7 @@ export default function App() {
     setTravelerMoving(false);
     setArrivalComplete(false);
     setResultRevealed(false);
+    setResultDismissed(false);
     celebrationHold.current = null;
     setCelebration(null);
   }, []);
@@ -323,7 +327,8 @@ export default function App() {
   const routes = roadReady ? check.routes : EMPTY_ROUTES;
   const footprint = moves.reduce((total, move) => total + 2 * move.rows * move.cols, 0);
   const shapes = useMemo(() => shapesFor(area), [area]);
-  const guideStage = tutorialStage(shape, first, roadReady);
+  const guideMove = TUTORIAL_MOVES[moves.length] ?? null;
+  const guideStage = run?.kind === 'guide' ? tutorialStage(shape, first, roadReady, guideMove) : null;
   const hoverIssue = useMemo(() => {
     if (!hover || !run || roadReady || busy || !timer.canPlay || (run.kind === 'guide' && guideStage === 'frame')) return null;
     return selectionIssue(board, hover, shape, first);
@@ -427,7 +432,7 @@ export default function App() {
     resumePreferredSound();
     if (travelerMoving) { notify('Let the traveler reach the next home. Undo is still free.'); return; }
     if (roadReady) { notify(allHomesArrived ? 'Journey complete. Undo to try another repair.' : 'The traveler is on the way. Undo if you want to change the route.'); return; }
-    if (run.kind === 'guide' && guideStage === 'frame') { notify('First choose the glowing tall frame beside the board.'); return; }
+    if (run.kind === 'guide' && guideStage === 'frame') { notify('First choose the glowing frame beside the board.'); return; }
     if (moves.length >= rules.budget) { notify('This long attempt has reached its save limit. Undo a swap to continue.'); return; }
     const issue = selectionIssue(board, cell, shape, first);
     if (issue) { setHover(cell); setSelectionFeedback(issue); return; }
@@ -436,20 +441,20 @@ export default function App() {
       setFirst(null); setHover(null); return;
     }
     if (!first) {
-      if (run.kind === 'guide' && (cell.row !== TUTORIAL_MOVE.a.row || cell.col !== TUTORIAL_MOVE.a.col)) {
-        notify('For this little lesson, tap the orange-framed stone and pond.');
+      if (run.kind === 'guide' && (cell.row !== guideMove?.a.row || cell.col !== guideMove?.a.col)) {
+        notify('Tap the orange-framed pair I am pointing to.');
         return;
       }
       setFirst(cell); setHover(null); audio.current?.select(false);
     } else {
-      if (run.kind === 'guide' && (cell.row !== TUTORIAL_MOVE.b.row || cell.col !== TUTORIAL_MOVE.b.col)) {
+      if (run.kind === 'guide' && (cell.row !== guideMove?.b.row || cell.col !== guideMove?.b.col)) {
         notify('Now tap the blue-framed empty pair. The matching patches will trade places.');
         return;
       }
       audio.current?.select(true);
       commitSwap(first, cell);
     }
-  }, [run, timer.canPlay, busy, travelerMoving, allHomesArrived, roadReady, moves.length, rules.budget, board, shape, first, guideStage, notify, resumePreferredSound, commitSwap]);
+  }, [run, timer.canPlay, busy, travelerMoving, allHomesArrived, roadReady, moves.length, rules.budget, board, shape, first, guideStage, guideMove, notify, resumePreferredSound, commitSwap]);
 
   const undo = (): void => {
     if (!run || moves.length === 0 || busy) return;
@@ -610,15 +615,20 @@ export default function App() {
     busy ? 'Exchanging...' : allHomesArrived ? 'Everyone made it home!' : travelerMoving ? `On the way to ${nextStop ?? 'the final home'}...` :
     roadReady ? nextStop ? `Next stop: ${nextStop}` : 'Final stop reached.' :
     moves.length >= rules.budget ? 'Undo a swap to continue.' :
-    run?.kind === 'guide' ? guideStage === 'frame' ? 'Choose the tall frame.' : !first ? 'Tap the orange pair.' : 'Tap the blue pair.' :
+    run?.kind === 'guide' ? guideStage === 'frame' ? 'Choose the glowing frame.' : !first ? 'Tap the orange pair.' : 'Tap the blue pair.' :
     !first ? 'Choose a patch.' : 'Choose the matching patch.';
   const earnedRank = won && published && run?.kind === 'daily' && myRank?.edition === run.edition && myRank.rank !== null ? myRank : null;
   const rankLabel = run?.edition === bootstrap?.edition?.id ? 'today' : `on ${todayLabel}`;
   const pendingTopics = pendingRun ? newTileGuides(pendingRun.puzzle.board, preferences.seenGuides) : [];
+  const completionOpen = won && !busy && !resultDismissed && dialog === null;
+  const guideInstruction = busy ? 'Watch the swap.' : guideStage === 'frame' ?
+    `Tap the ${guideMove?.rows === 1 ? 'wide' : 'tall'} frame.` : guideStage === 'home' ? 'Watch the way home.' :
+      guideStage === 'second' ? 'Tap the blue pair.' : 'Tap the orange pair.';
 
   return <div className={`app-shell focused-game direct-play viewport-fit ${reducedMotion ? 'reduce-motion' : ''}`}
     data-appearance={dark ? 'dark' : 'light'} data-onboarding={run?.kind === 'guide' ? 'practice' : dialog === 'tiles' ? 'tiles' : 'complete'}
     data-guide-step={run?.kind === 'guide' ? guideStage : undefined}
+    data-guide-exchange={run?.kind === 'guide' ? Math.min(moves.length + 1, TUTORIAL_MOVES.length) : undefined}
     data-timer-phase={timer.phase} data-score-state={publishing ? 'saving' : published ? 'saved' : saveError ? 'error' : 'idle'}
     data-completion-state={won ? 'result' : allHomesArrived ? 'celebrating' : roadReady ? 'walking' : 'repairing'}>
     <a className="skip-link" href="#game-controls">Skip to game controls</a>
@@ -628,7 +638,7 @@ export default function App() {
       </button>
       <nav className="header-nav" aria-label="Game navigation">
         <button className="icon-button map-toggle" disabled={!bootstrap} onClick={() => { setDialogError(null); setDialog('atlas'); }}
-          aria-label="Adventure map" title="Adventure map"><Icon name="map"/></button>
+          aria-label="Practice map" title="Practice map"><Icon name="map"/></button>
         <button className={`icon-button sound-toggle ${soundOn ? 'sound-is-on' : ''}`} onClick={() => { void toggleSound(); }}
           aria-label={soundOn ? 'Turn sound off' : 'Turn sound on'} aria-pressed={soundOn} title={soundOn ? 'Soundscape on' : 'Listen to the island'}>
           <Icon name={soundOn ? 'sound' : 'mute'}/>
@@ -654,7 +664,7 @@ export default function App() {
             <Icon name="trophy" size={16}/>{bootstrap.source === 'local' && <span>Local ·</span>}<strong>{rankSummary(earnedRank, rankLabel)}</strong>
           </div>}
           {run.kind !== 'daily' && <p className="practice-note"><Icon name={run.kind === 'guide' ? 'book' : 'map'} size={16}/>
-            {run.kind === 'guide' ? 'Practice · no timer' : 'Adventure · unranked'}</p>}
+            {run.kind === 'guide' ? 'Practice · no timer' : 'Practice · unranked'}</p>}
         </div>
         <div className="mission" aria-label="Connect every home in this order before the traveler starts">
           <ol className="journey-order" aria-label={`Visit ${run.puzzle.journey?.join(', then ') ?? ''} in order`}>
@@ -668,25 +678,23 @@ export default function App() {
           </ol>
           <span className="arrival-announcement" aria-live="polite">{arrived.length ? `Arrived at ${arrived.at(-1)}.` : ''}</span>
         </div>
-        {run.kind === 'guide' && <div className="lesson-coach" role="status">
-          <GuideCourier/>
-          <span className="lesson-step" aria-label="Walkthrough step one of three. No timer."><Icon name="leaf" size={15}/>NO TIMER</span>
-          <strong id="lesson-instruction">{guideStage === 'frame' ? 'Choose the tall frame.' : guideStage === 'home' ? 'Watch the way home.' : guideStage === 'second' ? 'Tap the blue pair.' : 'Tap the orange pair.'}</strong>
-          <span>{roadReady ? 'The whole road connects before the traveler moves.' : 'The two matching patches trade places.'}</span>
-          <button className="text-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip <Icon name="arrow" size={15}/></button>
-        </div>}
       </aside>
 
       <section ref={stageSection} className="island-panel" aria-label="The playable island">
+        {run.kind === 'guide' && <TutorialCoach target={guideBounds} frame={guideStage === 'frame'}
+          step={Math.min(moves.length + 1, TUTORIAL_MOVES.length)} total={TUTORIAL_MOVES.length}
+          instruction={guideInstruction} pointing={!busy && !roadReady && dialog === null && boardReady}
+          onSkip={() => finishWalkthrough(true)}/>}
         <div className="play-toolbar" id="game-controls" tabIndex={-1}>
           <div className="visual-frames" role="group" aria-label="Frame orientation" aria-describedby={run.kind === 'guide' ? 'lesson-instruction' : undefined}>
             <span className="frame-label">Frame</span>
-            {shapes.map((item) => <button key={`${item.rows}:${item.cols}`} className={`frame-option ${shape.rows === item.rows && shape.cols === item.cols ? 'chosen' : ''} ${run.kind === 'guide' && guideStage === 'frame' && item.rows === TUTORIAL_MOVE.rows && item.cols === TUTORIAL_MOVE.cols ? 'tutorial-target' : ''}`}
+            {shapes.map((item) => <button key={`${item.rows}:${item.cols}`} className={`frame-option ${shape.rows === item.rows && shape.cols === item.cols ? 'chosen' : ''} ${run.kind === 'guide' && guideStage === 'frame' && item.rows === guideMove?.rows && item.cols === guideMove.cols ? 'tutorial-target' : ''}`}
               disabled={!timer.canPlay || busy || travelerMoving}
               aria-label={`Frame ${item.rows} rows by ${item.cols} columns`} aria-pressed={shape.rows === item.rows && shape.cols === item.cols}
               onClick={() => {
                 if (shape.rows !== item.rows || shape.cols !== item.cols) {
                   setShape(item); setFirst(null); setHover(null); setSelectionFeedback(null);
+                  if (run.kind === 'guide') setNotice(null);
                 }
               }}>
               <ShapeGlyph shape={item} axes={frameAxes}/>
@@ -704,7 +712,7 @@ export default function App() {
         </div>
         <BoardView board={board} puzzleId={run.puzzle.id} theme={run.puzzle.theme} seed={localHash(run.puzzle.id)}
           shape={shape} first={first} second={null}
-          hover={run.kind === 'guide' ? !roadReady && guideStage !== 'frame' ? first ? TUTORIAL_MOVE.b : TUTORIAL_MOVE.a : null : hover}
+          hover={run.kind === 'guide' ? !roadReady && guideStage !== 'frame' ? first ? guideMove?.b ?? null : guideMove?.a ?? null : null : hover}
           invalid={run.kind === 'guide' ? false : feedback !== null} blockedCells={feedbackCells}
           routes={routes} transition={transition} reduced={reducedMotion} dark={dark} flat={preferences.flat} guide={run.kind === 'guide'}
           celebration={celebration} arrived={arrived} restingStop={restingStop}
@@ -716,13 +724,14 @@ export default function App() {
                 <><span className="loading-island"><BrandMark/></span><span>Preparing your start...</span></>}
           </div> : timed && timer.phase === 'running' && timer.elapsedMs < 400
             ? <div className="countdown-go" role="status">Go!</div> : null}
-          playback={playback} busy={busy} paused={dialog !== null} onProjection={setFrameAxes} onArrival={onArrival} onJourneyEnd={onJourneyEnd}
+          playback={playback} busy={busy} paused={dialog !== null || completionOpen} onProjection={setFrameAxes}
+          onGuideBounds={setGuideBounds} onArrival={onArrival} onJourneyEnd={onJourneyEnd}
           onCell={onCell} onHover={onHover} onBusy={setBusy} onFallback={fallback}/>
         <div className="board-footer">
         <div className={`island-status ${feedback ? 'selection-warning' : ''}`}
           role={selectionFeedback ? 'alert' : 'status'} aria-live={selectionFeedback ? 'assertive' : 'polite'}
           data-testid="selection-status" title={feedback?.message} aria-label={feedback?.message}>
-          {!won && <>{feedback ? <Icon name="warning" size={18}/> : <span className="status-step">{first ? '2' : '1'}</span>}
+          {!won && (run.kind !== 'guide' || feedback) && <>{feedback ? <Icon name="warning" size={18}/> : <span className="status-step">{first ? '2' : '1'}</span>}
             <span>{feedback ? selectionLabels[feedback.code] : status}</span></>}
         </div>
         <div className="view-selector" role="group" aria-label="Map view">
@@ -732,13 +741,19 @@ export default function App() {
             onClick={() => setPreferences((current) => current.flat ? current : { ...current, flat: true })}><Icon name="grid" size={14}/><span>Flat</span></button>
         </div>
         </div>
-        {won && !busy && <div className={`result-card ${run.puzzle.minimum === moves.length ? 'perfect-result' : ''} ${reducedMotion ? '' : 'celebrate-completion'}`} data-testid="result-card" role="status">
+        {completionOpen && <Modal title={run.kind === 'daily' ? 'Your daily result.' : run.kind === 'guide' ? 'You found the way.' : 'Practice complete.'}
+          kind="guide" className="completion-dialog" emblem={<Icon name="trophy" size={25}/>} onClose={() => setResultDismissed(true)}>
+        <div className={`result-card ${run.puzzle.minimum === moves.length ? 'perfect-result' : ''} ${reducedMotion ? '' : 'celebrate-completion'}`} data-testid="result-card">
           <div className="completion-confetti" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <i key={index}
             style={{ left: `${(index * 37) % 100}%`, animationDelay: `${index * 38}ms` }}/>)}</div>
           <CompletionSeal perfect={run.puzzle.minimum === moves.length}/>
           <div className="result-copy">
             <span className="result-label"><Icon name="check" size={13}/>ROAD RESTORED</span>
-            <h2>{run.kind === 'guide' ? 'You have the idea!' : run.puzzle.minimum === moves.length ? 'Perfect detour!' : 'Everyone is home!'}</h2>
+            {earnedRank ? <div className="rank-reveal" data-testid="rank-popup" role="status">
+              <span>{earnedRank.source === 'local' ? 'Local rank' : 'Your rank'} {rankLabel}</span>
+              <strong>#{earnedRank.rank}</strong>
+              {earnedRank.topPercent !== null && <p>Top {earnedRank.topPercent < 1 ? '<1' : Math.ceil(earnedRank.topPercent)}% {rankLabel}</p>}
+            </div> : <h2>{run.kind === 'guide' ? 'Three little repairs. Everyone is home!' : run.puzzle.minimum === moves.length ? 'Perfect detour!' : 'Everyone is home!'}</h2>}
             <div className="result-metrics">
               <span><Icon name="swap" size={15}/>{moves.length} {moves.length === 1 ? 'exchange' : 'exchanges'}</span>
               <span><Icon name={timed ? 'clock' : 'grid'} size={15}/>{timed ? formatSolveTime(elapsedMs, true) : `${footprint} tiles moved`}</span>
@@ -749,16 +764,17 @@ export default function App() {
             </p>}
             {run.kind === 'daily' && <p className={`score-save-status ${saveError ? 'save-failed' : ''}`} data-testid="save-status">
               <Icon name={saveError ? 'warning' : 'trophy'} size={14}/>
-              {autoSaveSuppressed ? 'Records removed. Restart for a new ranked attempt.' : saveError ? `Not saved: ${saveError}` : publishing ? 'Saving your score...' :
-                earnedRank ? `Saved · ${rankSummary(earnedRank, rankLabel)}` : 'Unranked · sign in to save a rank'}
+              {autoSaveSuppressed ? 'Records removed. Begin a fresh attempt to rank again.' : saveError ? `Not saved: ${saveError}` : publishing ? 'Saving your score...' :
+                earnedRank ? 'Saved automatically.' : 'Unranked · sign in to save a rank'}
             </p>}
           </div>
-          <div className="result-actions">
+        </div>
+          <div className="result-actions completion-actions">
             {run.kind === 'guide' ? <button className="primary-button" onClick={() => setDialog('tour-tools')}>See your tools <Icon name="arrow" size={17}/></button> :
-              run.kind === 'daily' ? <>{saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}<button className="secondary-button" onClick={() => { setDialogError(null); setDialog('atlas'); }} aria-label="Explore the unranked adventure map"><Icon name="map" size={17}/>View campaign</button></> :
-                <button className="primary-button" onClick={() => { setDialogError(null); setDialog('atlas'); }} aria-label="Continue on the campaign map">View next stop <Icon name="arrow" size={17}/></button>}
+              run.kind === 'daily' ? <>{saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}<button className="primary-button" onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }} aria-label="Play more in practice"><Icon name="map" size={17}/>Play more</button></> :
+                <button className="primary-button" onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }} aria-label="View the next practice stop">Play more <Icon name="arrow" size={17}/></button>}
           </div>
-        </div>}
+        </Modal>}
       </section>
 
     </main>}
@@ -768,7 +784,7 @@ export default function App() {
     {dialog === 'welcome' && <Modal title="Move a little world." kind="guide" className="walkthrough-dialog" onClose={() => finishWalkthrough(true)}>
       <p className="tour-eyebrow">1 / 3 · A LITTLE PRACTICE</p>
       <div className="dialog-welcome"><GuideCourier/><p className="dialog-intro"><strong>I'll show you the way.</strong>
-        Choose a frame, then tap two matching patches to connect A to B. Homes stay fixed. I'll mark exactly what to tap.</p></div>
+        I'll guide three little exchanges to connect A, then B, then C. Choose the glowing frame and follow my next tap. Homes stay fixed.</p></div>
       <p className="tour-reassurance"><Icon name="clock" size={18}/>This practice has no timer and cannot affect your rank.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
         <button className="primary-button" onClick={() => setDialog(null)}>Show me <Icon name="arrow" size={17}/></button></div>
@@ -813,7 +829,7 @@ export default function App() {
       </div>
     </Modal>}
 
-    {dialog === 'atlas' && <Modal title="Adventure map." kind="map" className="adventure-dialog" onClose={() => {
+    {dialog === 'atlas' && <Modal title="Practice map." kind="map" className="adventure-dialog" onClose={() => {
       practiceRequest.current++; setPracticeLoading(null); setDialog(null);
     }} wide>
       <AdventureMap places={bootstrap?.catalog ?? []} completed={preferences.completed} currentId={run?.puzzle.id ?? ''}

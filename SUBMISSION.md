@@ -74,15 +74,17 @@ Invalid selections identify the offending cells with a direct on-board warning.
 Paving and fixed boulders have distinct appearances; bridge arrows show their
 permitted directions. A visible book button opens the illustrated tile rules.
 The Web Audio soundscape is original, opt-in and has a visible persistent mute.
-Direct header buttons open the adventure map and guide or mute sound. A small
+Direct header buttons open the practice map and guide or mute sound. A small
 3D/Flat selector beside the board defaults to 3D; Undo stays directly
 reachable. There is no Settings or scoreboard navigation. Saved-data removal
 remains available in the guide, and device reduced motion is handled automatically.
 Light/dark appearance adapts automatically, with matching island lighting rather
 than an inversion filter. First visits begin with skippable, untimed hands-on
 practice and a short feature walkthrough before the daily countdown. An original
-drawn courier points out the actual frame chooser, and the player must select
-the tall frame and tap both patches before the lesson completes. Guide
+drawn courier speaks beside the board and points to actual frame/patch targets.
+The player makes three guided exchanges with tall/wide frames before the
+complete A-B-C road is ready. Guidance follows Undo and does not cover the
+playable targets. Guide
 acknowledgements are remembered across app updates for signed-in players; new
 boulder/bridge rules are introduced before the relevant island starts.
 The guide, privacy confirmation and completion
@@ -93,6 +95,13 @@ generic acceptance prompts. Map previews do not start a timer accidentally.
 The game fits a single viewport in portrait and landscape, with a fitted flat
 alternative, keyboard navigation and reduced motion. The heavy landscape module
 loads separately from the lightweight inline Reddit preview and flat view.
+The preview itself is an original miniature island: cosy homes, trees, water
+and a courier waiting for a way home. A silent example exchange lets him walk
+home and wave; it does not reveal the daily solution. The clear
+**Play today's island** button launches the game. Offscreen animation pauses,
+reduced motion gets a static scene, and feed scrolling is never captured.
+Completion uses one dismissible popup with prominent earned rank/percentage.
+Player-facing navigation says **Practice**, with **Play more** after a win.
 
 ### How it was built
 
@@ -120,11 +129,11 @@ Do not present the local rehearsal as a live Reddit installation.
 
 | Time | Show | Say |
 |---|---|---|
-| 0-7 s | Inline preview, expand today's island, 3-2-1 countdown | "Today's small world has a broken way home." |
+| 0-7 s | Inviting miniature preview, expand into the first-visit guide | "Today's small world has a broken way home. The courier shows your first steps." |
 | 7-20 s | Two taps exchange a patch; Undo once | "Don't move the traveler. Move two matching pieces of the world." |
 | 20-30 s | A boulder and a directional bridge | "Homes and boulders stay put. Bridges must face the right way." |
 | 30-40 s | The whole road connects; courier visits the ordered homes | "Finish the whole road first. Then watch every arrival." |
-| 40-48 s | Frozen solve time, automatically saved result and own rank | "Fewest exchanges first. Time breaks ties. Your score saves itself." |
+| 40-48 s | Frozen solve time and earned-rank popup after a saved daily finish | "Fewest exchanges first. Time breaks ties. Your score saves itself." |
 | 48-57 s | The 200-stop winding road, preview card and one-click mute | "One connected campaign. Preview a stop, then play. The daily island stays available." |
 
 Use genuine recorded gameplay. Do not invent player counts, scores or community
@@ -134,6 +143,12 @@ activity. Keep the final video below the event's stated one-minute ceiling.
 
 - Current local release check: **66 tests passed**, all three TypeScript checks passed,
   and the production build passed.
+- The combined preview/onboarding/result flow passed **48 isolated browser
+  assertions**, including light/dark inline layouts, explicit Play and error
+  behavior, static reduced motion, natural feed scrolling and offscreen pause,
+  three guided repairs, unblocked tap targets and the earned-rank popup.
+  Result actions remain visible on short landscape screens, and closing the
+  popup or practice map does not reopen a previous result.
 - Flat selection frames fit 6x6, 8x8 and 10x10 boards at seven screen sizes
   without document scrolling or clipped frames. Both frame orientations,
   numbered hover/focus previews and invalid cuts were checked in the browser.
@@ -188,17 +203,21 @@ npm run check:release
 
 ## Local UI previews
 
-These are real screenshots of the local rehearsal, **not** evidence of a native
-Reddit installation. Replace or supplement them with native screenshots after
-the authorized playtest.
+These are local UI screenshots, **not** evidence of native Reddit behavior or
+community activity. Some validation captures use temporary in-memory fixtures
+marked Local; those fixtures do not seed the actual game. Replace or supplement
+them with native screenshots from the authorized playtest.
 
+- [Inviting miniature-island preview](submission-assets/preview-mobile.png)
+- [The preview in dark mode](submission-assets/preview-dark-mobile.png)
+- [Courier-guided three-exchange lesson](submission-assets/tutorial-mobile.png)
 - [Daily island, portrait](submission-assets/daily-mobile.png)
 - [Daily island, desktop](submission-assets/daily-desktop.png)
 - [Connected campaign with a clear stop preview](submission-assets/campaign-mobile.png)
 - [Clear fixed-boulder feedback](submission-assets/tile-feedback-mobile.png)
 - [Illustrated tile rules](submission-assets/tile-rules-mobile.png)
 - [Numbered whole-patch flat selection](submission-assets/flat-selection-mobile.png)
-- [New completion celebration](submission-assets/completion-mobile.png)
+- [Prominent earned-rank popup](submission-assets/completion-mobile.png)
 - [Illustrated how-to-play guide](submission-assets/guide-mobile.png)
 
 ## Required native gate before calling the entry ready

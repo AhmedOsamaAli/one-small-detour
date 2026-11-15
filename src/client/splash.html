@@ -7,23 +7,106 @@
     <link rel="stylesheet" href="./splash.css">
   </head>
   <body>
-    <main>
-      <div class="preview-copy"><span class="eyebrow">YOUR DAILY DETOUR</span><h1>A little change.<br>A way home.</h1><p>Swap two pieces of the world.</p><button id="open-game">Find today's detour <span aria-hidden="true">&rarr;</span></button><span id="preview-error" role="alert"></span></div>
-      <svg viewBox="0 0 240 235" role="img" aria-label="Two little pieces of a landscape, with paving and a pond">
-        <ellipse cx="124" cy="208" rx="91" ry="15" fill="#80997a" opacity=".10"/>
-        <path d="m25 94 79-47 107 62-79 47L25 94Z" fill="#b4c18c" stroke="#92a575"/>
-        <path d="M25 94v18l107 62 79-47v-18l-79 47L25 94Z" fill="#c6ad85"/>
-        <path d="m43 91 37-22 35 20-37 23-35-21Z" fill="#f3e8cd" stroke="#c3b598"/>
-        <path d="m96 120 37-22 36 21-37 22-36-21Z" fill="#90c8c8" stroke="#6fa9aa"/>
-        <path d="m121 119 11-6 15 9" fill="none" stroke="#d3ece1" stroke-width="2"/>
-        <path d="m109 60 39-23 51 30-39 23-51-30Z" fill="#adc083" stroke="#e1ba7d" stroke-width="2"/>
-        <path d="M109 60v14l51 30 39-23V67l-39 23-51-30Z" fill="#cdb58c"/>
-        <path d="m122 59 20-12 22 13-21 12-21-13Z" fill="#f6edda"/>
-        <path d="M82 42c17-17 42-19 60-7" fill="none" stroke="#86a384" stroke-width="2" stroke-dasharray="4 5"/>
-        <path d="m135 25 8 10-13 1" fill="none" stroke="#86a384" stroke-width="2"/>
-        <path d="m47 133 6-4 6 3-6 4-6-3Z" fill="#88a16d"/>
-        <path d="m166 151 7-4 6 4-6 4-7-4Z" fill="#88a16d"/>
-      </svg>
+    <main class="preview-shell">
+      <div class="preview-copy">
+        <div class="preview-brand">
+          <svg width="30" height="30" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <path d="m5 14 12-7 12 7-12 7L5 14Z" fill="#9eaf7d" stroke="#456b58" stroke-width="1.3"/>
+            <path d="M5 14v8l12 7 12-7v-8l-12 7L5 14Z" fill="#d4c7a6" stroke="#456b58" stroke-width="1.3"/>
+            <path d="m20 23 8-5 8 5-8 5-8-5Z" fill="#b5d7cf" stroke="#456b58" stroke-width="1.3"/>
+            <path d="M20 23v6l8 5 8-5v-6l-8 5-8-5Z" fill="#ddcfad" stroke="#456b58" stroke-width="1.3"/>
+          </svg>
+          <span>one small detour.</span>
+        </div>
+        <p class="preview-eyebrow">A TINY DAILY ADVENTURE</p>
+        <h1>Can you get<br class="preview-break"> me home?</h1>
+        <p class="preview-subtitle">Swap two little patches.<br>Mend the road. Make his day.</p>
+        <button id="open-game" type="button">
+          <span>Play today's island</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
+        </button>
+        <span id="preview-error" role="alert"></span>
+      </div>
+      <figure class="preview-art">
+        <svg class="preview-scene" viewBox="0 0 480 310" fill="none" role="img" aria-labelledby="scene-title scene-description">
+          <title id="scene-title">A little swap makes a way home.</title>
+          <desc id="scene-description">An example island with two cosy homes, trees and a pond. Equal two-tile patches exchange to fill a broken road. The courier walks home and waves. This is an illustration, not today's puzzle solution.</desc>
+          <defs>
+            <linearGradient id="scene-land" x1="0" y1="0" x2="336" y2="208" gradientUnits="userSpaceOnUse"><stop stop-color="var(--scene-grass)"/><stop offset="1" stop-color="var(--scene-grass-soft)"/></linearGradient>
+            <pattern id="scene-grid" width="56" height="52" patternUnits="userSpaceOnUse"><path d="M56 0H0v52" stroke="var(--scene-grid)" stroke-width="1.3"/><path d="m14 21 2-5m7 8 2-5" stroke="var(--scene-leaf)" stroke-width="1.5" stroke-linecap="round" opacity=".45"/></pattern>
+            <g id="scene-tree"><ellipse cy="32" rx="16" ry="5" fill="#334e3524"/><path d="M0 8v25" stroke="#8e7953" stroke-width="5" stroke-linecap="round"/><circle cx="-7" cy="1" r="13" fill="var(--scene-leaf)"/><circle cx="7" cy="-5" r="16" fill="var(--scene-leaf-light)"/><circle cx="-4" cy="-12" r="13" fill="var(--scene-leaf)"/></g>
+            <g id="scene-paver"><rect x="8" y="9" width="40" height="36" rx="8" fill="var(--scene-stone-edge)"/><rect x="8" y="6" width="40" height="36" rx="8" fill="var(--scene-stone)" stroke="var(--scene-stone-edge)"/><path d="M14 17h12m4 15h10" stroke="var(--scene-stone-edge)" stroke-opacity=".55" stroke-width="2" stroke-linecap="round"/></g>
+          </defs>
+          <path d="M23 170C-1 67 99 11 188 41c79-62 237-36 267 71 33 120-91 179-220 162-108 24-188-11-212-104Z" fill="var(--scene-halo)"/>
+          <circle class="scene-sun" cx="388" cy="41" r="23" fill="#efcc79"/>
+          <g class="scene-moon"><path d="M403 27a22 22 0 1 1-29 29 22 22 0 0 0 29-29Z" fill="#e4e6ba"/><path d="m347 33 2-5 2 5 5 2-5 2-2 5-2-5-5-2 5-2Zm80 46 1-3 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z" fill="#c8d9b0"/></g>
+          <path class="scene-cloud demo-animated" d="M172 28h53m-7 10h27" stroke="var(--scene-cloud)" stroke-width="8" stroke-linecap="round"/>
+          <ellipse cx="244" cy="284" rx="178" ry="17" fill="#21392c" opacity=".12"/>
+          <path d="m125 52 336 74-100 141-336-74v13l336 74 100-141v-13" fill="var(--scene-soil)" stroke="var(--scene-soil-edge)" stroke-width="1.5" stroke-linejoin="round"/>
+          <g transform="matrix(1 .22 -.48 .68 125 52)">
+            <rect width="336" height="208" rx="13" fill="url(#scene-land)" stroke="var(--scene-grid)" stroke-width="2"/>
+            <rect width="336" height="208" rx="13" fill="url(#scene-grid)"/>
+            <rect x="224" y="6" width="103" height="40" rx="10" fill="var(--scene-water)"/>
+            <path class="pond-ripple demo-animated" d="M241 19q9-6 18 0t18 0m11 14q9-6 18 0" stroke="var(--scene-water-glint)" stroke-width="2.5" stroke-linecap="round"/>
+            <use href="#scene-paver" x="0" y="104"/><use href="#scene-paver" x="56" y="104"/>
+            <use href="#scene-paver" x="224" y="104"/><use href="#scene-paver" x="280" y="104"/>
+            <path class="road-glow demo-animated" d="M28 130h280" stroke="#fff1b3" stroke-width="12" stroke-linecap="round" opacity="0"/>
+            <g transform="translate(56 0)">
+              <g class="demo-patch patch-one demo-animated">
+                <rect y="4" width="112" height="52" rx="6" fill="var(--scene-soil)"/>
+                <rect width="112" height="52" rx="6" fill="var(--scene-grass)"/>
+                <use href="#scene-paver"/><use href="#scene-paver" x="56"/>
+                <g class="patch-frame demo-animated"><rect x="2" y="2" width="108" height="48" rx="6" stroke="#fffdf1" stroke-width="8"/><rect x="2" y="2" width="108" height="48" rx="6" stroke="#a76a27" stroke-width="4"/><circle cx="10" cy="7" r="12" fill="#fffdf1" stroke="#a76a27" stroke-width="2"/><text x="10" y="12" text-anchor="middle" fill="#874d19">1</text></g>
+              </g>
+            </g>
+            <g transform="translate(112 104)">
+              <g class="demo-patch patch-two demo-animated">
+                <rect y="4" width="112" height="52" rx="6" fill="var(--scene-soil)"/>
+                <rect width="56" height="52" rx="5" fill="var(--scene-grass-soft)"/>
+                <rect x="56" width="56" height="52" rx="5" fill="var(--scene-water)"/>
+                <path d="m14 33 3-10m8 9 3-8m43 2q7-5 14 0t14 0" stroke="var(--scene-water-glint)" stroke-width="2" stroke-linecap="round"/>
+                <g class="patch-frame demo-animated"><rect x="2" y="2" width="108" height="48" rx="6" stroke="#fffdf1" stroke-width="8"/><rect x="2" y="2" width="108" height="48" rx="6" stroke="#286797" stroke-width="4"/><circle cx="10" cy="7" r="12" fill="#fffdf1" stroke="#286797" stroke-width="2"/><text x="10" y="12" text-anchor="middle" fill="#245d8e">2</text></g>
+              </g>
+            </g>
+          </g>
+          <use href="#scene-tree" x="292" y="75"/><use href="#scene-tree" x="324" y="91"/>
+          <use href="#scene-tree" x="46" y="193"/><use href="#scene-tree" x="256" y="247"/>
+          <path d="m299 253 9-7 9 7-9 6-9-6Z" fill="var(--scene-leaf-light)"/>
+          <g transform="translate(65 97)">
+            <rect x="3" y="17" width="39" height="30" rx="3" fill="#f8edcb" stroke="#ab9b73" stroke-width="1.5"/>
+            <path d="m-3 18 25-22 26 22H-3Z" fill="#648871" stroke="#496950" stroke-width="1.5" stroke-linejoin="round"/>
+            <rect x="19" y="32" width="10" height="15" rx="2" fill="#a58555"/><rect x="8" y="25" width="7" height="8" rx="1" fill="#e6bc65"/>
+            <circle cx="23" cy="7" r="10" fill="#fff9e4" stroke="#658569" stroke-width="1.5"/><text x="23" y="11" text-anchor="middle" fill="#3b624a">A</text>
+          </g>
+          <circle class="home-glow demo-animated" cx="376" cy="184" r="34" fill="#f1d990" opacity="0"/>
+          <g transform="translate(355 158)">
+            <rect x="3" y="17" width="39" height="30" rx="3" fill="#f8edcb" stroke="#ab9b73" stroke-width="1.5"/>
+            <path d="m-3 18 25-22 26 22H-3Z" fill="#bd8565" stroke="#956a4e" stroke-width="1.5" stroke-linejoin="round"/>
+            <rect x="19" y="32" width="10" height="15" rx="2" fill="#a58555"/><rect x="8" y="25" width="7" height="8" rx="1" fill="#e6bc65"/>
+            <circle cx="23" cy="7" r="10" fill="#fff9e4" stroke="#a87551" stroke-width="1.5"/><text x="23" y="11" text-anchor="middle" fill="#875e39">B</text>
+          </g>
+          <g transform="translate(99 96)">
+            <g class="courier-travel demo-animated">
+              <ellipse cx="13" cy="55" rx="13" ry="4" fill="#31483840"/>
+              <g class="courier-bob demo-animated">
+                <path d="M5 44v9h8v-9m2 0v9h8v-9" stroke="#354a3e" stroke-width="5" stroke-linecap="round"/>
+                <path d="M2 26q12-8 24 0v20H2V26Z" fill="#668c65" stroke="#3d6048" stroke-width="1.5"/>
+                <path d="m6 26 16 17" stroke="#cba965" stroke-width="4"/>
+                <rect x="15" y="35" width="13" height="12" rx="3" fill="#bc9258" stroke="#81653e"/>
+                <path d="M3 29v12" stroke="#668c65" stroke-width="6" stroke-linecap="round"/><circle cx="3" cy="43" r="3" fill="#eac49a"/>
+                <g transform="translate(25 28)"><g class="courier-wave demo-animated"><path d="M0 0 4-10" stroke="#668c65" stroke-width="6" stroke-linecap="round"/><path d="m4-10 1-7m-1 6 5-4" stroke="#eac49a" stroke-width="4" stroke-linecap="round"/></g></g>
+                <ellipse cx="14" cy="17" rx="10" ry="12" fill="#edcba3" stroke="#b58a62"/>
+                <path d="M2 11q0-13 12-13t12 13H2Z" fill="#d6b162" stroke="#9a763d"/>
+                <path d="M-2 10q16-5 32 0v3H-2v-3Z" fill="#e7c981" stroke="#9a763d"/>
+                <circle cx="10" cy="18" r="1.4" fill="#365441"/><circle cx="18" cy="18" r="1.4" fill="#365441"/>
+                <path d="M11 23q3 3 6 0" stroke="#9e684b" stroke-width="1.5" stroke-linecap="round"/>
+              </g>
+            </g>
+          </g>
+          <g class="home-sparkles demo-animated" stroke="#d9b259" stroke-width="2" stroke-linecap="round"><path d="m345 147-3-5m54 4 4-3m-26-18v-6"/><path d="m404 187 3-4 3 4-3 4-3-4Z"/></g>
+        </svg>
+        <figcaption>One little swap. A happy way home.</figcaption>
+      </figure>
     </main>
     <script type="module" src="./splash.ts"></script>
   </body>

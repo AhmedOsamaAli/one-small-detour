@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { canTraverse, connects, isAnchor, locate, tileAt, walkable } from '../shared/rules.ts';
-import type { Anchor, Board, Celebration, Cell, FrameAxes, Shape, Swap, Theme } from '../shared/types.ts';
+import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, Shape, Swap, Theme } from '../shared/types.ts';
 import type { PlaybackFrame } from '../shared/playback.ts';
 import { COMPLETION_CELEBRATION_MS } from '../shared/playback.ts';
 
@@ -849,6 +849,22 @@ export class LivingIsland {
       const key = JSON.stringify(axes);
       if (key !== this.projectionKey) { this.projectionKey = key; this.callbacks.onProjection(axes); }
     }
+  }
+
+  guideBounds(cell: Cell, shape: Shape): GuideBounds {
+    const bounds = this.canvas.getBoundingClientRect();
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (const col of [cell.col, cell.col + shape.cols]) {
+      for (const row of [cell.row, cell.row + shape.rows]) {
+        const point = new THREE.Vector3(col - this.size / 2, 0.45, row - this.size / 2).project(this.camera);
+        xs.push(bounds.x + (point.x + 1) * bounds.width / 2);
+        ys.push(bounds.y + (1 - point.y) * bounds.height / 2);
+      }
+    }
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
   }
 
   private updatePickingMap(): void {

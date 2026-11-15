@@ -11,6 +11,13 @@ Proved minimums range from one through fifteen exchanges.
 [Public source on GitHub](https://github.com/AhmedOsamaAli/one-small-detour) |
 [Play on Reddit](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/)
 
+The Reddit preview is a lightweight illustrated invitation: a courier, two
+homes and a broken road. In a silent example, equal two-tile patches exchange
+and the courier walks home and waves. This is not today's puzzle solution.
+**Play today's island** explicitly opens the game. The preview respects feed
+scrolling, pauses offscreen/background animation and has a static reduced-motion
+alternative. It does not load the full 3D game or create a timed attempt.
+
 ## Play locally
 
 Requires Node.js 22.18 or newer. Tested with Node.js 22.23.4.
@@ -55,11 +62,13 @@ a fresh attempt. Menus and background tabs do not pause elapsed time. Necessary
 error-recovery and save-retry buttons remain available.
 
 First visits open an untimed, skippable walkthrough before any daily attempt is
-created. An original drawn courier highlights the real frame chooser. Players
-must choose the tall frame before tapping the two marked patches; this is actual
-game input, not a prerecorded demonstration. Short speech prompts follow each
-action and the traveler walks home. The guide then introduces the tools, views,
-daily ranking and 200-stop adventure. New rocks and
+created. An original drawn courier speaks beside the board and points to the
+actual frame or patch, without covering playable targets. The lesson guides
+**three real exchanges**, using tall and wide frames, before the traveler walks
+through A, B and C. Only the last guided repair completes the road. This is a
+teaching sequence, not a claimed optimal score. Guidance follows Undo back to
+the relevant repair; there is no duplicated instruction line at the bottom.
+The guide then introduces the tools, views, daily ranking and 200 practice places. New rocks and
 bridges get a short explanation before that island's countdown starts.
 Completing or skipping the guide is remembered; the book can replay it anytime.
 
@@ -76,7 +85,7 @@ The offending home, boulder or overlapping square is highlighted individually,
 with a short warning beside the board. Paving is movable; boulders are fixed.
 Bridge arrows show their two permitted directions.
 
-The header has direct adventure-map, sound/mute and book buttons on every
+The header has direct **Practice map**, sound/mute and book buttons on every
 screen size. The book opens the illustrated guide, tile rules and an untimed
 guided garden. The garden does not submit scores or count as a daily completion.
 Undo is beside the board. A small **3D / Flat** selector changes
@@ -88,8 +97,11 @@ only an early home does not start a partial walk or earn an arrival. Once one
 continuous, non-retracing trail reaches every home in order, the traveler walks
 it with a pause, glow and optional chime **on each arrival**. The full
 celebration starts at the final arrival, with the character still visible.
-The result card appears only after **1.5 seconds of visible celebration**.
+The completion popup appears only after **1.5 seconds of visible celebration**.
 Menus and background tabs pause this animation time, not the solve clock.
+Earned daily rank and percentage are prominent inside that one popup, only
+after successful saving. Closing it returns to the island and Undo; it does
+not immediately reopen. **Play more** opens the separate unranked practice map.
 
 Undo during or after the walk cancels old arrival events and returns the
 traveler to A. There is no partial-delivery or checkpoint history. New attempts
@@ -223,7 +235,9 @@ a rank.
 The game shows no rank before or during a daily attempt, even if an earlier
 personal best exists. The client does not fetch a saved rank at startup.
 Only after the current attempt finishes its celebration and successfully saves
-does it show a compact line such as **#5 - Top 10% today**.
+does the completion popup prominently reveal the rank and **Top 10% today**.
+A compact line such as **#5 - Top 10% today** remains available on the finished
+island after the popup is closed.
 The percentage compares unique valid finishers on
 that day's puzzle in this installation, not viewers, all Reddit users or scores
 from different days. It includes everyone whose best result is at least as good

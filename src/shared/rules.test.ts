@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applySwap, assertBoard, boardFingerprint, checkRoutes, legalSwaps, RULE_VERSION, RuleError, validateRepair } from './rules.ts';
 import { AUTHORED, editionById, editionForDate, getPuzzles, getSeasonPuzzles } from './puzzles.ts';
-import { TUTORIAL, TUTORIAL_MOVE } from './tutorial.ts';
+import { TUTORIAL, TUTORIAL_MOVES } from './tutorial.ts';
 import type { Board, Swap } from './types.ts';
 
 function histogram(board: Board): string {
@@ -80,7 +80,7 @@ test('Sunday permits meaningfully different routes; tutorial is separate and sol
   const alternate = validateRepair(sunday, 'daily', [cafe]);
   assert.notDeepEqual(park.board, alternate.board);
   assert.notDeepEqual(park.routes, alternate.routes);
-  validateRepair(TUTORIAL, 'daily', [TUTORIAL_MOVE]);
+  validateRepair(TUTORIAL, 'daily', TUTORIAL_MOVES);
 });
 
 test('out-of-bounds, overlap, pinned buildings, fractional inputs and exhausted budgets are rejected', () => {

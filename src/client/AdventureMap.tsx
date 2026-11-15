@@ -179,7 +179,7 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
       <span className="legend-locked"><Icon name="lock" size={13}/>Locked</span>
     </div>
     <div ref={scene} className={`adventure-scene connected-world ${dragging ? 'is-dragging' : ''}`} tabIndex={0} role="region"
-      aria-label="Connected ordered campaign. Drag or use arrow keys to explore. Home and End reach opposite ends."
+      aria-label="Connected ordered practice map. Drag or use arrow keys to explore. Home and End reach opposite ends."
       data-campaign-offset={Math.round(panY)} data-next-stop={nextIndex >= 0 ? nextIndex + 1 : 'complete'}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
@@ -295,7 +295,7 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
         </p>
         <button className="primary-button campaign-play" disabled={!previewGate.unlocked || loading !== null}
           onClick={() => onSelect(preview.id)}
-          aria-label={loading ? 'Opening campaign stop' : previewGate.unlocked ? `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}` : `Stop ${previewIndex + 1} is locked; finish stop ${nextIndex + 1} first`}>
+          aria-label={loading ? 'Opening practice stop' : previewGate.unlocked ? `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}` : `Stop ${previewIndex + 1} is locked; finish stop ${nextIndex + 1} first`}>
           <Icon name={!previewGate.unlocked ? 'lock' : replay ? 'reset' : 'play'} size={17}/>
           {loading ? 'Opening...' : !previewGate.unlocked ? `Finish stop ${nextIndex + 1} first` : error ? 'Try again' : `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}`}
         </button>

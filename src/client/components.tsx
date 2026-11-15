@@ -167,7 +167,7 @@ export function WalkthroughFeatures({ section }: { section: 'tools' | 'places' }
   ] : [
     { icon: 'sun', title: 'One daily island', text: 'One shared UTC puzzle. Its countdown starts after this practice.' },
     { icon: 'trophy', title: 'Earn your comparison', text: 'Shown after a saved finish. Fewest moves, then fastest time.' },
-    { icon: 'map', title: '200 places to go', text: 'Preview, then play. Finish one unranked stop to open the next.' },
+    { icon: 'map', title: 'Practice: 200 places', text: 'Preview, then play. Finish one unranked stop to open the next.' },
     { icon: 'book', title: 'A guide nearby', text: 'Replay this walkthrough or read every tile rule from the book.' },
   ];
   return <div className="tour-feature-grid">{entries.map((entry) =>
@@ -207,7 +207,7 @@ export function ShapeGlyph({ shape, axes = FLAT_AXES, tiles }: { shape: Shape; a
 type DialogKind = 'guide' | 'map' | 'erase';
 const dialogIdentity: Record<DialogKind, { icon: IconName; label: string }> = {
   guide: { icon: 'book', label: 'FIELD GUIDE' },
-  map: { icon: 'map', label: 'THE ADVENTURE' },
+  map: { icon: 'map', label: 'PRACTICE PLACES' },
   erase: { icon: 'lock', label: 'YOUR DATA' },
 };
 

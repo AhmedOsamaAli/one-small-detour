@@ -1,8 +1,30 @@
 import { requestExpandedMode } from '@devvit/web/client';
+import '@fontsource-variable/dm-sans';
+import '@fontsource-variable/fraunces';
 
 const button = document.getElementById('open-game');
 const errorText = document.getElementById('preview-error');
-button?.addEventListener('click', (event) => {
+const preview = document.querySelector<HTMLElement>('.preview-shell');
+if (!(button instanceof HTMLButtonElement) || !errorText || !preview) throw new Error('The preview controls are missing.');
+
+let inView = true;
+const updateVisibility = (): void => {
+  const paused = document.hidden || !inView;
+  document.documentElement.classList.toggle('preview-paused', paused);
+  preview.dataset['animation'] = paused ? 'paused' : 'playing';
+};
+document.addEventListener('visibilitychange', updateVisibility);
+if (typeof IntersectionObserver !== 'undefined') {
+  const observer = new IntersectionObserver((entries) => {
+    const entry = entries[0];
+    if (entry) { inView = entry.isIntersecting; updateVisibility(); }
+  });
+  observer.observe(preview);
+}
+updateVisibility();
+
+button.addEventListener('click', (event) => {
+  errorText.textContent = '';
   if (import.meta.env.DEV) {
     window.location.href = './index.html';
     return;
@@ -11,6 +33,6 @@ button?.addEventListener('click', (event) => {
     requestExpandedMode(event, 'game');
   } catch (error) {
     console.error('The expanded Detour could not open:', error);
-    if (errorText) errorText.textContent = 'The island could not open. Please try this post in the Reddit app or refresh it.';
+    errorText.textContent = 'Could not open. Try the Reddit app or reload this post.';
   }
 });

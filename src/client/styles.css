@@ -1122,3 +1122,54 @@ html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-be
   .tile-guide-tag { background: var(--surface-selected); color: var(--green); border-color: var(--border-strong); }
   .tile-guide-tag.fixed-tag { background: #354136; color: #d7decd; border-color: #77876c; }
 }
+
+.viewport-fit .lesson-coach { grid-column: 1; grid-row: 1; position: relative; display: block; height: 76px; min-height: 76px; min-width: 0; max-width: none; margin: 0; padding: 0; border: 0; background: none; }
+.courier-speech { position: relative; width: min(400px, 100%); height: 72px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 44px; gap: 8px; align-items: center; border: 1px solid var(--accent-border); border-radius: 16px; padding: 6px 8px; background: var(--accent-bg); box-shadow: 0 3px 8px #34482b09; }
+.courier-speech > .guide-courier { width: 40px; height: 60px; }
+.courier-words { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.courier-words > span { color: var(--accent-ink); font-size: 12px; font-weight: 600; line-height: 1.3; letter-spacing: .4px; }
+.courier-words > strong { font-size: 15px; line-height: 1.3; color: var(--ink); }
+.courier-speech > .text-button { grid-column: 3; grid-row: 1; padding: 0; min-width: 44px; min-height: 44px; font-size: 12px; color: var(--accent-ink); }
+.guide-pointer { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+.viewport-fit .game-layout:has(.lesson-coach) .island-panel { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.viewport-fit .game-layout:has(.lesson-coach) .play-toolbar { grid-row: 2; }
+.viewport-fit.direct-play .game-layout:has(.lesson-coach) .world-stage,
+.viewport-fit.direct-play .game-layout:has(.lesson-coach) .world-stage.large-world { grid-row: 3; }
+.viewport-fit .game-layout:has(.lesson-coach) .board-footer { grid-row: 4; }
+.completion-dialog { width: min(520px, calc(100vw - 24px)); }
+.completion-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
+.completion-dialog .dialog-heading { position: static; flex-shrink: 0; }
+.completion-dialog .dialog-heading .eyebrow { display: none; }
+.completion-dialog .result-card { position: relative; inset: auto; width: 100%; margin: 0; padding: 8px 0 0; border: 0; border-radius: 14px; background: none; box-shadow: none; animation: none; gap: 12px; flex: 1 1 auto; min-height: 0; overflow: auto; }
+.completion-dialog .result-copy { min-width: 0; flex-basis: 160px; }
+.completion-dialog .result-copy h2 { font-size: 23px; line-height: 1.25; }
+.completion-dialog .rank-reveal > span { display: block; color: var(--muted); font-size: 14px; }
+.completion-dialog .rank-reveal > strong { display: block; font: 500 64px/1.1 var(--serif); color: var(--green); margin: 6px 0; letter-spacing: -2px; }
+.completion-dialog .rank-reveal > p { font-size: 18px; font-weight: 600; color: var(--ink); }
+.completion-dialog .result-label { color: var(--muted); }
+.completion-dialog .result-actions { position: static; flex-shrink: 0; margin: 10px 0 0; padding: 12px 0 0; background: var(--surface); border-top: 1px solid var(--line); justify-content: flex-end; width: 100%; }
+.completion-dialog .result-actions > button { flex: 1; min-height: 44px; }
+@media (max-width: 340px) {
+  .courier-words > strong { font-size: 14px; }
+  .courier-speech { gap: 6px; }
+  .completion-dialog { --dialog-pad: 16px; }
+}
+@media (max-height: 600px) and (min-width: 700px), (max-height: 500px) and (min-width: 560px) {
+  .viewport-fit .game-layout:has(.lesson-coach) { grid-template-rows: auto auto auto minmax(0, 1fr); }
+  .viewport-fit .game-layout:has(.lesson-coach) .lesson-coach { grid-column: 2; grid-row: 2; }
+  .viewport-fit .game-layout:has(.lesson-coach) .play-toolbar { grid-column: 2; grid-row: 3; }
+  .viewport-fit.direct-play .game-layout:has(.lesson-coach) .world-stage,
+  .viewport-fit.direct-play .game-layout:has(.lesson-coach) .world-stage.large-world { grid-column: 1; grid-row: 1 / -1; }
+  .viewport-fit .game-layout:has(.lesson-coach) .board-footer { grid-column: 2; grid-row: 4; }
+  .viewport-fit .game-layout:has(.lesson-coach) .place-heading { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .viewport-fit .game-layout:has(.lesson-coach) .mission { margin-top: 0; padding: 0; border: 0; }
+  .courier-speech { grid-template-columns: 32px minmax(0, 1fr) 44px; gap: 5px; padding-inline: 6px; }
+  .courier-speech > .guide-courier { width: 32px; height: 48px; }
+  .courier-words > strong { font-size: 14px; }
+}
+@media (max-height: 500px) {
+  .completion-dialog { --dialog-pad: 14px; max-height: 95dvh; }
+  .completion-dialog .dialog-heading { padding-top: 8px; padding-bottom: 8px; margin-bottom: 8px; }
+  .completion-dialog .rank-reveal > strong { font-size: 48px; margin-block: 2px; }
+  .completion-dialog .rank-reveal > p { font-size: 16px; }
+}

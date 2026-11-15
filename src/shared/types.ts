@@ -10,6 +10,13 @@ export interface Cell {
   col: number;
 }
 
+export interface GuideBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface Celebration {
   id: number;
   anchors: Anchor[];
