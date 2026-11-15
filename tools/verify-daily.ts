@@ -1,0 +1,89 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
+import { certifyMinimum } from '../src/shared/difficulty.ts';
+import { dailyPuzzleForDate, editionForDate, getPuzzles, nextReset, puzzleDate } from '../src/shared/puzzles.ts';
+import { MAX_EXCHANGES, roadFingerprint, RULE_VERSION, validateRepair } from '../src/shared/rules.ts';
+
+if (process.argv.length > 3) throw new Error('Usage: npm run verify:daily -- [YYYY-MM-DD]');
+const start = process.argv[2] ?? new Date().toISOString().slice(0, 10);
+const startDate = puzzleDate(start);
+assert.ok(startDate, 'The verification start must be a valid UTC date: YYYY-MM-DD.');
+const days = 365;
+const dayMs = 86_400_000;
+const terrain = new Map<string, string>();
+const roads = new Map<string, string>();
+const campaignRoads = new Set(getPuzzles().map((puzzle) => roadFingerprint(puzzle.board)));
+assert.equal(campaignRoads.size, 200, 'The campaign must contain 200 distinct road decisions.');
+const paving = new Set<string>();
+const repaired = new Set<string>();
+const fingerprints: string[] = [];
+const difficulties: Record<string, number> = {};
+const themes = new Set<string>();
+let slowestMs = 0;
+const began = performance.now();
+
+for (let offset = 0; offset < days; offset++) {
+  const date: Date = new Date(startDate.getTime() + offset * dayMs);
+  const id: string = date.toISOString().slice(0, 10);
+  const before = performance.now();
+  const puzzle = dailyPuzzleForDate(date);
+  slowestMs = Math.max(slowestMs, performance.now() - before);
+  assert.ok(puzzle, `${id}: no daily puzzle was returned.`);
+  assert.ok(puzzle.journey, `${id}: the ordered stops are missing.`);
+  assert.equal(puzzle.id, `daily-v${RULE_VERSION}-${id}`);
+  const minimum = certifyMinimum(puzzle);
+  assert.equal(minimum, puzzle.minimum, `${id}: the difficulty is not certified.`);
+  assert.equal(puzzle.budget, MAX_EXCHANGES, `${id}: long attempts are not supported.`);
+  const solution = validateRepair(puzzle, 'daily', puzzle.witness);
+  assert.equal(solution.swaps, minimum, `${id}: the authoritative replay disagrees.`);
+  const layout = puzzle.board.join('/');
+  const road = roadFingerprint(puzzle.board);
+  assert.equal(terrain.has(layout), false, `${id}: identical terrain to ${terrain.get(layout)}.`);
+  assert.equal(roads.has(road), false, `${id}: identical road decisions to ${roads.get(road)}.`);
+  assert.equal(campaignRoads.has(road), false, `${id}: the daily repeats a campaign map.`);
+  terrain.set(layout, id);
+  roads.set(road, id);
+  paving.add(road.replace(/[A-Fhv]/g, 'o').replace(/x/g, '.'));
+  repaired.add(roadFingerprint(solution.board).replace(/[A-Fhv]/g, 'o').replace(/x/g, '.'));
+  themes.add(puzzle.theme);
+  difficulties[String(puzzle.minimum)] = (difficulties[String(puzzle.minimum)] ?? 0) + 1;
+  fingerprints.push(createHash('sha256').update(JSON.stringify(puzzle)).digest('hex'));
+  const midnight = new Date(`${id}T00:00:00Z`);
+  const late = editionForDate(new Date(`${id}T23:59:59.999Z`));
+  assert.ok(late, `${id}: the public edition is missing.`);
+  assert.equal(late.id, id, `${id}: the daily edition changed before UTC midnight.`);
+  assert.deepEqual(late.puzzle.board, puzzle.board);
+  assert.equal('witness' in late.puzzle, false, `${id}: a solution leaked into the public edition.`);
+  assert.equal(nextReset(date), new Date(midnight.getTime() + dayMs).toISOString());
+  if ((offset + 1) % 60 === 0) console.log(`Checked ${offset + 1}/${days} daily editions.`);
+}
+
+// The 48-entry cache cannot retain a year's puzzles: this forward second pass
+// checks independently regenerated content rather than comparing cached objects.
+for (let offset = 0; offset < days; offset++) {
+  const date: Date = new Date(startDate.getTime() + offset * dayMs);
+  const puzzle = dailyPuzzleForDate(date);
+  assert.ok(puzzle);
+  const fingerprint = createHash('sha256').update(JSON.stringify(puzzle)).digest('hex');
+  assert.equal(fingerprint, fingerprints[offset], `${date.toISOString()}: regeneration changed the daily puzzle.`);
+}
+assert.equal(themes.size, 3, 'The year did not cover all three landscape themes.');
+assert.ok(Object.keys(difficulties).length >= 7, 'The year did not cover the daily difficulty cycle.');
+console.log(JSON.stringify({
+  from: start,
+  through: new Date(startDate.getTime() + (days - 1) * dayMs).toISOString().slice(0, 10),
+  editions: days,
+  distinctTerrain: terrain.size,
+  distinctRoadAndStopLayouts: roads.size,
+  campaignPlaces: campaignRoads.size,
+  dailyCampaignRepeats: 0,
+  distinctPavingMasks: paving.size,
+  distinctRepairedRoadPatterns: repaired.size,
+  difficulties,
+  themes: [...themes],
+  independentlyRegenerated: days,
+  slowestColdGenerationMs: Math.round(slowestMs),
+  totalMs: Math.round(performance.now() - began),
+  publicSolutionsExposed: false,
+}, null, 2));

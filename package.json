@@ -1,0 +1,43 @@
+{
+  "name": "one-small-detour",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "vite --config vite.local.config.ts",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.tools.json",
+    "test": "node --experimental-strip-types --no-warnings=ExperimentalWarning --test \"src/**/*.test.ts\"",
+    "check": "npm run typecheck && npm test && npm run build",
+    "verify:daily": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/verify-daily.ts",
+    "generate:campaign": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/generate-campaign.ts",
+    "check:release": "npm run check && npm run verify:daily",
+    "devvit:login": "devvit login",
+    "devvit:playtest": "devvit playtest"
+  },
+  "dependencies": {
+    "@devvit/start": "0.15.2",
+    "@devvit/web": "0.15.2",
+    "@fontsource-variable/dm-sans": "^5.2.0",
+    "@fontsource-variable/fraunces": "^5.2.0",
+    "@hono/node-server": "2.1.6",
+    "devvit": "0.15.2",
+    "hono": "^4.0.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.187.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.6"
+  }
+}
