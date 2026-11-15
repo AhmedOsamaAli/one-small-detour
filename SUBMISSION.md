@@ -70,6 +70,8 @@ There is no sharing form or clipboard control, and saving never posts a comment.
 The world uses original procedural Three.js scenery: connected stone lanes,
 shader water, grass, cottages, bridges, boulders and an animated courier.
 Reached homes light up. Selection frames match the actual camera projection.
+White-backed arrows point to the starting square directly inside ordinary
+orange/blue patch highlights in both views, not only from the tutorial coach.
 Invalid selections identify the offending cells with a direct on-board warning.
 Paving and fixed boulders have distinct appearances; bridge arrows show their
 permitted directions. A visible **?** button opens the illustrated tile rules
@@ -99,6 +101,10 @@ generic acceptance prompts. Map previews do not start a timer accidentally.
 The game fits a single viewport in portrait and landscape, with a fitted flat
 alternative, keyboard navigation and reduced motion. The heavy landscape module
 loads separately from the lightweight inline Reddit preview and flat view.
+Flat patches visibly travel and land over 520ms, with their own colors and
+contents intact. Undo animates the reverse; extra input is gated during motion.
+Menus and visibility events pause visual movement, while reduced motion keeps
+instant exchanges. Winning-tap timing and saved ranking rules are unchanged.
 The preview itself is an original miniature island: cosy homes, trees, water
 and a courier waiting for a way home. A silent example exchange lets him walk
 home and wave; it does not reveal the daily solution. The clear
@@ -147,7 +153,7 @@ activity. Keep the final video below the event's stated one-minute ceiling.
 
 - Current local release check: **71 tests passed**, all three TypeScript checks passed,
   and the production build passed.
-- The combined preview/onboarding/result/header flow passed **79 isolated browser
+- The combined preview/onboarding/result/header/movement flow passed **104 isolated browser
   assertions**, including light/dark inline layouts, explicit Play and error
   behavior, static reduced motion, natural feed scrolling and offscreen pause,
   three guided repairs, unblocked tap targets and the earned-rank popup.
@@ -156,6 +162,12 @@ activity. Keep the final video below the event's stated one-minute ceiling.
   verify manual theme overrides, preserved preferences and live attempts,
   question-mark help, and actual clicks on all six start-square markers in both
   3D and Flat (including resized 3D views).
+- Dedicated motion checks verify ordinary-play in-board arrows, real intermediate
+  Flat positions, paired terrain identity, reverse Undo, input gating, menu and
+  simulated visibility-event pauses, reduced motion, resize/new-attempt cleanup
+  and explicit animation-failure recovery. Fitted 6x6, 8x8 and 10x10 boards were
+  exercised. Headless visibility simulation is not a physical phone-background
+  performance claim.
 - Flat selection frames fit 6x6, 8x8 and 10x10 boards at seven screen sizes
   without document scrolling or clipped frames. Both frame orientations,
   numbered hover/focus previews and invalid cuts were checked in the browser.
@@ -218,6 +230,8 @@ them with native screenshots from the authorized playtest.
 - [Inviting miniature-island preview](submission-assets/preview-mobile.png)
 - [The preview in dark mode](submission-assets/preview-dark-mobile.png)
 - [Courier-guided three-exchange lesson](submission-assets/tutorial-mobile.png)
+- [Start-square arrows during ordinary play](submission-assets/board-start-arrows-mobile.png)
+- [A Flat exchange in flight](submission-assets/flat-swap-mobile.png)
 - [Daily island, portrait](submission-assets/daily-mobile.png)
 - [Daily island, desktop](submission-assets/daily-desktop.png)
 - [Connected campaign with a clear stop preview](submission-assets/campaign-mobile.png)

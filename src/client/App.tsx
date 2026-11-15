@@ -390,7 +390,7 @@ export default function App() {
       const hasWater = [...patchCells(a, shape), ...patchCells(b, shape)].some((cell) => tileAt(board, cell) === '~');
       audio.current?.swap(hasWater);
       restartPlayback();
-      setBusy(!preferences.flat && !reducedMotion);
+      setBusy(!reducedMotion);
       setBoard(next);
       setMoves((current) => [...current, move]);
       setTransition({ id: ++transitionId.current, move });
@@ -399,7 +399,7 @@ export default function App() {
       console.error('Patch exchange failed:', error);
       notify(messageOf(error), !(error instanceof RuleError));
     }
-  }, [run, timer.canPlay, timer.stop, busy, travelerMoving, roadReady, shape, board, rules, moves.length, preferences.flat, reducedMotion, restartPlayback, notify]);
+  }, [run, timer.canPlay, timer.stop, busy, travelerMoving, roadReady, shape, board, rules, moves.length, reducedMotion, restartPlayback, notify]);
 
   const onCell = useCallback((cell: Cell) => {
     if (!run || !timer.canPlay || busy) return;
@@ -445,7 +445,7 @@ export default function App() {
     setPublishing(false);
     setSaveError(null);
     setSavedSolveMs(null);
-    setBusy(!preferences.flat && !reducedMotion);
+    setBusy(!reducedMotion);
     setTransition({ id: ++transitionId.current, move: removed });
     setFirst(null); setHover(null); setSelectionFeedback(null); setPublished(false);
     setMyRank(null);

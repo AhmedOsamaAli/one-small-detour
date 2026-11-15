@@ -84,6 +84,12 @@ frames never intercept tile clicks. A preview on the selected origin is hidden
 so it cannot repaint the confirmed orange patch.
 Both Reddit entrypoints suppress the browser's page-wide tap flash on phones.
 The game's colored patch frames and visible keyboard-focus outlines remain.
+Small white-backed arrows also appear **inside the highlighted starting square**
+during ordinary play, not just during the walkthrough. They follow the confirmed
+orange and valid blue-preview frames in both views; the frame still shows the
+whole patch. Number badges sit outside the Flat frame corner so they do not
+hide the arrow. All markers are click-through and reproject when the board fits
+a new viewport.
 Red previews with **!** indicate an invalid candidate.
 The offending home, boulder or overlapping square is highlighted individually,
 with a short warning beside the board. Paving is movable; boulders are fixed.
@@ -99,6 +105,22 @@ wordmark instead of squeezing the controls.
 Undo is beside the board. A small **3D / Flat** selector changes
 the same puzzle's view; first use defaults to 3D and remembers later choices.
 There is no Settings menu or duplicate navigation.
+
+### Moving the Flat map
+
+Flat exchanges visibly lift and slide both complete patches into each other's
+places over **520ms**. The orange/blue frames travel with their original terrain;
+grass, paving, water and bridge directions are not morphed, rotated or replaced
+by an unrelated effect. Undo animates the reverse repair.
+
+Extra exchanges and Undo are blocked until the patches land, without discarding
+keyboard focus. The courier waits for landing before starting the completed
+journey. Menus and hidden-tab visibility events pause the movement, not the
+solve clock; the winning tap still freezes solve time immediately. Reduced
+motion uses instant exchanges. Resizing during a swap settles to the correct
+fitted board, and leaving the puzzle cancels the old animation. A browser
+animation failure is reported explicitly without losing the legal move or
+leaving the controls locked.
 
 **The traveler stays at A until the whole ordered road is ready.** Connecting
 only an early home does not start a partial walk or earn an arrival. Once one
@@ -378,6 +400,11 @@ saved choices across reload and entrypoints, active-attempt preservation and
 non-overlapping 44px controls. All six guided tap targets were actually clicked
 in 3D after resizing; Flat checks also independently compare each ring with the
 starting tile's centre before tapping it.
+Additional movement checks cover ordinary-play in-board arrows, real intermediate
+Flat positions, full patch identity, animated Undo, pause/resume, instant reduced
+motion, viewport changes and animation-error recovery on fitted 6x6, 8x8 and
+10x10 boards. Visibility events are simulated only in the isolated headless
+browser; physical phone-background behavior still needs native device testing.
 
 The production build includes:
 

@@ -5,6 +5,8 @@ import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, JourneyP
 import { JourneyPlayer } from '../shared/playback.ts';
 import type { LivingIsland } from './island.ts';
 import { BrandMark, FLAT_AXES, Icon } from './components.tsx';
+import { animateFlatExchange } from './flatAnimation.ts';
+import type { FlatExchangeAnimation } from './flatAnimation.ts';
 
 export interface Transition {
   id: number;
@@ -49,6 +51,13 @@ interface BoardProps {
   onJourneyEnd: (revision: number) => void;
 }
 
+interface StartMarker extends GuideBounds {
+  row: number;
+  col: number;
+  number: 1 | 2;
+  preview: boolean;
+}
+
 function positionFlatTraveler(map: HTMLDivElement | null, avatar: HTMLSpanElement | null, position: Cell | null): void {
   if (!avatar) return;
   const firstCell = map?.querySelector<HTMLButtonElement>('.flat-cell');
@@ -76,6 +85,8 @@ export function BoardView(props: BoardProps) {
   const flatMap = useRef<HTMLDivElement>(null);
   const flatTraveler = useRef<HTMLSpanElement>(null);
   const flatPosition = useRef<Cell | null>(null);
+  const flatMotion = useRef<FlatExchangeAnimation | null>(null);
+  const previousFlat = useRef<{ puzzle: string; transition: number | null; flat: boolean }>({ puzzle: '', transition: null, flat: false });
   const stage = useRef<HTMLDivElement>(null);
   const player = useRef<{ revision: number; reduced: boolean; animation: JourneyPlayer } | null>(null);
   const callbacks = useRef(props);
@@ -84,6 +95,7 @@ export function BoardView(props: BoardProps) {
   const keyboardCell = useRef<Cell>({ row: 0, col: 0 });
   const [flatExtent, setFlatExtent] = useState(300);
   const [worldReady, setWorldReady] = useState(false);
+  const [startMarkers, setStartMarkers] = useState<StartMarker[]>([]);
   const size = props.board.length;
   useEffect(() => {
     keyboardCell.current = { row: 0, col: 0 };
@@ -102,7 +114,47 @@ export function BoardView(props: BoardProps) {
   }, []);
   useLayoutEffect(() => {
     positionFlatTraveler(flatMap.current, flatTraveler.current, flatPosition.current);
+    flatMotion.current?.finish();
   }, [flatExtent, props.flat]);
+  useLayoutEffect(() => {
+    const last = previousFlat.current;
+    previousFlat.current = { puzzle: props.puzzleId, transition: props.transition?.id ?? null, flat: props.flat };
+    if (!props.flat || !props.transition || props.reduced || !last.flat ||
+        last.puzzle !== props.puzzleId || last.transition === props.transition.id) return;
+    const map = flatMap.current;
+    const element = stage.current;
+    if (!map || !element) {
+      console.error('The flat exchange view is missing.');
+      callbacks.current.onFallback('The exchange view could not be found. Reload the island if the map does not appear.');
+      return;
+    }
+    const finish = (): void => {
+      flatMotion.current = null;
+      element.dataset['flatSwap'] = 'idle';
+      callbacks.current.onBusy(false);
+    };
+    const fail = (error: unknown): void => {
+      console.error('The flat terrain exchange could not animate:', error);
+      finish();
+      callbacks.current.onFallback('The exchange animation could not finish. The flat map is still playable.');
+    };
+    let motion: FlatExchangeAnimation;
+    try {
+      motion = animateFlatExchange(map, element, props.transition.move, finish, fail);
+      flatMotion.current = motion;
+      const paused = callbacks.current.paused || document.hidden;
+      motion.setPaused(paused);
+      element.dataset['flatSwap'] = paused ? 'paused' : 'running';
+      callbacks.current.onBusy(true);
+    } catch (error) {
+      fail(error);
+      return;
+    }
+    return () => {
+      motion.cancel();
+      if (flatMotion.current === motion) finish();
+    };
+  }, [props.flat, props.transition, props.puzzleId, props.reduced]);
 
   useEffect(() => {
     const element = container.current;
@@ -152,21 +204,41 @@ export function BoardView(props: BoardProps) {
   useLayoutEffect(() => {
     const element = stage.current;
     if (!element) return;
-    const update = (): void => {
-      if (!props.guide || !props.hover) { callbacks.current.onGuideBounds(null); return; }
-      if (!props.flat) {
-        callbacks.current.onGuideBounds(island.current?.guideBounds(props.hover) ?? null);
-        return;
-      }
+    const boundsFor = (cell: Cell): GuideBounds | null => {
+      if (!props.flat) return island.current?.guideBounds(cell) ?? null;
       const box = flatMap.current?.querySelector<HTMLElement>(
-        `[data-row="${props.hover.row}"][data-col="${props.hover.col}"]`)?.getBoundingClientRect();
-      callbacks.current.onGuideBounds(box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null);
+        `.flat-cell[data-row="${cell.row}"][data-col="${cell.col}"]`)?.getBoundingClientRect();
+      return box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null;
+    };
+    const update = (): void => {
+      callbacks.current.onGuideBounds(props.guide && props.hover ? boundsFor(props.hover) : null);
+      const markers: StartMarker[] = [];
+      const stageBox = element.getBoundingClientRect();
+      const add = (cell: Cell | null, number: 1 | 2, preview: boolean): void => {
+        if (!cell) return;
+        const bounds = boundsFor(cell);
+        if (bounds) markers.push({ ...bounds, x: bounds.x - stageBox.x, y: bounds.y - stageBox.y,
+          row: cell.row, col: cell.col, number, preview });
+      };
+      if (!props.busy && !props.locked) {
+        add(props.first, 1, false);
+        add(props.second, 2, false);
+        if (!props.second && !props.invalid && props.hover &&
+            !(props.first?.row === props.hover.row && props.first.col === props.hover.col)) {
+          add(props.hover, props.first ? 2 : 1, true);
+        }
+      }
+      setStartMarkers((current) => current.length === markers.length && current.every((marker, index) => {
+        const next = markers[index];
+        return next && marker.x === next.x && marker.y === next.y && marker.width === next.width && marker.height === next.height &&
+          marker.row === next.row && marker.col === next.col && marker.number === next.number && marker.preview === next.preview;
+      }) ? current : markers);
     };
     const observer = new ResizeObserver(update);
     observer.observe(element);
     update();
     return () => observer.disconnect();
-  }, [props.guide, props.hover, props.shape, props.flat, flatExtent, worldReady]);
+  }, [props.guide, props.first, props.second, props.hover, props.invalid, props.busy, props.locked, props.shape, props.flat, flatExtent, worldReady]);
   useEffect(() => { callbacks.current.onReady(props.flat || worldReady); },
     [props.flat, props.puzzleId, props.readyRevision, worldReady]);
   useEffect(() => { island.current?.setReducedMotion(props.reduced); }, [props.reduced, props.flat, worldReady]);
@@ -174,7 +246,12 @@ export function BoardView(props: BoardProps) {
   useEffect(() => { island.current?.setPaused(props.paused); }, [props.paused, props.flat, worldReady]);
   useEffect(() => {
     const update = (): void => {
-      stage.current?.setAttribute('data-animation-paused', String(props.paused || document.hidden));
+      const paused = props.paused || document.hidden;
+      stage.current?.setAttribute('data-animation-paused', String(paused));
+      if (flatMotion.current) {
+        flatMotion.current.setPaused(paused);
+        stage.current?.setAttribute('data-flat-swap', paused ? 'paused' : 'running');
+      }
     };
     update();
     document.addEventListener('visibilitychange', update);
@@ -270,7 +347,7 @@ export function BoardView(props: BoardProps) {
       aria-busy={!worldReady}
       aria-label={`${size} by ${size} landscape. Arrow keys choose a square; Space selects. Selecting the second patch swaps immediately. Home and End reach opposite corners. Escape clears the cut.`}
       onKeyDown={(event) => {
-        if (!worldReady || props.locked) { event.preventDefault(); return; }
+        if (!worldReady || props.locked || props.busy) { event.preventDefault(); return; }
         const cell = { ...keyboardCell.current };
         if (event.key === 'Home') { cell.row = 0; cell.col = 0; }
         else if (event.key === 'End') { cell.row = size - 1; cell.col = size - 1; }
@@ -297,9 +374,12 @@ export function BoardView(props: BoardProps) {
         const name = isAnchor(tile) ? `Pinned landmark ${tile}` : tile === 'o' ? 'Paving' : tile === '~' ? 'Water' :
           tile === 'x' ? 'Fixed boulder' : tile === 'h' ? 'Bridge, east and west only' : tile === 'v' ? 'Bridge, north and south only' : 'Grass';
         return <button key={key} className={`flat-cell terrain-${tile === '.' ? 'grass' : tile === '~' ? 'water' : tile === 'x' ? 'rock' : tile === 'h' || tile === 'v' ? 'bridge' : 'path'} ${first.has(key) ? 'cut-one' : ''} ${second.has(key) ? 'cut-two' : ''} ${guided.has(key) ? 'guided-cell' : ''} ${blocked.has(key) ? 'blocked-cell' : ''}`}
-          data-row={cell.row} data-col={cell.col} data-blocked={blocked.has(key)} disabled={props.locked}
+          data-row={cell.row} data-col={cell.col} data-tile={tile} data-blocked={blocked.has(key)} disabled={props.locked}
           aria-label={`Row ${cell.row + 1}, column ${cell.col + 1}: ${name}${first.has(key) ? ', part of selected patch 1' : second.has(key) ? ', part of selected patch 2' : ''}`}
-          onClick={() => props.onCell(cell)} onFocus={() => props.onHover(cell)} onPointerEnter={() => props.onHover(cell)}>
+          aria-disabled={props.busy}
+          onClick={() => { if (!props.busy) props.onCell(cell); }}
+          onFocus={() => { if (!props.busy) props.onHover(cell); }}
+          onPointerEnter={() => { if (!props.busy) props.onHover(cell); }}>
           {isAnchor(tile) ? <span key={`${tile}:${props.celebration?.id ?? 0}`} style={{ fontSize: Math.max(12, Math.min(16, flatExtent / size * 0.52)) }}
             className={`flat-landmark ${props.celebration?.anchors.includes(tile) ? 'destination-celebration' : ''}`}>{tile}</span> :
             tile === 'o' ? <i className="flat-stone"/> : tile === '~' ? <span aria-hidden="true">~</span> :
@@ -308,11 +388,27 @@ export function BoardView(props: BoardProps) {
           {blocked.has(key) && <span className="cell-warning"><Icon name="warning" size={12}/></span>}
         </button>;
       })}
-      {!props.second && preview && flatFrame(preview, props.first ? 2 : 1, true, props.invalid)}
-      {props.first && flatFrame(props.first, 1, false)}
-      {props.second && flatFrame(props.second, 2, false)}
+      {!props.busy && !props.second && preview && flatFrame(preview, props.first ? 2 : 1, true, props.invalid)}
+      {!props.busy && props.first && flatFrame(props.first, 1, false)}
+      {!props.busy && props.second && flatFrame(props.second, 2, false)}
+      {props.busy && props.transition && !props.reduced && <>
+        <div className="flat-patch-frame patch-2 flat-swap-frame" data-flat-swap-patch="a" aria-hidden="true"
+          style={{ gridColumn: `${props.transition.move.a.col + 1} / span ${props.transition.move.cols}`,
+            gridRow: `${props.transition.move.a.row + 1} / span ${props.transition.move.rows}` }}><span className="flat-frame-badge">2</span></div>
+        <div className="flat-patch-frame patch-1 flat-swap-frame" data-flat-swap-patch="b" aria-hidden="true"
+          style={{ gridColumn: `${props.transition.move.b.col + 1} / span ${props.transition.move.cols}`,
+            gridRow: `${props.transition.move.b.row + 1} / span ${props.transition.move.rows}` }}><span className="flat-frame-badge">1</span></div>
+      </>}
       <span ref={flatTraveler} className="flat-traveler" aria-hidden="true"/>
       </div>
+    </div>}
+    {startMarkers.length > 0 && <div className="patch-start-markers" aria-hidden="true">
+      {startMarkers.map((marker) => <svg key={marker.number} className={`patch-start-arrow patch-${marker.number}`}
+        viewBox="0 0 32 32" data-patch={marker.number} data-row={marker.row} data-col={marker.col} data-preview={marker.preview}
+        style={{ left: marker.x, top: marker.y, width: marker.width, height: marker.height }}>
+        <path d="M27 5 16 16M16 8v8h8" stroke="#fffdf1" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M27 5 16 16M16 8v8h8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>)}
     </div>}
     {props.overlay}
   </div>;

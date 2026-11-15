@@ -104,9 +104,15 @@ button { transition: background .18s, border-color .18s, color .18s, transform .
 .flat-patch-frame.patch-2 { color: #286797; background: #2867970d; }
 .flat-patch-frame.preview { z-index: 4; border-style: dashed; }
 .flat-patch-frame.invalid { color: #b33f35; background: #b33f3512; }
-.flat-frame-badge { position: absolute; top: 2px; left: 2px; display: grid; place-items: center; width: 20px; height: 20px; border: 1.5px solid currentColor; border-radius: 50%; color: inherit; background: #fffdf1; font-size: 12px; font-weight: 700; line-height: 1; box-shadow: 0 1px 3px #34412b24; }
+.flat-frame-badge { position: absolute; top: -8px; left: -8px; display: grid; place-items: center; width: 20px; height: 20px; border: 1.5px solid currentColor; border-radius: 50%; color: inherit; background: #fffdf1; font-size: 12px; font-weight: 700; line-height: 1; box-shadow: 0 1px 3px #34412b24; }
 .flat-cell:focus-visible { outline: 2px dotted #315546; outline-offset: -5px; }
 .flat-cell:hover { filter: brightness(1.05); }
+.flat-cell[aria-disabled=true] { cursor: wait; }
+.flat-cell.flat-moving { z-index: 9; will-change: transform; transition: none; }
+.flat-patch-frame.flat-swap-frame { z-index: 10; filter: drop-shadow(0 5px 3px #1f382c38); will-change: transform; }
+.patch-start-markers { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
+.patch-start-arrow { position: absolute; display: block; color: var(--selection-one); overflow: visible; }
+.patch-start-arrow.patch-2 { color: var(--selection-two); }
 .guided-instruction { max-width: 430px; margin: 15px auto 0; padding: 10px 15px; border: 1px solid #d9c99c; border-radius: 9px; color: var(--muted); background: #f5efd9; text-align: center; font-size: var(--text-caption); line-height: 1.7; }
 
 .tool-panel { border: 1px solid #dfe3d3; border-radius: 16px; background: #fafbf36e; box-shadow: 0 5px 25px #586f4503; padding: 23px 20px 18px; margin-top: 12px; }
