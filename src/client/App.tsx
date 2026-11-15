@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gameApi, takeStorageNotice } from './api.ts';
 import { IslandAudio } from './audio.ts';
 import { BoardView } from './BoardView.tsx';
@@ -14,17 +14,15 @@ import { TutorialCoach } from './TutorialCoach.tsx';
 import { AdventureMap } from './AdventureMap.tsx';
 import { useSolveTimer } from './useSolveTimer.ts';
 import { formatSolveTime } from '../shared/timing.ts';
-import { isRecord } from '../shared/validation.ts';
-import { isGuideTopics, mergeGuideTopics, newTileGuides } from '../shared/guidance.ts';
+import { mergeGuideTopics, newTileGuides } from '../shared/guidance.ts';
+import { loadPreferences, PREF_KEY, resolveAppearance } from './preferences.ts';
 import type { Anchor, Board, Bootstrap, Celebration, Cell, FrameAxes, GuideBounds, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
 
 type Kind = 'daily' | 'studio' | 'guide';
 type Dialog = 'guide' | 'atlas' | 'erase' | 'welcome' | 'tour-tools' | 'tour-places' | 'tiles' | null;
 interface Run { puzzle: Puzzle; kind: Kind; edition: string | null; number: number | null }
-interface Preferences { flat: boolean; completed: string[]; soundWanted: boolean; seenGuides: GuideTopic[] }
 interface Notice { message: string; error: boolean }
 
-const PREF_KEY = 'detour:preferences:1';
 const EMPTY_ROUTES: Cell[][] = [];
 const EMPTY_CELLS: readonly Cell[] = [];
 const selectionLabels: Record<PatchIssue['code'], string> = {
@@ -44,33 +42,6 @@ function rankSummary(rank: MyRank, label = 'today'): string {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : 'Something unexpected happened. Please try again.';
-}
-
-function loadPreferences(): { value: Preferences; warning: string | null } {
-  const defaults: Preferences = {
-    flat: false, completed: [], soundWanted: false, seenGuides: [],
-  };
-  try {
-    const text = localStorage.getItem(PREF_KEY);
-    if (!text) return { value: defaults, warning: null };
-    const value: unknown = JSON.parse(text);
-    if (!isRecord(value) || typeof value['flat'] !== 'boolean' ||
-        typeof value['soundWanted'] !== 'boolean' || !Array.isArray(value['completed']) ||
-        !value['completed'].every((item: unknown) => typeof item === 'string')) throw new Error('Invalid saved preferences.');
-    let seenGuides: GuideTopic[] = [];
-    let warning: string | null = null;
-    if (value['seenGuides'] !== undefined) {
-      if (isGuideTopics(value['seenGuides'])) seenGuides = value['seenGuides'];
-      else {
-        console.warn('Saved walkthrough choices could not be read.');
-        warning = 'The walkthrough choices could not be read. Other progress is safe; the guide may appear again.';
-      }
-    }
-    return { value: { flat: value['flat'], completed: value['completed'], soundWanted: value['soundWanted'], seenGuides }, warning };
-  } catch (error) {
-    console.warn('Saved Detour preferences could not be loaded:', error);
-    return { value: defaults, warning: 'Saved preferences could not be read. The island is using fresh settings; nothing on your village board was changed.' };
-  }
 }
 
 function defaultShape(area: number): Shape {
@@ -104,7 +75,10 @@ export default function App() {
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const dark = useMediaQuery('(prefers-color-scheme: dark)');
+  const systemDark = useMediaQuery('(prefers-color-scheme: dark)');
+  const appearance = resolveAppearance(preferences.appearance, systemDark);
+  const dark = appearance === 'dark';
+  useLayoutEffect(() => { document.documentElement.dataset['appearance'] = appearance; }, [appearance]);
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -442,13 +416,13 @@ export default function App() {
     }
     if (!first) {
       if (run.kind === 'guide' && (cell.row !== guideMove?.a.row || cell.col !== guideMove?.a.col)) {
-        notify('Tap the orange-framed pair I am pointing to.');
+        notify('Tap the marked starting square, not the other square in the frame.');
         return;
       }
       setFirst(cell); setHover(null); audio.current?.select(false);
     } else {
       if (run.kind === 'guide' && (cell.row !== guideMove?.b.row || cell.col !== guideMove?.b.col)) {
-        notify('Now tap the blue-framed empty pair. The matching patches will trade places.');
+        notify('Tap the marked starting square in the blue frame to exchange both patches.');
         return;
       }
       audio.current?.select(true);
@@ -623,7 +597,7 @@ export default function App() {
   const completionOpen = won && !busy && !resultDismissed && dialog === null;
   const guideInstruction = busy ? 'Watch the swap.' : guideStage === 'frame' ?
     `Tap the ${guideMove?.rows === 1 ? 'wide' : 'tall'} frame.` : guideStage === 'home' ? 'Watch the way home.' :
-      guideStage === 'second' ? 'Tap the blue pair.' : 'Tap the orange pair.';
+      `Tap ${guideMove?.rows === 1 ? 'left' : 'top'} ${guideStage === 'second' ? 'blue' : 'orange'} square.`;
 
   return <div className={`app-shell focused-game direct-play viewport-fit ${reducedMotion ? 'reduce-motion' : ''}`}
     data-appearance={dark ? 'dark' : 'light'} data-onboarding={run?.kind === 'guide' ? 'practice' : dialog === 'tiles' ? 'tiles' : 'complete'}
@@ -643,7 +617,13 @@ export default function App() {
           aria-label={soundOn ? 'Turn sound off' : 'Turn sound on'} aria-pressed={soundOn} title={soundOn ? 'Soundscape on' : 'Listen to the island'}>
           <Icon name={soundOn ? 'sound' : 'mute'}/>
         </button>
-        <button className="icon-button help-toggle" onClick={() => setDialog('guide')} aria-label="How to play and tile rules" title="How to play and tile rules"><Icon name="book"/></button>
+        <button className="icon-button theme-toggle" aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          onClick={() => setPreferences((current) => ({ ...current,
+            appearance: resolveAppearance(current.appearance, systemDark) === 'dark' ? 'light' : 'dark' }))}>
+          <Icon name={dark ? 'sun' : 'moon'} size={21}/>
+        </button>
+        <button className="icon-button help-toggle" onClick={() => setDialog('guide')} aria-label="How to play and tile rules" title="How to play and tile rules"><Icon name="help" size={22}/></button>
       </nav>
     </header>
 
@@ -681,7 +661,7 @@ export default function App() {
       </aside>
 
       <section ref={stageSection} className="island-panel" aria-label="The playable island">
-        {run.kind === 'guide' && <TutorialCoach target={guideBounds} frame={guideStage === 'frame'}
+        {run.kind === 'guide' && <TutorialCoach target={guideBounds} frame={guideStage === 'frame'} second={guideStage === 'second'}
           step={Math.min(moves.length + 1, TUTORIAL_MOVES.length)} total={TUTORIAL_MOVES.length}
           instruction={guideInstruction} pointing={!busy && !roadReady && dialog === null && boardReady}
           onSkip={() => finishWalkthrough(true)}/>}

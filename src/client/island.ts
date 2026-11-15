@@ -851,13 +851,13 @@ export class LivingIsland {
     }
   }
 
-  guideBounds(cell: Cell, shape: Shape): GuideBounds {
+  guideBounds(cell: Cell): GuideBounds {
     const bounds = this.canvas.getBoundingClientRect();
     const xs: number[] = [];
     const ys: number[] = [];
-    for (const col of [cell.col, cell.col + shape.cols]) {
-      for (const row of [cell.row, cell.row + shape.rows]) {
-        const point = new THREE.Vector3(col - this.size / 2, 0.45, row - this.size / 2).project(this.camera);
+    for (const col of [cell.col, cell.col + 1]) {
+      for (const row of [cell.row, cell.row + 1]) {
+        const point = new THREE.Vector3(col - this.size / 2, 0.30, row - this.size / 2).project(this.camera);
         xs.push(bounds.x + (point.x + 1) * bounds.width / 2);
         ys.push(bounds.y + (1 - point.y) * bounds.height / 2);
       }

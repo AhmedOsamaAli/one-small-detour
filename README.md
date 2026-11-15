@@ -68,9 +68,13 @@ actual frame or patch, without covering playable targets. The lesson guides
 through A, B and C. Only the last guided repair completes the road. This is a
 teaching sequence, not a claimed optimal score. Guidance follows Undo back to
 the relevant repair; there is no duplicated instruction line at the bottom.
+The stronger arrow and tap ring target only the patch's starting tile, not the
+centre of the two-tile frame. Courier prompts identify the **top** square for a
+tall patch and the **left** square for a wide patch, in both 3D and Flat.
 The guide then introduces the tools, views, daily ranking and 200 practice places. New rocks and
 bridges get a short explanation before that island's countdown starts.
-Completing or skipping the guide is remembered; the book can replay it anytime.
+Completing or skipping the guide is remembered; the question-mark help button
+can replay it anytime.
 
 Orange frame **1** is the first patch; blue frame **2** is the second. Solid,
 white-backed borders are confirmed selections; dashed frames are previews.
@@ -85,9 +89,13 @@ The offending home, boulder or overlapping square is highlighted individually,
 with a short warning beside the board. Paving is movable; boulders are fixed.
 Bridge arrows show their two permitted directions.
 
-The header has direct **Practice map**, sound/mute and book buttons on every
-screen size. The book opens the illustrated guide, tile rules and an untimed
+The header has direct **Practice map**, **sound/mute**, **sun/moon** and **?**
+buttons on every screen size. The question mark opens the illustrated guide,
+tile rules and an untimed
 guided garden. The garden does not submit scores or count as a daily completion.
+The sun/moon switches to light/dark immediately, without restarting the board.
+All four controls retain 44px tap targets; very narrow screens simplify the
+wordmark instead of squeezing the controls.
 Undo is beside the board. A small **3D / Flat** selector changes
 the same puzzle's view; first use defaults to 3D and remembers later choices.
 There is no Settings menu or duplicate navigation.
@@ -125,10 +133,12 @@ Puzzle rules, certified minimums and existing timed-score keys are unchanged.
   navigation remains available when a narrow pane makes them small.
 - The device's reduced-motion preference is respected automatically, including
   changes while the game is open. There is no manual motion switch.
-- Light/dark appearance follows the browser's preferred color scheme, including
-  Reddit/device appearance when the host supplies it. Both entrypoints, dialogs,
-  flat tiles, campaign scenery and living-island lighting adapt without resetting
-  the puzzle or recreating the 3D scene. There is no extra appearance menu.
+- Light/dark appearance follows the device until the player chooses a mode with
+  the header sun/moon button. That explicit choice is remembered in this browser
+  and overrides later device-theme changes. Both entrypoints, dialogs, flat tiles,
+  practice scenery and living-island lighting use the same effective theme
+  without resetting the puzzle or recreating the 3D scene. An already open preview
+  also reflects saved changes from the game. There is no extra appearance menu.
 - Sound is opt-in. The sound button starts the original Web Audio score; a
   successful route plays its own short pentatonic melody. The header includes
   a visible one-click mute on phones and desktop; the choice is remembered.
@@ -362,6 +372,12 @@ Browser checks also covered the 3D greeting, paused flat celebration pulses,
 automatic live device-motion changes and Undo/Restart cancellation. A
 reduced-motion flat result appeared after 1539ms, not before the 1500ms hold;
 the solve timer remained frozen throughout.
+The header/targeting update adds preference-migration checks and browser checks
+for direct question-mark help, manual themes against the opposite device theme,
+saved choices across reload and entrypoints, active-attempt preservation and
+non-overlapping 44px controls. All six guided tap targets were actually clicked
+in 3D after resizing; Flat checks also independently compare each ring with the
+starting tile's centre before tapping it.
 
 The production build includes:
 

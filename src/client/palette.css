@@ -26,8 +26,7 @@
   --map-border: #91ad86;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-appearance="dark"] {
     color-scheme: dark;
     --paper: #14201b;
     --ink: #edf0df;
@@ -52,5 +51,4 @@
     --map-land-two: #31553c;
     --map-land-three: #285247;
     --map-border: #6d8d62;
-  }
 }

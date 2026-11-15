@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { FrameAxes, GuideTopic, Shape, Theme, Tile } from '../shared/types.ts';
 import { isAnchor } from '../shared/rules.ts';
 
-type IconName = 'sound' | 'mute' | 'undo' | 'reset' | 'book' | 'close' | 'arrow' | 'sun' | 'moon' | 'leaf' | 'trophy' | 'map' | 'swap' | 'check' | 'chevron' | 'lock' | 'clock' | 'warning' | 'bridge' | 'play' | 'grid' | 'trash' | 'cube';
+type IconName = 'sound' | 'mute' | 'undo' | 'reset' | 'book' | 'help' | 'close' | 'arrow' | 'sun' | 'moon' | 'leaf' | 'trophy' | 'map' | 'swap' | 'check' | 'chevron' | 'lock' | 'clock' | 'warning' | 'bridge' | 'play' | 'grid' | 'trash' | 'cube';
 
 const paths: Record<IconName, ReactNode> = {
   sound: <><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></>,
@@ -11,6 +11,7 @@ const paths: Record<IconName, ReactNode> = {
   undo: <><path d="m9 5-5 5 5 5"/><path d="M4 10h10a6 6 0 0 1 0 12"/></>,
   reset: <><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></>,
   book: <><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Z"/><path d="M12 5v15"/></>,
+  help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-1 .7-1.7 1.2-1.7 2.7M12 17h.01"/></>,
   close: <path d="m6 6 12 12M6 18 18 6"/>,
   arrow: <><path d="M4 12h16m-6-6 6 6-6 6"/></>,
   sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/></>,
@@ -162,13 +163,13 @@ export function WalkthroughFeatures({ section }: { section: 'tools' | 'places' }
   const entries: { icon: IconName; title: string; text: string }[] = section === 'tools' ? [
     { icon: 'undo', title: 'One tap back', text: 'Reverse the last exchange. Fix a mistaken tap.' },
     { icon: 'sound', title: 'A little sound', text: 'Tap the speaker to listen or mute. Sound is optional.' },
-    { icon: 'cube', title: 'Your point of view', text: 'Switch 3D / Flat. Light and dark follow your device.' },
+    { icon: 'cube', title: 'Your point of view', text: 'Switch 3D / Flat. Use the top sun or moon to choose light or dark.' },
     { icon: 'swap', title: 'Choose a frame', text: 'Picture buttons choose a tall or wide patch. Tiles do not rotate.' },
   ] : [
     { icon: 'sun', title: 'One daily island', text: 'One shared UTC puzzle. Its countdown starts after this practice.' },
     { icon: 'trophy', title: 'Earn your comparison', text: 'Shown after a saved finish. Fewest moves, then fastest time.' },
     { icon: 'map', title: 'Practice: 200 places', text: 'Preview, then play. Finish one unranked stop to open the next.' },
-    { icon: 'book', title: 'A guide nearby', text: 'Replay this walkthrough or read every tile rule from the book.' },
+    { icon: 'help', title: 'A guide nearby', text: 'Tap the top question mark to replay this walkthrough or read every tile rule.' },
   ];
   return <div className="tour-feature-grid">{entries.map((entry) =>
     <div className="tour-feature" key={entry.title}><span className="state-emblem"><Icon name={entry.icon} size={23}/></span>

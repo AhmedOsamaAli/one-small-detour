@@ -5,7 +5,8 @@ deployment has been reviewed or approved.
 
 ## Browser-only information
 
-The browser stores display/sound preferences, discovered-place IDs and a copy
+The browser stores display/sound preferences, including an explicit light/dark
+choice, discovered-place IDs and a copy
 of acknowledged or skipped guides. Local development also uses a random
 rehearsal identifier, which is not a password or production authentication
 credential. The production client does not send that local identity header.
@@ -32,7 +33,10 @@ within this community's installation. Native flags expire within 31 days of
 their last update. Guest choices stay in browser storage only; the local
 development server keeps its synced flags in memory. Failed sync is reported,
 and does not prevent play. Device appearance and motion preferences are read
-locally; there is no appearance-tracking record.
+locally. A chosen appearance stays in browser storage, is not synced to the
+server, and is shared only between this app's same-origin preview and game.
+Existing local progress is preserved when the new preference is introduced.
+No appearance-tracking record is collected.
 
 ## Automatic daily scores and timed attempts
 

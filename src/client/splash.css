@@ -116,8 +116,7 @@ h1 { font-family: 'Fraunces Variable', Georgia, serif; font-size: clamp(28px, mi
   #open-game > svg { width: 16px; height: 16px; }
   .preview-art figcaption { display: none; }
 }
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-appearance="dark"] {
     --scene-grass: #68875a;
     --scene-grass-soft: #7b965d;
     --scene-grid: #506f4b;
@@ -131,11 +130,10 @@ h1 { font-family: 'Fraunces Variable', Georgia, serif; font-size: clamp(28px, mi
     --scene-water-glint: #bde0cf;
     --scene-halo: #233d2c;
     --scene-cloud: #8dafa0;
-  }
-  .scene-sun { display: none; }
-  .scene-moon { display: block; }
-  #open-game { border-color: #8eac78; box-shadow: inset 0 1px 0 #fff9df20, 0 4px 0 #030a0522; }
 }
+:where(:root[data-appearance="dark"]) .scene-sun { display: none; }
+:where(:root[data-appearance="dark"]) .scene-moon { display: block; }
+:where(:root[data-appearance="dark"]) #open-game { border-color: #8eac78; box-shadow: inset 0 1px 0 #fff9df20, 0 4px 0 #030a0522; }
 @media (prefers-reduced-motion: reduce) {
   .demo-animated { animation: none; }
   .patch-one { transform: translate(56px, 104px); }

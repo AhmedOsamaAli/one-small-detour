@@ -637,8 +637,9 @@ button { transition: background .18s, border-color .18s, color .18s, transform .
 html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-behavior: none; }
 .viewport-fit.app-shell { height: 100dvh; min-height: 0; display: grid; grid-template-rows: 64px minmax(0, 1fr); padding: 0; }
 .viewport-fit .site-header { height: auto; min-height: 0; padding: 0; margin: 0 24px; flex-wrap: nowrap; gap: 10px; }
-.viewport-fit .header-nav { width: auto; margin-left: auto; }
+.viewport-fit .header-nav { width: auto; margin-left: auto; flex-shrink: 0; }
 .viewport-fit .header-nav > .icon-button { display: inline-flex; }
+.viewport-fit .header-nav > :is(.theme-toggle, .help-toggle) { background: var(--surface-soft); border-color: var(--line); border-radius: 12px; color: var(--green); }
 .viewport-fit .wordmark-compact { display: none; }
 .viewport-fit .wordmark { min-width: 44px; }
 .viewport-fit.direct-play .game-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); width: min(1200px, calc(100% - 48px)); height: 100%; min-height: 0; min-width: 0; padding: 14px 0 10px; margin: 0 auto; gap: 12px; align-items: stretch; }
@@ -890,6 +891,10 @@ html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-be
   .viewport-fit .wordmark-full { display: none; }
   .viewport-fit .wordmark-compact { display: inline; font-size: 20px; }
 }
+@media (max-width: 360px) {
+  .viewport-fit .wordmark > span { display: none; }
+  .viewport-fit .site-header { gap: 4px; }
+}
 @media (max-width: 280px) {
   .viewport-fit .wordmark { gap: 8px; }
   .viewport-fit .wordmark svg { width: 26px; height: 26px; }
@@ -1043,85 +1048,83 @@ html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-be
   .frame-option.tutorial-target { animation: none; box-shadow: 0 0 0 2px var(--green); }
 }
 
-@media (prefers-color-scheme: dark) {
-  .app-shell { background-image: radial-gradient(#b7cc8e0b .65px, transparent .65px); }
-  .site-header { border-color: var(--line); }
-  .icon-button:hover:not(:disabled), .sound-is-on { background: var(--surface-selected); color: var(--ink); }
-  .text-button:hover, .data-management-link { color: var(--green); }
-  .skip-link { background: var(--surface-raised); color: var(--ink); }
-  .secondary-button, .frame-option, .undo-control { background: var(--surface-raised); color: var(--ink); border-color: var(--line); box-shadow: inset 0 1px 0 #f6ffe908; }
-  .secondary-button:hover:not(:disabled), .frame-option:hover:not(:disabled) { background: var(--surface-selected); color: var(--ink); border-color: var(--border-strong); }
-  .primary-button { border-color: #8aa878; }
-  .primary-button:disabled { background: #304337; border-color: #4a5e4d; color: #a9b6a2; }
-  .frame-option.chosen { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); box-shadow: inset 0 0 0 1px #b49a5e55; }
-  .viewport-fit .play-toolbar { background: linear-gradient(130deg, #26382df2, #1d2c24f2); border-color: var(--line); }
-  .view-selector { background: var(--surface-raised); box-shadow: inset 0 0 0 1px var(--line); }
-  .view-option { color: var(--muted); }
-  .view-option.selected { background: var(--surface-selected); border-color: var(--border-strong); color: var(--ink); box-shadow: inset 0 0 0 1px #b8d7a81a; }
-  .view-option:not(:disabled):hover { background: var(--surface-selected); }
-  .journey-stop { background: var(--surface-raised); border-color: var(--border-strong); color: var(--muted); }
-  .journey-stop.arrived { background: var(--surface-selected); border-color: #8eac7a; color: #e4f0ce; }
-  .journey-order [aria-current=step] .journey-stop { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); }
-  .journey-arrow { color: var(--muted); }
-  .status-step { border-color: var(--border-strong); }
-  .viewport-fit .board-footer { border-color: var(--line); }
-  .viewport-fit .selection-warning { background: var(--danger-bg); color: var(--error); }
-  .viewport-fit .world-stage:not(.is-flat) { background: radial-gradient(ellipse at 50% 58%, #2f523c77, transparent 72%); }
-  .viewport-fit .flat-map-scroll .flat-map { background: #605e47; box-shadow: 0 4px 0 #414b38, 0 10px 24px #00000033; }
-  .terrain-grass { background: #456541; }
-  .terrain-path { background: #566f44; }
-  .terrain-water, .terrain-bridge { background: #356e71; color: #c0e0d4; }
-  .flat-stone { background: #d0c8a9; border-color: #a69e7c; box-shadow: 0 2px 0 #827c5c; }
-  .flat-grass { border-color: #88a66e; }
-  .flat-landmark { background: #f0e2b9; color: #31483e; }
-  .flat-rock { background: linear-gradient(135deg, #97a18b 0 42%, #617969 43% 74%, #466050 75%); }
-  .flat-cell:focus-visible { outline-color: var(--focus-ring); }
-  .dialog { --dialog-accent: #bbd5a5; --dialog-tint: #314b35; border-color: var(--border-strong); background: var(--surface); box-shadow: inset 0 0 0 4px #f0ffe609, 0 30px 120px #00000077; scrollbar-color: #66805f var(--surface); }
-  .dialog-map { --dialog-accent: #f2d394; --dialog-tint: #3c3521; }
-  .dialog-erase { --dialog-accent: #ffc2a3; --dialog-tint: #452f25; border-color: #9f7058; }
-  .dialog::backdrop { background: #050d09bc; }
-  .dialog-heading { background: var(--surface); border-color: var(--line); }
-  .dialog-heading .icon-button { background: var(--surface-raised); color: var(--ink); border-color: var(--line); }
-  .dialog-emblem, .state-emblem { background: var(--surface-soft); color: var(--green); border-color: var(--line); }
-  .dialog-welcome, .guide-step, .guide-score-note, .data-choice, .preview-picture { background: var(--surface-raised); border-color: var(--line); color: var(--muted); }
-  .dialog-welcome strong, .guide-step h3, .guide-score-note strong { color: var(--ink); }
-  .guide-step-number { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); }
-  .data-remove { background: var(--danger-bg); border-color: #815b42; color: var(--error); }
-  .data-keep { color: var(--green); }
-  .inline-error, .toast-error { background: var(--danger-bg); border-color: #976f53; color: var(--error); }
-  .toast { background: var(--surface-raised); border-color: var(--border-strong); color: var(--ink); }
-  .toast-error { border-left-color: var(--error); }
-  .countdown-overlay { background: radial-gradient(ellipse, #2b4234aa, var(--paper) 70%); }
-  .countdown-dial { background: linear-gradient(140deg, #3c3824, #28422f); border-color: var(--accent-border); outline-color: var(--border-strong); box-shadow: inset 0 0 0 5px #f2ffe908, 0 8px 28px #00000033; }
-  .countdown-number, .countdown-overlay > strong { color: var(--ink); }
-  .countdown-go { color: #d7edbd; text-shadow: 0 2px 0 #14201b; }
-  .viewport-fit .result-card { background: linear-gradient(140deg, #283c2c, #1e3026); border-color: var(--border-strong); box-shadow: 0 12px 40px #00000044; }
-  .viewport-fit .result-card.perfect-result { background: linear-gradient(140deg, #403821, #2e3020); border-color: var(--accent-border); }
-  .result-label, .result-metrics, .viewport-fit .result-copy .completion-next { color: var(--muted); }
-  .adventure-controls .adventure-daily, .preview-state { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); }
-  .adventure-scene { background: var(--map-water); border-color: var(--line); }
-  .adventure-trails .trail-underlay { stroke: #71805c; }
-  .adventure-trails .trail-locked { stroke: #9dac87; }
-  .adventure-trails .trail-discovered { stroke: #c2d7a1; }
-  .adventure-trails .trail-direction { stroke: #d9e8bc; }
-  .campaign-land-label { fill: #e0e8bf; }
-  .adventure-stop { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); box-shadow: 0 4px 0 #263b27, 0 6px 12px #00000033; }
-  .adventure-stop:hover:not(:disabled), .adventure-stop:focus-visible { background: #51472a; border-color: #e4c384; }
-  .adventure-stop.is-discovered { background: #476944; color: #f7f7da; border-color: #92ae78; }
-  .adventure-stop.is-locked { background: #344a39; color: #d3ddc6; border-color: #78906c; box-shadow: 0 3px 0 #203322; }
-  .adventure-stop.is-next { background: #594b26; color: #fff0bd; border-color: #e2bc6f; box-shadow: 0 4px 0 #263b27, 0 0 0 4px #ead39a33; }
-  .adventure-stop.is-previewed { outline-color: #e1ddb0; }
-  .campaign-stop-badge { background: var(--surface-raised); color: var(--ink); border-color: var(--border-strong); }
-  .campaign-preview, .preview-done, .preview-locked { background: linear-gradient(145deg, var(--surface-raised), var(--surface)); border-color: var(--border-strong); box-shadow: inset 0 0 0 3px #f5ffe907; }
-  .preview-eyebrow { color: var(--accent-ink); }
-  .preview-done .preview-state { background: #314b30; color: #d5e8bd; border-color: #829e6a; }
-  .preview-locked .preview-state { background: #314036; color: #d2dcc8; border-color: #75876a; }
-  .preview-facts, .legend-locked { color: var(--muted); }
-  .legend-ready { color: var(--accent-ink); }
-  .legend-done { color: var(--green); }
-  .tile-guide-tag { background: var(--surface-selected); color: var(--green); border-color: var(--border-strong); }
-  .tile-guide-tag.fixed-tag { background: #354136; color: #d7decd; border-color: #77876c; }
-}
+:where(:root[data-appearance="dark"]) .app-shell { background-image: radial-gradient(#b7cc8e0b .65px, transparent .65px); }
+:where(:root[data-appearance="dark"]) .site-header { border-color: var(--line); }
+:where(:root[data-appearance="dark"]) :is(.icon-button:hover:not(:disabled), .sound-is-on) { background: var(--surface-selected); color: var(--ink); }
+:where(:root[data-appearance="dark"]) :is(.text-button:hover, .data-management-link) { color: var(--green); }
+:where(:root[data-appearance="dark"]) .skip-link { background: var(--surface-raised); color: var(--ink); }
+:where(:root[data-appearance="dark"]) :is(.secondary-button, .frame-option, .undo-control) { background: var(--surface-raised); color: var(--ink); border-color: var(--line); box-shadow: inset 0 1px 0 #f6ffe908; }
+:where(:root[data-appearance="dark"]) :is(.secondary-button:hover:not(:disabled), .frame-option:hover:not(:disabled)) { background: var(--surface-selected); color: var(--ink); border-color: var(--border-strong); }
+:where(:root[data-appearance="dark"]) .primary-button { border-color: #8aa878; }
+:where(:root[data-appearance="dark"]) .primary-button:disabled { background: #304337; border-color: #4a5e4d; color: #a9b6a2; }
+:where(:root[data-appearance="dark"]) .frame-option.chosen { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); box-shadow: inset 0 0 0 1px #b49a5e55; }
+:where(:root[data-appearance="dark"]) .viewport-fit .play-toolbar { background: linear-gradient(130deg, #26382df2, #1d2c24f2); border-color: var(--line); }
+:where(:root[data-appearance="dark"]) .view-selector { background: var(--surface-raised); box-shadow: inset 0 0 0 1px var(--line); }
+:where(:root[data-appearance="dark"]) .view-option { color: var(--muted); }
+:where(:root[data-appearance="dark"]) .view-option.selected { background: var(--surface-selected); border-color: var(--border-strong); color: var(--ink); box-shadow: inset 0 0 0 1px #b8d7a81a; }
+:where(:root[data-appearance="dark"]) .view-option:not(:disabled):hover { background: var(--surface-selected); }
+:where(:root[data-appearance="dark"]) .journey-stop { background: var(--surface-raised); border-color: var(--border-strong); color: var(--muted); }
+:where(:root[data-appearance="dark"]) .journey-stop.arrived { background: var(--surface-selected); border-color: #8eac7a; color: #e4f0ce; }
+:where(:root[data-appearance="dark"]) .journey-order [aria-current=step] .journey-stop { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); }
+:where(:root[data-appearance="dark"]) .journey-arrow { color: var(--muted); }
+:where(:root[data-appearance="dark"]) .status-step { border-color: var(--border-strong); }
+:where(:root[data-appearance="dark"]) .viewport-fit .board-footer { border-color: var(--line); }
+:where(:root[data-appearance="dark"]) .viewport-fit .selection-warning { background: var(--danger-bg); color: var(--error); }
+:where(:root[data-appearance="dark"]) .viewport-fit .world-stage:not(.is-flat) { background: radial-gradient(ellipse at 50% 58%, #2f523c77, transparent 72%); }
+:where(:root[data-appearance="dark"]) .viewport-fit .flat-map-scroll .flat-map { background: #605e47; box-shadow: 0 4px 0 #414b38, 0 10px 24px #00000033; }
+:where(:root[data-appearance="dark"]) .terrain-grass { background: #456541; }
+:where(:root[data-appearance="dark"]) .terrain-path { background: #566f44; }
+:where(:root[data-appearance="dark"]) :is(.terrain-water, .terrain-bridge) { background: #356e71; color: #c0e0d4; }
+:where(:root[data-appearance="dark"]) .flat-stone { background: #d0c8a9; border-color: #a69e7c; box-shadow: 0 2px 0 #827c5c; }
+:where(:root[data-appearance="dark"]) .flat-grass { border-color: #88a66e; }
+:where(:root[data-appearance="dark"]) .flat-landmark { background: #f0e2b9; color: #31483e; }
+:where(:root[data-appearance="dark"]) .flat-rock { background: linear-gradient(135deg, #97a18b 0 42%, #617969 43% 74%, #466050 75%); }
+:where(:root[data-appearance="dark"]) .flat-cell:focus-visible { outline-color: var(--focus-ring); }
+:where(:root[data-appearance="dark"]) .dialog { --dialog-accent: #bbd5a5; --dialog-tint: #314b35; border-color: var(--border-strong); background: var(--surface); box-shadow: inset 0 0 0 4px #f0ffe609, 0 30px 120px #00000077; scrollbar-color: #66805f var(--surface); }
+:where(:root[data-appearance="dark"]) .dialog-map { --dialog-accent: #f2d394; --dialog-tint: #3c3521; }
+:where(:root[data-appearance="dark"]) .dialog-erase { --dialog-accent: #ffc2a3; --dialog-tint: #452f25; border-color: #9f7058; }
+:where(:root[data-appearance="dark"]) .dialog::backdrop { background: #050d09bc; }
+:where(:root[data-appearance="dark"]) .dialog-heading { background: var(--surface); border-color: var(--line); }
+:where(:root[data-appearance="dark"]) .dialog-heading .icon-button { background: var(--surface-raised); color: var(--ink); border-color: var(--line); }
+:where(:root[data-appearance="dark"]) :is(.dialog-emblem, .state-emblem) { background: var(--surface-soft); color: var(--green); border-color: var(--line); }
+:where(:root[data-appearance="dark"]) :is(.dialog-welcome, .guide-step, .guide-score-note, .data-choice, .preview-picture) { background: var(--surface-raised); border-color: var(--line); color: var(--muted); }
+:where(:root[data-appearance="dark"]) :is(.dialog-welcome strong, .guide-step h3, .guide-score-note strong) { color: var(--ink); }
+:where(:root[data-appearance="dark"]) .guide-step-number { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); }
+:where(:root[data-appearance="dark"]) .data-remove { background: var(--danger-bg); border-color: #815b42; color: var(--error); }
+:where(:root[data-appearance="dark"]) .data-keep { color: var(--green); }
+:where(:root[data-appearance="dark"]) :is(.inline-error, .toast-error) { background: var(--danger-bg); border-color: #976f53; color: var(--error); }
+:where(:root[data-appearance="dark"]) .toast { background: var(--surface-raised); border-color: var(--border-strong); color: var(--ink); }
+:where(:root[data-appearance="dark"]) .toast-error { border-left-color: var(--error); }
+:where(:root[data-appearance="dark"]) .countdown-overlay { background: radial-gradient(ellipse, #2b4234aa, var(--paper) 70%); }
+:where(:root[data-appearance="dark"]) .countdown-dial { background: linear-gradient(140deg, #3c3824, #28422f); border-color: var(--accent-border); outline-color: var(--border-strong); box-shadow: inset 0 0 0 5px #f2ffe908, 0 8px 28px #00000033; }
+:where(:root[data-appearance="dark"]) :is(.countdown-number, .countdown-overlay > strong) { color: var(--ink); }
+:where(:root[data-appearance="dark"]) .countdown-go { color: #d7edbd; text-shadow: 0 2px 0 #14201b; }
+:where(:root[data-appearance="dark"]) .viewport-fit .result-card { background: linear-gradient(140deg, #283c2c, #1e3026); border-color: var(--border-strong); box-shadow: 0 12px 40px #00000044; }
+:where(:root[data-appearance="dark"]) .viewport-fit .result-card.perfect-result { background: linear-gradient(140deg, #403821, #2e3020); border-color: var(--accent-border); }
+:where(:root[data-appearance="dark"]) :is(.result-label, .result-metrics, .viewport-fit .result-copy .completion-next) { color: var(--muted); }
+:where(:root[data-appearance="dark"]) :is(.adventure-controls .adventure-daily, .preview-state) { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); }
+:where(:root[data-appearance="dark"]) .adventure-scene { background: var(--map-water); border-color: var(--line); }
+:where(:root[data-appearance="dark"]) .adventure-trails .trail-underlay { stroke: #71805c; }
+:where(:root[data-appearance="dark"]) .adventure-trails .trail-locked { stroke: #9dac87; }
+:where(:root[data-appearance="dark"]) .adventure-trails .trail-discovered { stroke: #c2d7a1; }
+:where(:root[data-appearance="dark"]) .adventure-trails .trail-direction { stroke: #d9e8bc; }
+:where(:root[data-appearance="dark"]) .campaign-land-label { fill: #e0e8bf; }
+:where(:root[data-appearance="dark"]) .adventure-stop { background: var(--accent-bg); color: var(--accent-ink); border-color: var(--accent-border); box-shadow: 0 4px 0 #263b27, 0 6px 12px #00000033; }
+:where(:root[data-appearance="dark"]) :is(.adventure-stop:hover:not(:disabled), .adventure-stop:focus-visible) { background: #51472a; border-color: #e4c384; }
+:where(:root[data-appearance="dark"]) .adventure-stop.is-discovered { background: #476944; color: #f7f7da; border-color: #92ae78; }
+:where(:root[data-appearance="dark"]) .adventure-stop.is-locked { background: #344a39; color: #d3ddc6; border-color: #78906c; box-shadow: 0 3px 0 #203322; }
+:where(:root[data-appearance="dark"]) .adventure-stop.is-next { background: #594b26; color: #fff0bd; border-color: #e2bc6f; box-shadow: 0 4px 0 #263b27, 0 0 0 4px #ead39a33; }
+:where(:root[data-appearance="dark"]) .adventure-stop.is-previewed { outline-color: #e1ddb0; }
+:where(:root[data-appearance="dark"]) .campaign-stop-badge { background: var(--surface-raised); color: var(--ink); border-color: var(--border-strong); }
+:where(:root[data-appearance="dark"]) :is(.campaign-preview, .preview-done, .preview-locked) { background: linear-gradient(145deg, var(--surface-raised), var(--surface)); border-color: var(--border-strong); box-shadow: inset 0 0 0 3px #f5ffe907; }
+:where(:root[data-appearance="dark"]) .preview-eyebrow { color: var(--accent-ink); }
+:where(:root[data-appearance="dark"]) .preview-done .preview-state { background: #314b30; color: #d5e8bd; border-color: #829e6a; }
+:where(:root[data-appearance="dark"]) .preview-locked .preview-state { background: #314036; color: #d2dcc8; border-color: #75876a; }
+:where(:root[data-appearance="dark"]) :is(.preview-facts, .legend-locked) { color: var(--muted); }
+:where(:root[data-appearance="dark"]) .legend-ready { color: var(--accent-ink); }
+:where(:root[data-appearance="dark"]) .legend-done { color: var(--green); }
+:where(:root[data-appearance="dark"]) .tile-guide-tag { background: var(--surface-selected); color: var(--green); border-color: var(--border-strong); }
+:where(:root[data-appearance="dark"]) .tile-guide-tag.fixed-tag { background: #354136; color: #d7decd; border-color: #77876c; }
 
 .viewport-fit .lesson-coach { grid-column: 1; grid-row: 1; position: relative; display: block; height: 76px; min-height: 76px; min-width: 0; max-width: none; margin: 0; padding: 0; border: 0; background: none; }
 .courier-speech { position: relative; width: min(400px, 100%); height: 72px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 44px; gap: 8px; align-items: center; border: 1px solid var(--accent-border); border-radius: 16px; padding: 6px 8px; background: var(--accent-bg); box-shadow: 0 3px 8px #34482b09; }

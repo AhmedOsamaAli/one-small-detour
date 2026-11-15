@@ -72,19 +72,23 @@ shader water, grass, cottages, bridges, boulders and an animated courier.
 Reached homes light up. Selection frames match the actual camera projection.
 Invalid selections identify the offending cells with a direct on-board warning.
 Paving and fixed boulders have distinct appearances; bridge arrows show their
-permitted directions. A visible book button opens the illustrated tile rules.
+permitted directions. A visible **?** button opens the illustrated tile rules
+and Replay walkthrough directly.
 The Web Audio soundscape is original, opt-in and has a visible persistent mute.
-Direct header buttons open the practice map and guide or mute sound. A small
+Direct header buttons open the practice map and guide, mute sound or switch
+light/dark mode with a sun/moon. A small
 3D/Flat selector beside the board defaults to 3D; Undo stays directly
 reachable. There is no Settings or scoreboard navigation. Saved-data removal
 remains available in the guide, and device reduced motion is handled automatically.
-Light/dark appearance adapts automatically, with matching island lighting rather
-than an inversion filter. First visits begin with skippable, untimed hands-on
+Light/dark appearance starts with the device theme; a chosen mode is remembered
+in the browser and applies to the whole UI and matching island lighting rather
+than an inversion filter. Theme changes do not reset moves or timing. First visits begin with skippable, untimed hands-on
 practice and a short feature walkthrough before the daily countdown. An original
 drawn courier speaks beside the board and points to actual frame/patch targets.
 The player makes three guided exchanges with tall/wide frames before the
 complete A-B-C road is ready. Guidance follows Undo and does not cover the
-playable targets. Guide
+playable targets. The arrow and ring target only the starting square, with
+top/left instructions rather than pointing to the whole two-square patch. Guide
 acknowledgements are remembered across app updates for signed-in players; new
 boulder/bridge rules are introduced before the relevant island starts.
 The guide, privacy confirmation and completion
@@ -141,14 +145,17 @@ activity. Keep the final video below the event's stated one-minute ceiling.
 
 ## Local verification evidence
 
-- Current local release check: **66 tests passed**, all three TypeScript checks passed,
+- Current local release check: **71 tests passed**, all three TypeScript checks passed,
   and the production build passed.
-- The combined preview/onboarding/result flow passed **48 isolated browser
+- The combined preview/onboarding/result/header flow passed **79 isolated browser
   assertions**, including light/dark inline layouts, explicit Play and error
   behavior, static reduced motion, natural feed scrolling and offscreen pause,
   three guided repairs, unblocked tap targets and the earned-rank popup.
   Result actions remain visible on short landscape screens, and closing the
-  popup or practice map does not reopen a previous result.
+  popup or practice map does not reopen a previous result. Additional checks
+  verify manual theme overrides, preserved preferences and live attempts,
+  question-mark help, and actual clicks on all six start-square markers in both
+  3D and Flat (including resized 3D views).
 - Flat selection frames fit 6x6, 8x8 and 10x10 boards at seven screen sizes
   without document scrolling or clipped frames. Both frame orientations,
   numbered hover/focus previews and invalid cuts were checked in the browser.

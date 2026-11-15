@@ -155,17 +155,12 @@ export function BoardView(props: BoardProps) {
     const update = (): void => {
       if (!props.guide || !props.hover) { callbacks.current.onGuideBounds(null); return; }
       if (!props.flat) {
-        callbacks.current.onGuideBounds(island.current?.guideBounds(props.hover, props.shape) ?? null);
+        callbacks.current.onGuideBounds(island.current?.guideBounds(props.hover) ?? null);
         return;
       }
-      const parts = patchCells(props.hover, props.shape).map((cell) =>
-        flatMap.current?.querySelector<HTMLElement>(`[data-row="${cell.row}"][data-col="${cell.col}"]`)?.getBoundingClientRect());
-      const boxes = parts.filter((box): box is DOMRect => box !== undefined);
-      if (boxes.length !== props.shape.rows * props.shape.cols) { callbacks.current.onGuideBounds(null); return; }
-      const x = Math.min(...boxes.map((box) => box.x));
-      const y = Math.min(...boxes.map((box) => box.y));
-      callbacks.current.onGuideBounds({ x, y, width: Math.max(...boxes.map((box) => box.right)) - x,
-        height: Math.max(...boxes.map((box) => box.bottom)) - y });
+      const box = flatMap.current?.querySelector<HTMLElement>(
+        `[data-row="${props.hover.row}"][data-col="${props.hover.col}"]`)?.getBoundingClientRect();
+      callbacks.current.onGuideBounds(box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null);
     };
     const observer = new ResizeObserver(update);
     observer.observe(element);
