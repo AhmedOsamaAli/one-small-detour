@@ -9,7 +9,7 @@ places**: the original 203 islands, including three late 12x12 landscapes, plus
 nine gradual lessons for three-square strips, square patches and four-square Ls.
 Proved minimums range from one through fifteen exchanges.
 
-[Public source on GitHub](https://github.com/AhmedOsamaAli/one-small-detour) |
+[Private source repository](https://github.com/AhmedOsamaAli/one-small-detour) |
 [Play on Reddit](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/)
 
 The Reddit preview is a lightweight illustrated invitation: a courier, two
@@ -557,6 +557,12 @@ The community and example post are public; the app upload is a private
 development version, not a reviewed public release. No `devvit publish`
 command or Devpost submission has been performed. Building and playing
 locally still does **not** upload anything.
+
+The GitHub source repository is private. A public code repository is optional
+under the [hackathon rules](https://redditgameofday2026.devpost.com/rules), so
+judges can use the public Reddit game without public access to the source.
+Changing repository visibility does not revoke earlier downloads or make
+browser-delivered JavaScript inaccessible.
 
 Deployment used the official private upload and an explicit, version-pinned
 installation. The game does not depend on a running local server or playtest

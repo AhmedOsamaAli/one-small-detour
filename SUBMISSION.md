@@ -6,8 +6,9 @@ One public example post was created in the owner-approved test community.
 Initial native expansion, authenticated play, automatic score saving, ranking and
 score persistence across reload/update have been verified in the desktop
 browser. No broad app publication or Devpost submission has been performed.
-Do not submit this draft as a completed entry until the remaining checklist
-below is finished.
+The GitHub source repository is private; public source and a demo video are
+optional under the current event rules. Complete the required submission items
+and review the separate native-readiness checks below before submitting.
 
 ## Copy-ready project description
 
@@ -323,14 +324,30 @@ them with native screenshots from the authorized playtest.
 - [Prominent earned-rank popup](submission-assets/completion-mobile.png)
 - [Illustrated how-to-play guide](submission-assets/guide-mobile.png)
 
-## Required native gate before calling the entry ready
+## Submission requirements and native readiness
 
 All unchecked items are real outstanding work, not assumed successes.
 
-- [ ] Re-read the current [official overview][event] and [rules][rules].
-  Direct fetching was blocked during the latest check; use the browser to
-  confirm the final requirements before submitting.
+### Required submission items
+
+- [x] Re-read the current [official overview][event] and [rules][rules] in the
+  browser on 16 November 2026 (UTC+2). Public source and a demo video are optional;
+  the overview asks for upload/playtest rather than broad app publication.
 - [ ] Confirm entrant eligibility personally and register for the event.
+- [ ] Confirm ownership or suitable licences for all submitted code, art, fonts
+  and other materials.
+- [x] Prepare the app listing, test community and playable example-post links.
+- [x] Include the root README with the game description and how to play.
+- [ ] Complete the English Devpost entry and submit it before **8 December 2026,
+  6:00 PM Pacific** (9 December, 02:00 UTC / 04:00 UTC+2).
+- [ ] Keep the game free and accessible for the full judging period, ending
+  **16 December 2026, 6:00 PM Pacific**.
+
+### Deployment and quality checks
+
+These are launch-quality checks; optional presentation items and runtime
+advisories are not additional formal hackathon eligibility requirements.
+
 - [x] Sign in with the owner's Reddit/Devvit account; never share passwords
   or authorization tokens in chat.
 - [x] Confirm ownership/availability of the `one-small-detour` app name.
@@ -356,9 +373,9 @@ All unchecked items are real outstanding work, not assumed successes.
 - [ ] Review the CLI's Node.js 24 recommendation before the broader release.
   The current Node.js 22 build/upload succeeded; no global runtime was changed.
 - [ ] Obtain first-time player feedback on instructions, challenge and fun.
-- [ ] Capture native screenshots and the final short demo.
-- [ ] Fill the real links below and complete the Devpost form.
-- [ ] Keep the game free and accessible for the full judging period.
+- [ ] Capture genuine native screenshots and, preferably, a 45-55-second demo.
+  The video is optional; if supplied, keep it under one minute and publicly
+  accessible on a video platform accepted by the rules.
 
 The native configuration enables Redis and the Reddit API. It does not request
 post-as-user permissions, telemetry, payments, external fetch domains or automatic
@@ -372,7 +389,7 @@ posting. The moderator's create-post action is explicit.
 | Test subreddit | [r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/), public |
 | Playable Reddit example post | [Open the verified game post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/) |
 | Demo video | Pending genuine native recording |
-| Public source repository | [AhmedOsamaAli/one-small-detour](https://github.com/AhmedOsamaAli/one-small-detour) |
+| Source repository (optional) | [Private GitHub repository](https://github.com/AhmedOsamaAli/one-small-detour); do not advertise it as public |
 | Privacy description | [PRIVACY.md](PRIVACY.md) |
 | How to play / technical README | [README.md](README.md) |
 
