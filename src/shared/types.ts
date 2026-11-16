@@ -169,6 +169,7 @@ export interface MyRank {
 
 export interface SavedRepair extends Leaderboard {
   saved: { swaps: number; solveMs: number | null };
+  ranking?: 'recorded' | 'replay' | 'removed';
 }
 
 export interface Bootstrap {
@@ -197,4 +198,5 @@ export interface AttemptStart {
   startsAt: string;
   expiresAt: string;
   now: string;
+  ranking?: 'eligible' | 'replay' | 'removed' | 'guest';
 }

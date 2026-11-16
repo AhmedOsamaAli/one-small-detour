@@ -72,6 +72,8 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
   const animation = useRef(0);
   const offset = useRef(0);
   const focusedStop = useRef<string | null>(null);
+  const followingNext = useRef(true);
+  const revealedPreview = useRef<string | null>(null);
   const [viewport, setViewport] = useState({ width: 320, height: 360 });
   const [offsetRows, setOffsetRows] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -90,6 +92,8 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
   const maxOffset = Math.max(0, worldHeight - viewport.height);
   const panY = Math.max(0, Math.min(maxOffset, offsetRows * rowGap));
   const focusY = points[focusIndex]?.y ?? 0;
+  const focusRow = points.slice(Math.floor(focusIndex / 3) * 3, Math.floor(focusIndex / 3) * 3 + 3);
+  const rowFocusY = focusRow.length ? (Math.min(...focusRow.map((point) => point.y)) + Math.max(...focusRow.map((point) => point.y))) / 2 : focusY;
   const completedCount = entries.filter((place) => done.has(place.id)).length;
 
   useLayoutEffect(() => {
@@ -106,28 +110,38 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
     measure();
     return () => observer.disconnect();
   }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     cancelAnimationFrame(animation.current);
     const targetId = entries[focusIndex]?.id ?? null;
     let target = Math.max(0, Math.min(maxOffset, offset.current * rowGap));
     if (focusedStop.current !== targetId) {
-      target = focusY - viewport.height * 0.4;
+      target = rowFocusY - viewport.height * 0.5;
       focusedStop.current = targetId;
-    } else {
+      followingNext.current = true;
+      setPreviewId(null);
+      drag.current = null;
+      suppressClick.current = false;
+      setDragging(false);
+    } else if (followingNext.current) {
+      target = rowFocusY - viewport.height * 0.5;
+    } else if (revealedPreview.current !== previewId) {
       const selectedIndex = entries.findIndex((place) => place.id === previewId);
-      const selected = points[selectedIndex >= 0 ? selectedIndex : focusIndex];
+      const selected = selectedIndex >= 0 ? points[selectedIndex] : null;
       if (selected) {
         if (selected.y - target < 36) target = selected.y - 36;
         else if (selected.y - target > viewport.height - 36) target = selected.y - viewport.height + 36;
       }
     }
+    revealedPreview.current = previewId;
     const rows = Math.max(0, Math.min(maxOffset, target)) / rowGap;
     offset.current = rows;
     setOffsetRows(rows);
-  }, [entries, points, previewId, focusIndex, focusY, viewport.height, rowGap, maxOffset]);
+  }, [entries, points, previewId, focusIndex, rowFocusY, viewport.height, rowGap, maxOffset]);
   useEffect(() => () => cancelAnimationFrame(animation.current), []);
 
-  const panTo = (pixels: number, animate = false): void => {
+  const panTo = (pixels: number, animate = false, follow = false): void => {
+    followingNext.current = follow;
+    revealedPreview.current = previewId;
     cancelAnimationFrame(animation.current);
     const target = Math.max(0, Math.min(maxOffset, pixels)) / rowGap;
     const from = offset.current;
@@ -168,7 +182,7 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
       <div className="adventure-progress"><strong>Your road</strong><span aria-label={`${completedCount} of ${entries.length} stops completed`}>{completedCount} / {entries.length} <span className="progress-unit">completed</span></span></div>
       <div className="adventure-controls">
         <button className="secondary-button adventure-focus" disabled={!entries.length} aria-label="Find my next stop"
-          title="Find my next stop" onClick={() => { setPreviewId(entries[focusIndex]?.id ?? null); panTo(focusY - viewport.height * 0.4, true); }}>
+          title="Find my next stop" onClick={() => { setPreviewId(entries[focusIndex]?.id ?? null); panTo(rowFocusY - viewport.height * 0.5, true, true); }}>
           <Icon name="map" size={18}/><span className="control-full">Find my stop</span><span className="control-short">Find stop</span>
         </button>
         <button className="secondary-button adventure-daily" onClick={onToday} aria-label="Today's daily island">
@@ -272,7 +286,8 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
           style={{ left: point.x, top: y }} disabled={loading !== null} data-campaign-stop={place.id} data-ordinal={index + 1}
           aria-pressed={place.id === preview?.id}
           aria-label={`Preview stop ${index + 1}. ${place.title}. ${discovered ? 'Completed; replay available.' : gate.unlocked ? 'Ready to play.' : 'Locked.'}`}
-          onFocus={() => setPreviewId(place.id)} onClick={() => setPreviewId(place.id)}>
+          onFocus={() => { followingNext.current = false; setPreviewId(place.id); }}
+          onClick={() => { followingNext.current = false; setPreviewId(place.id); }}>
           <span>{index + 1}</span>
           {(discovered || !gate.unlocked) && <span className="campaign-stop-badge"><Icon name={discovered ? 'check' : 'lock'} size={11}/></span>}
         </button>;

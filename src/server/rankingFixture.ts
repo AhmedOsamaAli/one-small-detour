@@ -126,6 +126,7 @@ export class RankingFixture implements RankRedis {
       set.set(record.userId, dailyRankScore(record)); this.sets.set(index, set);
       this.registered.set(record.userId, new Set([key]));
     }
+    this.touch(index);
     this.order(index);
   }
 }

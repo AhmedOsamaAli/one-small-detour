@@ -6,11 +6,17 @@ export const COMPLETION_CELEBRATION_MS = 1500;
 
 export class CelebrationHold {
   private elapsed = 0;
+  private readonly duration: number;
+
+  constructor(duration = COMPLETION_CELEBRATION_MS) {
+    if (!Number.isFinite(duration) || duration <= 0) throw new Error('Celebration duration must be positive.');
+    this.duration = duration;
+  }
 
   advance(milliseconds: number, visible = true): boolean {
     if (!Number.isFinite(milliseconds) || milliseconds < 0) throw new Error('Celebration time must move forward.');
-    if (visible) this.elapsed = Math.min(COMPLETION_CELEBRATION_MS, this.elapsed + milliseconds);
-    return this.elapsed >= COMPLETION_CELEBRATION_MS;
+    if (visible) this.elapsed = Math.min(this.duration, this.elapsed + milliseconds);
+    return this.elapsed >= this.duration;
   }
 }
 

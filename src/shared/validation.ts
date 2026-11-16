@@ -112,12 +112,16 @@ export function isMyRank(value: unknown): value is MyRank {
 export function isSavedRepair(value: unknown): value is SavedRepair {
   return isLeaderboard(value) && isRecord(value) && isRecord(value['saved']) &&
     integer(value['saved']['swaps'], 1, MAX_EXCHANGES) &&
-    (value['saved']['solveMs'] === null || integer(value['saved']['solveMs'], 0, MAX_ATTEMPT_MS));
+    (value['saved']['solveMs'] === null || integer(value['saved']['solveMs'], 0, MAX_ATTEMPT_MS)) &&
+    (value['ranking'] === undefined || value['ranking'] === 'recorded' || value['ranking'] === 'replay' || value['ranking'] === 'removed');
 }
 
 export function isAttemptStart(value: unknown): value is AttemptStart {
   if (!isRecord(value) || (value['id'] !== null && (typeof value['id'] !== 'string' || !/^[a-f0-9-]{36}$/i.test(value['id']))) ||
-      typeof value['edition'] !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value['edition'])) return false;
+      typeof value['edition'] !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value['edition']) ||
+      (value['ranking'] !== undefined && value['ranking'] !== 'eligible' && value['ranking'] !== 'replay' &&
+        value['ranking'] !== 'removed' && value['ranking'] !== 'guest') ||
+      ((value['ranking'] === 'replay' || value['ranking'] === 'removed' || value['ranking'] === 'guest') && value['id'] !== null)) return false;
   return ['startsAt', 'expiresAt', 'now'].every((field) =>
     typeof value[field] === 'string' && Number.isFinite(Date.parse(value[field]))) &&
     Date.parse(String(value['expiresAt'])) > Date.parse(String(value['startsAt']));

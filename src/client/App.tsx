@@ -14,11 +14,13 @@ import { TUTORIAL, TUTORIAL_MOVES, TUTORIAL_START_SHAPE, tutorialStage } from '.
 import { TutorialCoach } from './TutorialCoach.tsx';
 import { AdventureMap } from './AdventureMap.tsx';
 import { useSolveTimer } from './useSolveTimer.ts';
-import { formatSolveTime } from '../shared/timing.ts';
+import { firstDailyResultOnly, formatSolveTime } from '../shared/timing.ts';
 import { mergeGuideTopics, newTileGuides } from '../shared/guidance.ts';
 import { loadPreferences, PREF_KEY, resolveAppearance } from './preferences.ts';
 import type { Anchor, Board, Bootstrap, Celebration, Cell, FrameAxes, GuideTarget, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
 import { sameGuideTarget } from './coachLayout.ts';
+import { DailyStandings } from './DailyStandings.tsx';
+import type { StandingsState } from './DailyStandings.tsx';
 
 type Kind = 'daily' | 'studio' | 'guide';
 type Dialog = 'guide' | 'atlas' | 'erase' | 'welcome' | 'tour-tools' | 'tour-places' | 'tiles' | null;
@@ -27,6 +29,8 @@ interface Notice { message: string; error: boolean }
 
 const EMPTY_ROUTES: Cell[][] = [];
 const EMPTY_CELLS: readonly Cell[] = [];
+const postcardQuery = new URLSearchParams(window.location.search).get('postcard');
+const POSTCARD_PREVIEW = postcardQuery !== '0';
 const selectionLabels: Record<PatchIssue['code'], string> = {
   shape: 'Use whole squares.',
   bounds: 'Keep the patch on the map.',
@@ -101,10 +105,20 @@ export default function App() {
   const [soundOn, setSoundOn] = useState(false);
   const audio = useRef<IslandAudio | null>(null);
   const [myRank, setMyRank] = useState<MyRank | null>(null);
+  const [community, setCommunity] = useState<{ players: number; source: 'local' | 'reddit' } | null>(null);
+  const [communityError, setCommunityError] = useState<string | null>(null);
+  const [standings, setStandings] = useState<StandingsState>({ status: 'idle' });
+  const [standingsOpen, setStandingsOpen] = useState(false);
+  const standingsRequest = useRef(0);
+  const resultCard = useRef<HTMLDivElement>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [replayMode, setReplayMode] = useState<'replay' | 'removed' | null>(null);
+  const [replayRankError, setReplayRankError] = useState<string | null>(null);
+  const [replayRankRetry, setReplayRankRetry] = useState(0);
+  const completedDailies = useRef(new Set<string>());
   const [autoSaveSuppressed, setAutoSaveSuppressed] = useState(false);
   const [savedSolveMs, setSavedSolveMs] = useState<number | null>(null);
   const [solveId, setSolveId] = useState<string | null>(null);
@@ -133,6 +147,9 @@ export default function App() {
   const rankEdition = run?.kind === 'daily' ? run.edition : null;
   const timed = run !== null && run.kind !== 'guide';
   const timer = useSolveTimer(timerGeneration, rankEdition, timed, boardReady);
+  const firstResultOnly = rankEdition !== null && firstDailyResultOnly(rankEdition);
+  const replayStatus = firstResultOnly ? replayMode ??
+    (timer.attempt?.ranking === 'replay' || timer.attempt?.ranking === 'removed' ? timer.attempt.ranking : null) : null;
 
   const notify = useCallback((message: string, error = false) => setNotice({ message, error }), []);
   const syncGuides = useCallback((topics: readonly GuideTopic[], signedIn: boolean): void => {
@@ -175,6 +192,8 @@ export default function App() {
     setTransition(null);
     setBusy(false);
     setPublished(false);
+    setReplayMode(null);
+    setReplayRankError(null);
     setMyRank(null);
     saveRequest.current++;
     setPublishing(false);
@@ -356,7 +375,7 @@ export default function App() {
   useEffect(() => {
     if (!allHomesArrived || resultRevealed || dialog || !boardReady) return;
     if (!celebrationHold.current || celebrationHold.current.revision !== revision || celebrationHold.current.flat !== preferences.flat) {
-      celebrationHold.current = { revision, flat: preferences.flat, clock: new CelebrationHold() };
+      celebrationHold.current = { revision, flat: preferences.flat, clock: POSTCARD_PREVIEW ? new CelebrationHold(3000) : new CelebrationHold() };
     }
     const hold = celebrationHold.current;
     let active = true;
@@ -450,6 +469,8 @@ export default function App() {
     if (!run || moves.length === 0 || busy) return;
     const removed = moves.at(-1);
     if (!removed) return;
+    if (run.edition && firstDailyResultOnly(run.edition) && completedDailies.current.has(run.edition)) setReplayMode('replay');
+    setReplayRankError(null);
     const previousMoves = moves.slice(0, -1);
     let restored = run.puzzle.board;
     previousMoves.forEach((move, used) => { restored = applySwap(restored, move, rules, used); });
@@ -473,6 +494,8 @@ export default function App() {
     setBoard(run.puzzle.board); setMoves([]); setTransition(null);
     setFirst(null); setHover(null); setSelectionFeedback(null); setPublished(false);
     setMyRank(null);
+    setReplayMode(null);
+    setReplayRankError(null);
     restartPlayback();
     saveRequest.current++;
     setPublishing(false);
@@ -561,17 +584,30 @@ export default function App() {
 
   const publish = useCallback(async (): Promise<void> => {
     const attemptId = timer.attempt?.id;
-    if (!run?.edition || run.kind !== 'daily' || !roadReady || !attemptId || !solveId || publishing || autoSaveSuppressed) return;
+    if (!run?.edition || run.kind !== 'daily' || !roadReady || !attemptId || !solveId || publishing || autoSaveSuppressed || replayStatus) return;
     const savingRequest = ++saveRequest.current;
     const savedRevision = currentRevision.current;
     setPublishing(true);
     setSaveError(null);
     try {
       const result = await gameApi.submit({ edition: run.edition, mode: 'daily', moves, attemptId, solveId });
+      if (result.ranking === 'removed') {
+        if (savedRevision === currentRevision.current && savingRequest === saveRequest.current) {
+          completedDailies.current.add(run.edition);
+          setReplayMode('removed');
+          setMyRank(null);
+          setPublished(false);
+        }
+        return;
+      }
       if (!result.yourBest || result.yourBest.solveMs === undefined || result.saved.solveMs === null) {
         throw new Error('The route was checked, but no timed rank was recorded. Please retry.');
       }
       if (savedRevision === currentRevision.current && savingRequest === saveRequest.current) {
+        if (firstDailyResultOnly(run.edition)) {
+          completedDailies.current.add(run.edition);
+          if (result.ranking === 'replay') setReplayMode('replay');
+        }
         setMyRank({
           edition: run.edition, rank: result.yourBest.rank, swaps: result.yourBest.swaps,
           solveMs: result.yourBest.solveMs, participants: result.players, topPercent: result.topPercent, source: result.source,
@@ -589,13 +625,85 @@ export default function App() {
     } finally {
       if (savingRequest === saveRequest.current) setPublishing(false);
     }
-  }, [run, timer.attempt?.id, solveId, roadReady, publishing, autoSaveSuppressed, moves, notify]);
+  }, [run, timer.attempt?.id, solveId, roadReady, publishing, autoSaveSuppressed, moves, notify, replayStatus]);
 
   useEffect(() => {
     if (roadReady && timer.phase === 'solved' && timer.attempt?.id && !published && !publishing && !saveError && !autoSaveSuppressed) {
       void publish();
     }
   }, [roadReady, timer.phase, timer.attempt?.id, published, publishing, saveError, autoSaveSuppressed, publish]);
+
+  useEffect(() => {
+    if (!replayStatus || !rankEdition || !roadReady || autoSaveSuppressed) return;
+    completedDailies.current.add(rankEdition);
+    const savedRevision = currentRevision.current;
+    let active = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    setReplayRankError(null);
+    void gameApi.myRank(rankEdition, controller.signal).then((rank) => {
+      if (!active || savedRevision !== currentRevision.current) return;
+      setMyRank(rank);
+      setPublished(rank.rank !== null);
+      setCommunity({ players: rank.participants, source: rank.source });
+      setCommunityError(null);
+      if (rank.rank === null) setReplayMode('removed');
+    }).catch((error: unknown) => {
+      console.error('The first Daily result could not be loaded:', error);
+      if (active && savedRevision === currentRevision.current) setReplayRankError(controller.signal.aborted ?
+        'Your recorded result took too long to load. Retry when your connection is ready.' : messageOf(error));
+    }).finally(() => window.clearTimeout(timeout));
+    return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
+  }, [replayStatus, rankEdition, roadReady, autoSaveSuppressed, replayRankRetry]);
+
+  useEffect(() => {
+    if (!POSTCARD_PREVIEW) return;
+    standingsRequest.current++;
+    setStandings({ status: 'idle' });
+    setStandingsOpen(false);
+    setCommunity(null);
+    setCommunityError(null);
+    return () => { standingsRequest.current++; };
+  }, [revision, autoSaveSuppressed]);
+
+  useEffect(() => {
+    if (!POSTCARD_PREVIEW || autoSaveSuppressed || replayStatus || run?.kind !== 'daily' || !run.edition || !roadReady) return;
+    if (published && myRank?.edition === run.edition) {
+      setCommunity({ players: myRank.participants, source: myRank.source });
+      setCommunityError(null);
+      return;
+    }
+    if (!bootstrap || bootstrap.playerName !== null) return;
+    let active = true;
+    const savedRevision = currentRevision.current;
+    void gameApi.myRank(run.edition).then((result) => {
+      if (active && savedRevision === currentRevision.current) setCommunity({ players: result.participants, source: result.source });
+    }).catch((error: unknown) => {
+      console.error('Could not load the saved-finisher count:', error);
+      if (active && savedRevision === currentRevision.current) setCommunityError(messageOf(error));
+    });
+    return () => { active = false; };
+  }, [run, roadReady, published, myRank, bootstrap, autoSaveSuppressed, replayStatus]);
+
+  const loadStandings = async (): Promise<void> => {
+    if (!POSTCARD_PREVIEW || !won || run?.kind !== 'daily' || !run.edition) return;
+    const request = ++standingsRequest.current;
+    const savedRevision = currentRevision.current;
+    setStandingsOpen(true);
+    setStandings({ status: 'loading' });
+    try {
+      const board = await gameApi.standings(run.edition);
+      if (request !== standingsRequest.current || savedRevision !== currentRevision.current) return;
+      setStandings({ status: 'ready', board });
+      setCommunity({ players: board.players, source: board.source });
+      setCommunityError(null);
+    } catch (error) {
+      console.error('Could not load Daily standings:', error);
+      if (request === standingsRequest.current && savedRevision === currentRevision.current) setStandings({ status: 'error', message: messageOf(error) });
+    }
+  };
+
+  useLayoutEffect(() => { resultCard.current?.scrollTo(0, 0); }, [standingsOpen]);
 
   const elapsedMs = savedSolveMs ?? timer.elapsedMs;
 
@@ -614,7 +722,7 @@ export default function App() {
   const completionOpen = won && !busy && !resultDismissed && dialog === null;
   const guideInstruction = busy ? 'Watch the swap.' : guideStage === 'frame' ?
     `Tap the ${guideMove?.rows === 1 ? 'wide' : 'tall'} frame.` : guideStage === 'home' ? 'Watch the way home.' :
-      `Tap ${guideMove?.rows === 1 ? 'left' : 'top'} ${guideStage === 'second' ? 'blue' : 'orange'} square.`;
+      `Tap ${guideStage === 'second' ? 'blue' : 'orange'} here.`;
 
   return <div className={`app-shell focused-game direct-play viewport-fit ${reducedMotion ? 'reduce-motion' : ''}`}
     style={worldCssVariables(run?.puzzle.theme ?? pendingRun?.puzzle.theme ?? 'meadow', dark)}
@@ -660,9 +768,11 @@ export default function App() {
             {run.puzzle.minimum && <span title="A checked solution matches the proven lower bound for this patch size.">Minimum {run.puzzle.minimum} {run.puzzle.minimum === 1 ? 'exchange' : 'exchanges'}</span>}
           </div>
           {earnedRank && earnedRank.solveMs !== null && <div className="my-rank-line" data-testid="my-rank" role="status"
-            title={`Best: ${earnedRank.swaps} moves in ${formatSolveTime(earnedRank.solveMs, true)}. Among ${earnedRank.participants} genuine finishers for ${run.edition}. Tied results share a percentage.`}>
+            title={`${firstResultOnly ? 'First result' : 'Best'}: ${earnedRank.swaps} moves in ${formatSolveTime(earnedRank.solveMs, true)}. Among ${earnedRank.participants} genuine finishers for ${run.edition}. Tied results share a percentage.`}>
             <Icon name="trophy" size={16}/>{bootstrap.source === 'local' && <span>Local ·</span>}<strong>{rankSummary(earnedRank, rankLabel)}</strong>
           </div>}
+          {firstResultOnly && <p className="practice-note daily-policy" data-testid="daily-policy"><Icon name={replayStatus ? 'book' : 'trophy'} size={16}/>
+            {replayStatus ? 'Daily replay · unranked' : 'Daily · first finish counts'}</p>}
           {run.kind !== 'daily' && <p className="practice-note"><Icon name={run.kind === 'guide' ? 'book' : 'map'} size={16}/>
             {run.kind === 'guide' ? 'Practice · no timer' : 'Practice · unranked'}</p>}
         </div>
@@ -713,7 +823,8 @@ export default function App() {
           shape={shape} axes={frameAxes} first={first} second={null}
           hover={run.kind === 'guide' ? !roadReady && guideStage !== 'frame' ? first ? guideMove?.b ?? null : guideMove?.a ?? null : null : hover}
           invalid={run.kind === 'guide' ? false : feedback !== null} blockedCells={feedbackCells}
-          routes={routes} transition={transition} reduced={reducedMotion} dark={dark} flat={preferences.flat} guide={run.kind === 'guide'}
+          routes={routes} transition={transition} reduced={reducedMotion} dark={dark} flat={preferences.flat} guide={run.kind === 'guide'} postcard={POSTCARD_PREVIEW}
+          communityCount={POSTCARD_PREVIEW && allHomesArrived ? community?.players ?? null : null}
           celebration={celebration} arrived={arrived} restingStop={restingStop}
           onMoving={setTravelerMoving}
           locked={!timer.canPlay} readyRevision={timerGeneration} onReady={setBoardReady}
@@ -732,6 +843,8 @@ export default function App() {
           data-testid="selection-status" title={feedback?.message ?? (first ? 'Tap the same starting square again to deselect.' : undefined)} aria-label={feedback?.message}>
           {!won && (run.kind !== 'guide' || feedback) && <>{feedback ? <Icon name="warning" size={18}/> : <span className="status-step">{first ? '2' : '1'}</span>}
             <span>{feedback ? selectionLabels[feedback.code] : status}</span></>}
+          {POSTCARD_PREVIEW && won && run.kind === 'daily' && <button className="text-button postcard-results-button"
+            onClick={() => setResultDismissed(false)}><Icon name="trophy" size={16}/>Results</button>}
         </div>
         <div className="view-selector" role="group" aria-label="Map view">
           <button className={`view-option ${!preferences.flat ? 'selected' : ''}`} aria-label="3D map" aria-pressed={!preferences.flat} disabled={busy}
@@ -740,21 +853,23 @@ export default function App() {
             onClick={() => setPreferences((current) => current.flat ? current : { ...current, flat: true })}><Icon name="grid" size={14}/><span>Flat</span></button>
         </div>
         </div>
-        {completionOpen && <Modal title={run.kind === 'daily' ? 'Your daily result.' : run.kind === 'guide' ? 'You found the way.' : 'Practice complete.'}
-          kind="guide" className="completion-dialog" emblem={<Icon name="trophy" size={25}/>} onClose={() => setResultDismissed(true)}>
-        <div className={`result-card ${run.puzzle.minimum === moves.length ? 'perfect-result' : ''} ${reducedMotion ? '' : 'celebrate-completion'}`} data-testid="result-card">
+        {completionOpen && <Modal title={standingsOpen ? 'Daily standings.' : run.kind === 'daily' ? 'Your daily result.' : run.kind === 'guide' ? 'You found the way.' : 'Practice complete.'}
+          kind="guide" className="completion-dialog" emblem={<Icon name="trophy" size={25}/>} onClose={() => { setResultDismissed(true); setStandingsOpen(false); }}>
+        <div ref={resultCard} className={`result-card ${run.puzzle.minimum === moves.length ? 'perfect-result' : ''} ${reducedMotion ? '' : 'celebrate-completion'} ${standingsOpen ? 'standings-view' : ''}`} data-testid="result-card">
           <div className="completion-confetti" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <i key={index}
             style={{ left: `${(index * 37) % 100}%`, animationDelay: `${index * 38}ms` }}/>)}</div>
           <CompletionSeal perfect={run.puzzle.minimum === moves.length}/>
           <div className="result-copy">
             <span className="result-label"><Icon name="check" size={13}/>ROAD RESTORED</span>
             {earnedRank ? <div className="rank-reveal" data-testid="rank-popup" role="status">
-              <span>{earnedRank.source === 'local' ? 'Local rank' : 'Your rank'} {rankLabel}</span>
+              <span>{earnedRank.source === 'local' ? 'Local rank' : replayStatus ? 'Your recorded rank' : 'Your rank'} {rankLabel}</span>
               <strong>#{earnedRank.rank}</strong>
               {earnedRank.topPercent !== null && <p>Top {earnedRank.topPercent < 1 ? '<1' : Math.ceil(earnedRank.topPercent)}% {rankLabel}</p>}
               <span>Among {earnedRank.participants} saved {earnedRank.participants === 1 ? 'finisher' : 'finishers'} in this community. Rank when saved.</span>
+              {firstResultOnly && earnedRank.solveMs !== null && <span className="ranked-first-metrics">Ranked result: {earnedRank.swaps} moves · {formatSolveTime(earnedRank.solveMs, true)}.</span>}
             </div> : <h2>{run.kind === 'guide' ? 'Three little repairs. Everyone is home!' : run.puzzle.minimum === moves.length ? 'Perfect detour!' : 'Everyone is home!'}</h2>}
             <div className="result-metrics">
+              {replayStatus && <span>This replay:</span>}
               <span><Icon name="swap" size={15}/>{moves.length} {moves.length === 1 ? 'exchange' : 'exchanges'}</span>
               <span><Icon name={timed ? 'clock' : 'grid'} size={15}/>{timed ? formatSolveTime(elapsedMs, true) : `${footprint} tiles moved`}</span>
             </div>
@@ -765,20 +880,37 @@ export default function App() {
             {run.kind === 'daily' && nextCampaign && <p className="completion-next">Continue in unranked Practice: stop {nextCampaignIndex + 1}.</p>}
             {run.kind === 'daily' && <p className={`score-save-status ${saveError ? 'save-failed' : ''}`} data-testid="save-status">
               <Icon name={saveError ? 'warning' : 'trophy'} size={14}/>
-              {autoSaveSuppressed ? 'Records removed. Begin a fresh attempt to rank again.' : saveError ? `Not saved: ${saveError}` : publishing ? 'Saving your score...' :
-                earnedRank ? 'Saved automatically.' : 'Unranked · sign in to save a rank'}
+              {autoSaveSuppressed ? firstResultOnly ? "Records removed. Today's ranked turn stays used." : 'Records removed. Begin a fresh attempt to rank again.' :
+                replayStatus ? replayRankError ? replayRankError : replayStatus === 'removed' ? 'Replay only. The original ranked result was removed.' :
+                  'Replay only. Your first recorded Daily result cannot be improved.' :
+                  saveError ? `Not saved: ${saveError}` : publishing ? 'Saving your score...' :
+                    earnedRank ? firstResultOnly ? 'First result saved. Later replays are unranked.' : 'Saved automatically.' : 'Unranked · sign in to save a rank'}
             </p>}
           </div>
+          {POSTCARD_PREVIEW && run.kind === 'daily' && <section className="postcard-community-results" aria-label="Community finishers and standings">
+            {community && <div className="community-count" data-testid="community-count">
+              <Icon name="leaf" size={18}/><div><strong>{community.source === 'local' ? 'Local rehearsal: ' : ''}{community.players} saved {community.players === 1 ? 'finisher' : 'finishers'}</strong>
+                <small title="Illustrative villagers, not player avatars.">One {firstResultOnly ? 'recorded' : 'best'} result per person in this community.</small></div>
+            </div>}
+            {communityError && <p className="inline-error" role="alert">Community count unavailable: {communityError}</p>}
+            {standingsOpen && run.edition && <div id="daily-top-ten"><DailyStandings state={standings} edition={run.edition} onRetry={() => { void loadStandings(); }}/></div>}
+          </section>}
         </div>
           <div className="result-actions completion-actions">
             {run.kind === 'guide' ? <button className="primary-button" onClick={() => setDialog('tour-tools')}>See your tools <Icon name="arrow" size={17}/></button> :
               <>{run.kind === 'daily' && saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}
+                {run.kind === 'daily' && replayRankError && <button className="secondary-button" onClick={() => setReplayRankRetry((current) => current + 1)}
+                  aria-label="Retry loading recorded rank"><Icon name="reset" size={17}/>Retry rank</button>}
                 {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
                   onClick={() => { if (nextCampaign) openPractice(nextCampaign.id); }} aria-label="Continue your journey">
                   Continue your journey <Icon name="arrow" size={17}/>
                 </button>}
-                <button className={nextCampaign ? 'secondary-button' : 'primary-button'} onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }}
-                  aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={17}/>Practice map</button>
+                {POSTCARD_PREVIEW && run.kind === 'daily' ? <button className={`${nextCampaign ? 'secondary-button' : 'primary-button'} standings-toggle`}
+                  aria-label={standingsOpen ? 'Back to result' : 'View Daily Top 10'} aria-expanded={standingsOpen} aria-controls="daily-top-ten"
+                  onClick={() => { if (standingsOpen) setStandingsOpen(false); else void loadStandings(); }}>
+                  <Icon name={standingsOpen ? 'undo' : 'trophy'} size={16}/>{standingsOpen ? 'Back to result' : 'Top 10'}
+                </button> : <button className={nextCampaign ? 'secondary-button' : 'primary-button'} onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }}
+                  aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={17}/>Practice map</button>}
               </>}
           </div>
         </Modal>}
@@ -841,7 +973,9 @@ export default function App() {
           <div className="guide-step" key={title}><GuideIllustration step={index + 1}/><span className="guide-step-number">0{index + 1}</span><h3>{title}</h3><p>{text}</p></div>)}
       </div>
       <TileGuide/>
-      <div className="guide-bottom"><div className="guide-score-note"><span className="state-emblem"><Icon name="trophy" size={23}/></span><p><strong>Fewest moves first. Time breaks ties.</strong>Daily scores save automatically. The clock starts after 3, 2, 1 and stops on the winning exchange.</p></div>
+      <div className="guide-bottom"><div className="guide-score-note"><span className="state-emblem"><Icon name="trophy" size={23}/></span><p><strong>Fewest moves first. Time breaks ties.</strong>
+        From November 16, your first saved Daily finish is final. Replays are unranked; Retry save keeps the same result.
+        The clock starts after 3, 2, 1 and stops on the winning exchange.</p></div>
         <button className="primary-button" onClick={startWalkthrough}><Icon name="play" size={17}/>Replay walkthrough</button></div>
       <div className="guide-footnotes">
         <p><Icon name="undo" size={18}/><span>Undo is free and keeps the clock running. It cancels the walk and returns the traveler to A.</span></p>
@@ -860,7 +994,8 @@ export default function App() {
     </Modal>}
 
     {dialog === 'erase' && <Modal title="Remove saved scores?" kind="erase" onClose={() => setDialog(null)}>
-      <p className="dialog-intro">Remove your rankings, active timers and synced guide choices from this game community. This cannot be undone.</p>
+      <p className="dialog-intro">Remove your rankings, active timers and synced guide choices from this game community. This cannot be undone.
+        Removing a Daily result does not give another ranked turn for that edition.</p>
       <div className="data-choice-grid">
         <div className="data-choice data-remove"><Icon name="trash" size={24}/><strong>Records removed</strong><p>Saved ranks, active timers and synced guide choices.</p></div>
         <div className="data-choice data-keep"><Icon name="leaf" size={24}/><strong>Your road stays</strong><p>Campaign progress, view and sound choices.</p></div>
@@ -872,6 +1007,7 @@ export default function App() {
         void Promise.all([...guideWrites.current]).then(() => gameApi.erase()).then(() => {
           saveRequest.current++;
           setAutoSaveSuppressed(true);
+          if (rankEdition && firstDailyResultOnly(rankEdition)) setReplayMode('removed');
           setSaveError(null);
           setPublished(false);
           setMyRank(null);

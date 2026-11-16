@@ -64,6 +64,8 @@ Find my stop only moves the map camera, while the daily challenge is always
 available without campaign prerequisites.
 After a Daily or Practice finish, Continue your journey opens the next unfinished
 unranked stop directly; Practice map remains a separate optional browsing action.
+Opening the map after a finish automatically centres the next unlocked row
+and previews the next stop, including after viewport changes.
 
 Everyone can compare the same daily challenge. The interface shows only the
 player's own rank and inclusive top percentage among that day's genuine
@@ -75,6 +77,12 @@ the main score; fastest solve time breaks ties. A three-second countdown starts
 each attempt, and solve time freezes at the winning exchange, before the final
 arrival animation. Undo retains the original start; menus/background time counts.
 The server measures time and retains recorded timestamps for safe retries.
+From edition November 16, the first saved valid Daily completion is final;
+later replays are unranked. Already-saved rollout scores remain frozen.
+Server-side first-result reservations cover simultaneous devices and failed-save
+retries. Removing a score does not grant another ranked turn for that edition.
+Daily Top 10 replaces Practice map in the fixed result footer, beside Continue
+your journey, so opening standings never requires scrolling through the result.
 There is no sharing form or clipboard control, and saving never posts a comment.
 
 ### Design and accessibility
@@ -385,7 +393,7 @@ posting. The moderator's create-post action is explicit.
 
 | Item | Status |
 |---|---|
-| App page | [one-small-detour](https://developers.reddit.com/apps/one-small-detour), private development upload |
+| App page | [one-small-detour](https://developers.reddit.com/apps/one-small-detour), private development upload; v0.1.9 installed only in the existing test community |
 | Test subreddit | [r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/), public |
 | Playable Reddit example post | [Open the verified game post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/) |
 | Demo video | Pending genuine native recording |

@@ -3,16 +3,18 @@ import { createHash, randomUUID } from 'node:crypto';
 import { editionById, editionForDate, findPuzzle, getCatalog, nextReset, puzzleDate } from '../shared/puzzles.ts';
 import { RULE_VERSION, RuleError, validateRepair } from '../shared/rules.ts';
 import { isRecord, parseSubmission } from '../shared/validation.ts';
-import { COUNTDOWN_MS, MAX_ATTEMPT_MS, TIMED_SCORE_VERSION } from '../shared/timing.ts';
+import { COUNTDOWN_MS, firstDailyResultOnly, MAX_ATTEMPT_MS, TIMED_SCORE_VERSION } from '../shared/timing.ts';
 import type { AttemptStore } from './attempts.ts';
 import type { GuideStore } from './guides.ts';
 import { isGuideTopics } from '../shared/guidance.ts';
 import type { Leaderboard, Mode, Player, RankedScore, ScoreRecord } from '../shared/types.ts';
 import type { DailyRankingStore } from './indexedRanking.ts';
+import type { DailyWrite, FirstDailyStatus } from './firstDaily.ts';
 
 export interface ScoreStore {
   list(key: string): Promise<ScoreRecord[]>;
-  put(key: string, record: ScoreRecord): Promise<void>;
+  put(key: string, record: ScoreRecord, solveId?: string): Promise<DailyWrite | void>;
+  firstStatus?(key: string, userId: string): Promise<FirstDailyStatus>;
   erase(userId: string): Promise<void>;
 }
 
@@ -168,10 +170,18 @@ export function createGameApi(options: GameServiceOptions): Hono {
     }
     const edition = resolveEdition(input['edition']);
     const player = await options.player(c.req.raw);
+    const key = scoreKey(edition.id, 'daily');
+    let ranking: FirstDailyStatus | 'guest' | undefined;
+    if (firstDailyResultOnly(edition.id)) {
+      if (!player) ranking = 'guest';
+      else if (options.dailyRanking) ranking = await options.dailyRanking.firstStatus(key, player.id);
+      else if (options.store.firstStatus) ranking = await options.store.firstStatus(key, player.id);
+      else throw new Error('First-result Daily storage has not been configured.');
+    }
     const now = clock().getTime();
     const startsAt = now + COUNTDOWN_MS;
     const expiresAt = startsAt + MAX_ATTEMPT_MS;
-    const id = player ? randomUUID() : null;
+    const id = player && ranking !== 'replay' && ranking !== 'removed' ? randomUUID() : null;
     if (id && player) {
       await options.attempts.create({
         id, userId: player.id, edition: edition.id, rulesVersion: RULE_VERSION,
@@ -181,6 +191,7 @@ export function createGameApi(options: GameServiceOptions): Hono {
     return c.json({
       id, edition: edition.id, startsAt: new Date(startsAt).toISOString(),
       expiresAt: new Date(expiresAt).toISOString(), now: new Date(now).toISOString(),
+      ...(ranking ? { ranking } : {}),
     });
   });
 
@@ -247,11 +258,15 @@ export function createGameApi(options: GameServiceOptions): Hono {
       footprint: repair.footprint, swaps: repair.swaps, submittedAt: new Date(receivedAt).toISOString(),
       ...(solveMs === undefined ? {} : { solveMs }),
     };
-    if (body.mode === 'daily' && options.dailyRanking) await options.dailyRanking.put(key, record);
-    else await options.store.put(key, record);
+    const written = body.mode === 'daily' && options.dailyRanking
+      ? await options.dailyRanking.put(key, record, body.solveId) : await options.store.put(key, record, body.solveId);
+    if (body.mode === 'daily' && firstDailyResultOnly(edition.id) && !written) {
+      throw new Error('The first Daily result could not be confirmed by its score store.');
+    }
     return c.json({
       ...await boardFor(key, body.mode, player.id),
       saved: { swaps: repair.swaps, solveMs: solveMs ?? null },
+      ...(written ? { ranking: written.ranking } : {}),
     });
   });
 

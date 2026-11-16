@@ -37,11 +37,11 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
-export function HomeLetter({ anchor, plaque = false }: { anchor: Anchor; plaque?: boolean }) {
-  return <svg className="home-letter" viewBox="0 0 32 36" fill="currentColor" aria-hidden="true" focusable="false" data-home-letter={anchor}>
+export function HomeLetter({ anchor, plaque = false, compact = false }: { anchor: Anchor; plaque?: boolean; compact?: boolean }) {
+  return <svg className="home-letter" viewBox={compact ? '4 7 24 24' : '0 0 32 36'} fill="currentColor" aria-hidden="true" focusable="false" data-home-letter={anchor}>
     {plaque && <path d={HOME_PLAQUE_PATH} fill="var(--world-home-badge)" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round"/>}
     <path d={HOME_GLYPHS[anchor]} fillRule="evenodd"/>
-    <path d={HOME_SPROUT_PATH}/>
+    {!compact && <path d={HOME_SPROUT_PATH}/>}
   </svg>;
 }
 
@@ -93,7 +93,7 @@ export function GuideCourier({ portrait = false }: { portrait?: boolean }) {
     <path d="M55 103h16" stroke="#d6ab72" strokeWidth="1.2" strokeDasharray="2 2"/>
     <rect x="61" y="93" width="5" height="6" rx="1" fill="#f3d58c" stroke="#8c6938"/>
     <path d="M36 53h25v14q-12 9-25-1V53Z" fill="#d9a67e"/>
-    <path d="M32 63q16 9 33 0l-2 9q-17 8-31-1v-8Z" fill="#c77742"/>
+    <path d="m32 63q16 9 33 0l-2 9q-17 8-31-1v-8Z" fill="#c77742"/>
     <path d="m34 69 10 4-9 18-7-7 6-15Z" fill="#df9a58"/>
     <path d="m30 83 7 4" stroke="#f4c888" strokeWidth="2"/>
     <ellipse cx="48" cy="38" rx="23" ry="26" fill={`url(#${id}-skin)`} stroke="#b98462" strokeWidth="1.2"/>

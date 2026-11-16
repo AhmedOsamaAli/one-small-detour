@@ -3,6 +3,11 @@ export const MAX_ATTEMPT_MS = 24 * 60 * 60 * 1000;
 // Advance this for ranking or puzzle-rule changes, without reseeding the puzzle
 // for timing-only changes.
 export const TIMED_SCORE_VERSION = '5';
+export const FIRST_DAILY_RESULT_EDITION = '2026-11-16';
+
+export function firstDailyResultOnly(edition: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(edition) && edition >= FIRST_DAILY_RESULT_EDITION;
+}
 
 export interface ClockSnapshot {
   phase: 'countdown' | 'running' | 'solved';

@@ -84,11 +84,30 @@ expires if inactive. It does not store solutions, private messages or profiles.
 Removing records also removes active timed attempts and the synced guide flags,
 clears the browser's guide acknowledgements, and prevents the current completed
 run from automatically re-saving itself. The walkthrough can appear again on
-the next visit. Campaign progress, view and sound choices remain. A fresh
-attempt can rank again after a new countdown.
+the next visit. Campaign progress, view and sound choices remain. Earlier Daily
+editions allow a fresh ranked attempt; editions from November 16 keep the
+used-turn marker described below.
 Changed game rules use separate score keys. Timed daily scores use version-5
 keys while puzzles remain version 4. Older untimed and classic results remain
 separate and erasable.
+
+## First-result Daily ranking
+
+From edition **2026-11-16**, each signed-in player has one ranked completed
+result per edition in this community. A first-result reservation stores the
+verified score, name, platform identifier and an opaque solve identifier, with
+the same 30-day edition expiry as the leaderboard. It contains no raw exchanges.
+If the ranking write fails after reservation, Retry save recovers that original
+result instead of allowing a later faster replay to replace it. Scores already
+present when the policy was enabled are preserved as the frozen baselines.
+Later replays receive no ranked attempt token; previously opened attempts are
+also checked against the first-result reservation on the server.
+
+Removing records deletes the score, displayed name and original reservation
+contents. A minimal used-turn marker remains for that player and edition until
+the edition expires, so deletion cannot grant another ranked result. The marker
+contains no name, score, elapsed time or solution. New Daily editions are still
+eligible. Earlier editions retain the original personal-best rules.
 
 ## Local rehearsal
 

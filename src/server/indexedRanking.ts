@@ -2,6 +2,8 @@ import { MAX_EXCHANGES, RuleError } from '../shared/rules.ts';
 import { MAX_ATTEMPT_MS, TIMED_SCORE_VERSION } from '../shared/timing.ts';
 import { isRecord, isScoreRecord } from '../shared/validation.ts';
 import type { Leaderboard, ScoreRecord } from '../shared/types.ts';
+import { chooseFirstDaily, firstDailyKey, firstDailyLock } from './firstDaily.ts';
+import type { DailyWrite, FirstDailyStatus } from './firstDaily.ts';
 
 interface Member { member: string; score: number }
 interface RangeOptions { by: 'rank' | 'score'; reverse?: boolean; limit?: { offset: number; count: number } }
@@ -37,7 +39,8 @@ export interface RankRedis {
 }
 
 export interface DailyRankingStore {
-  put(key: string, record: ScoreRecord): Promise<void>;
+  put(key: string, record: ScoreRecord, solveId?: string): Promise<DailyWrite | void>;
+  firstStatus(key: string, userId: string): Promise<FirstDailyStatus>;
   read(key: string, userId: string | null, includeLeaders?: boolean): Promise<Leaderboard>;
   erase(userId: string): Promise<void>;
 }
@@ -57,6 +60,7 @@ const busy = (): RuleError => new RuleError('The ranking changed while saving. Y
 const indexKey = (key: string): string => `${key}:rank-index:1`;
 const playerKey = (key: string, id: string): string => `${indexKey(key)}:best:${id}`;
 const erasedKey = (id: string): string => `detour:rank-erased:${id}`;
+const firstKey = (key: string, id: string): string => `${indexKey(key)}:first:${id}`;
 const conflict = (result: unknown[] | null): boolean => result === null || result.length === 0 || (result.length === 1 && result[0] === null);
 
 function expiry(key: string): Date {
@@ -180,10 +184,63 @@ export class IndexedDailyRanking implements DailyRankingStore {
     } finally { if (!closed) await tx.unwatch(); }
   }
 
-  async put(key: string, record: ScoreRecord): Promise<void> {
+  private async reserveFirst(key: string, record: ScoreRecord, solveId: string | null) {
+    const lockKey = firstKey(key, record.userId);
+    for (let retry = 0; retry < RETRIES; retry++) {
+      const tx = await this.redis.watch(lockKey, playerKey(key, record.userId), erasedKey(record.userId));
+      let closed = false;
+      try {
+        const [text, best, erased] = await Promise.all([
+          this.redis.get(lockKey), this.redis.get(playerKey(key, record.userId)), this.redis.get(erasedKey(record.userId)),
+        ]);
+        if (erased !== undefined && !Number.isSafeInteger(Number(erased))) throw new Error('The saved-result erasure marker is invalid.');
+        const previous = firstDailyLock(text, record.userId);
+        if (erased !== undefined && Date.parse(record.submittedAt) <= Number(erased) && !(previous && 'removed' in previous)) {
+          throw new RuleError('That result was removed. Begin a fresh attempt before saving again.', 'records_removed');
+        }
+        const baseline = best === undefined ? null : recordFrom(best);
+        if (baseline && baseline.userId !== record.userId) throw new Error('The first Daily baseline belongs to another player.');
+        const choice = chooseFirstDaily(previous, baseline, record, solveId);
+        if (previous) return choice;
+        await tx.multi();
+        await tx.set(lockKey, JSON.stringify(choice.lock), { expiration: expiry(key) });
+        closed = true;
+        const result = await tx.exec();
+        if (conflict(result)) continue;
+        if (result?.length !== 1) throw new Error('The first Daily result lock returned an invalid result.');
+        return choice;
+      } finally { if (!closed) await tx.unwatch(); }
+    }
+    throw busy();
+  }
+
+  async firstStatus(key: string, userId: string): Promise<FirstDailyStatus> {
+    expiry(key);
+    if (!firstDailyKey(key)) return 'eligible';
+    await this.prepare(key);
+    const [text, best] = await Promise.all([this.redis.get(firstKey(key, userId)), this.redis.get(playerKey(key, userId))]);
+    const lock = firstDailyLock(text, userId);
+    if (lock && 'removed' in lock) return 'removed';
+    if (lock) {
+      await this.writeBest(key, lock.record);
+      return 'replay';
+    }
+    if (best !== undefined) {
+      if (recordFrom(best).userId !== userId) throw new Error('The Daily replay status belongs to another player.');
+      return 'replay';
+    }
+    return 'eligible';
+  }
+
+  async put(key: string, record: ScoreRecord, solveId?: string): Promise<DailyWrite | void> {
     expiry(key);
     await this.options.remember(key, record.userId);
     await this.prepare(key);
+    if (firstDailyKey(key)) {
+      const choice = await this.reserveFirst(key, record, solveId ?? null);
+      if (choice.record) await this.writeBest(key, choice.record);
+      return { ranking: choice.ranking };
+    }
     await this.writeBest(key, record);
   }
 
@@ -275,10 +332,14 @@ export class IndexedDailyRanking implements DailyRankingStore {
     for (const key of keys) {
       expiry(key);
       const stateKey = `${indexKey(key)}:state`;
-      const tx = await this.redis.watch(playerKey(key, userId), stateKey);
+      const lockKey = firstKey(key, userId);
+      const tx = await this.redis.watch(playerKey(key, userId), stateKey, lockKey);
       let closed = false;
       try {
-        const state = await this.redis.get(stateKey);
+        const [state, best, first] = await Promise.all([
+          this.redis.get(stateKey), this.redis.get(playerKey(key, userId)), this.redis.get(lockKey),
+        ]);
+        const spent = firstDailyKey(key) && (best !== undefined || firstDailyLock(first, userId) !== null);
         let nextState: string | null = null;
         if (state !== undefined && state !== 'ready') {
           const progress: unknown = JSON.parse(state);
@@ -295,11 +356,12 @@ export class IndexedDailyRanking implements DailyRankingStore {
         await tx.del(playerKey(key, userId));
         await tx.zRem(indexKey(key), [userId]);
         await tx.zRem(`${indexKey(key)}:checked`, [userId]);
+        if (spent) await tx.set(lockKey, JSON.stringify({ removed: true }), { expiration: expiry(key) });
         if (nextState !== null) await tx.set(stateKey, nextState, { expiration: expiry(key) });
         closed = true;
         const result = await tx.exec();
         if (conflict(result)) throw busy();
-        if (result?.length !== (nextState === null ? 3 : 4)) throw new Error('The Daily erasure transaction returned an invalid result.');
+        if (result?.length !== 3 + Number(spent) + Number(nextState !== null)) throw new Error('The Daily erasure transaction returned an invalid result.');
       } finally { if (!closed) await tx.unwatch(); }
     }
   }

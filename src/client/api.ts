@@ -1,8 +1,15 @@
-import { isAttemptStart, isBootstrap, isMyRank, isPuzzle, isRecord, isSavedRepair } from '../shared/validation.ts';
-import type { AttemptStart, Bootstrap, GuideTopic, MyRank, Puzzle, SavedRepair, SubmitRepair } from '../shared/types.ts';
+import { isAttemptStart, isBootstrap, isLeaderboard, isMyRank, isPuzzle, isRecord, isSavedRepair } from '../shared/validation.ts';
+import type { AttemptStart, Bootstrap, GuideTopic, Leaderboard, MyRank, Puzzle, RankedScore, SavedRepair, SubmitRepair } from '../shared/types.ts';
 import { isGuideTopics } from '../shared/guidance.ts';
 
 const ID_KEY = 'detour:local-player';
+type TimedResult = RankedScore & { solveMs: number };
+export type DailyLeaderboard = Omit<Leaderboard, 'entries' | 'yourBest'> & { entries: TimedResult[]; yourBest: TimedResult | null };
+
+function isDailyLeaderboard(data: unknown): data is DailyLeaderboard {
+  return isLeaderboard(data) && data.mode === 'daily' && data.entries.every((entry) => entry.solveMs !== undefined) &&
+    (data.yourBest === null || data.yourBest.solveMs !== undefined);
+}
 let localId: string | null = null;
 let storageNotice: string | null = null;
 
@@ -52,8 +59,18 @@ export const gameApi = {
     request('/api/attempts', isAttemptStart, {
       method: 'POST', body: JSON.stringify({ edition }), ...(signal ? { signal } : {}),
     }),
-  myRank: (edition: string): Promise<MyRank> =>
-    request(`/api/my-rank?edition=${encodeURIComponent(edition)}`, isMyRank),
+  myRank: (edition: string, signal?: AbortSignal): Promise<MyRank> =>
+    request(`/api/my-rank?edition=${encodeURIComponent(edition)}`, isMyRank, signal ? { signal } : {}),
+  standings: async (edition: string): Promise<DailyLeaderboard> => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    try {
+      return await request(`/api/leaderboard?edition=${encodeURIComponent(edition)}&mode=daily`, isDailyLeaderboard, { signal: controller.signal });
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error('Standings took too long. Retry when your connection is ready.');
+      throw error;
+    } finally { window.clearTimeout(timeout); }
+  },
   rememberGuides: async (topics: readonly GuideTopic[]): Promise<void> => {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 8000);

@@ -73,8 +73,9 @@ through A, B and C. Only the last guided repair completes the road. This is a
 teaching sequence, not a claimed optimal score. Guidance follows Undo back to
 the relevant repair; there is no duplicated instruction line at the bottom.
 The stronger arrow and tap ring target only the patch's starting tile, not the
-centre of the two-tile frame. Courier prompts identify the **top** square for a
-tall patch and the **left** square for a wide patch, in both 3D and Flat.
+centre of the two-tile frame. Courier prompts say **Tap orange here.** or
+**Tap blue here.**, so they stay correct in either view and camera angle
+without calling a projected tile "left" or "top".
 On-board arrows follow that frame's long axis: down for tall and right for wide
 in Flat, or the corresponding real camera projection in 3D. Their tips remain
 at the first square when the view changes or resizes.
@@ -237,6 +238,9 @@ the end of a 42-map season:
   which earlier stop to finish; previewing them never starts a puzzle.
 - The map legend distinguishes completed, ready and locked stops. **Find my
   stop** moves the camera; **Daily challenge** opens the separate daily puzzle.
+- After a Practice finish, opening the map centres the newly unlocked row and
+  previews the next stop. Resizing keeps that row in view while following it;
+  manual dragging and keyboard browsing are not pulled back.
 - Campaign progress is browser-local and unranked. Today's daily island is
   always accessible without completing campaign prerequisites.
 - Browser discoveries from older builds remain stored, but independent-delivery
@@ -302,22 +306,24 @@ daily puzzles move the same tile count at equal exchanges. Equal results share
 a rank.
 
 The game shows no rank before or during a daily attempt, even if an earlier
-personal best exists. The client does not fetch a saved rank at startup.
+recorded result exists. The client does not fetch a saved rank at startup.
 Only after the current attempt finishes its celebration and successfully saves
+or loads its original result for an unranked replay
 does the completion popup prominently reveal the rank and **Top 10% today**.
 A compact line such as **#5 of 50 - Top 10% today** remains available on the finished
 island after the popup is closed.
 The percentage compares unique valid finishers on
 that day's puzzle in this installation, not viewers, all Reddit users or scores
-from different days. It includes everyone whose best result is at least as good
+from different days. It includes everyone whose recorded result is at least as good
 as yours, so tied results share an inclusive percentage. Displayed whole
 percentages round up, never exaggerating performance; values below 1% show
 **Top <1%**. A sole finisher sees **Rank #1 of 1 finisher today**, not an invented
-percentile. There are no leaderboard tables, tickets or metric tabs. Local
+percentile. An optional Top 10 is available from the fixed result footer, never
+before finishing. Local
 rehearsal is labeled **Local** rather than pretending to be an online community
 ranking. Save errors show an explicit retry state without revealing an older
-rank. Undo and changing attempts hide the comparison again; saved personal
-bests remain intact on the server.
+rank. Undo and changing attempts hide the comparison again; saved results
+remain intact on the server.
 The popup identifies saved finishers in this community and says that the rank
 is a snapshot when saved, not the day's final position.
 
@@ -333,7 +339,10 @@ so no duration can outrank a result using fewer exchanges.
   record and its sorted-set membership commit together. Different players do not
   watch the shared leaderboard key, avoiding global optimistic-lock contention.
   Conflict retries are bounded, and failures produce Retry save rather than a
-  fabricated rank.
+  fabricated rank. From edition **2026-11-16**, a separate per-player first-result
+  reservation freezes the first valid completed save before updating the index.
+  Same-solve retries recover that result; another attempt cannot replace it.
+  Scores already present when this policy was enabled remain frozen baselines.
 - Redis `ZRANK` is **O(log N)** and `ZCARD` is **O(1)**. Equal-score endpoint
   queries plus a small read transaction preserve competition ranks (1, 1, 3)
   and the inclusive tied percentile, without downloading a large tie group.
@@ -347,7 +356,8 @@ so no duration can outrank a result using fewer exchanges.
   a 24-hour erasure marker rejects old in-flight saves.
 - Existing score hashes are retained and backfilled resumably, eight records at
   a time. An incomplete migration returns an explicit retry state, never a
-  partial ranking. New indexed writes keep only the best result per player.
+  partial ranking. Older editions retain personal-best behavior; new editions
+  retain only the first result (or the preserved rollout baseline) per player.
   Records and index keys expire 30 days after their edition date.
 
 `node --experimental-strip-types --no-warnings=ExperimentalWarning src\server\rankingFixture.ts --benchmark`
@@ -391,8 +401,14 @@ Networking and unavoidable time between exchanges can affect elapsed time;
 the final walking celebration does not. An already recorded solve timestamp
 is retained on retry, even if the score write or response failed. A request
 that never reached the server cannot establish an earlier server timestamp.
-Undo followed by another solve creates a distinct result with later elapsed
-time from the same original start. It does not reuse a prior win's timestamp.
+For Daily editions from **2026-11-16**, the first saved valid completion is final.
+A failed save can be retried with its original solve identifier and timestamp.
+Reloading or abandoning before finishing does not spend the ranked turn.
+After a completion, replay countdowns are explicitly unranked. Undo and another
+solve cannot improve the original result, including across simultaneous devices.
+The result separates replay metrics from the recorded ranked result.
+For earlier editions only, Undo followed by another solve creates a distinct
+best-score candidate with later elapsed time from the same original start.
 This is not a claim that outside solvers or rehearsed solutions can be prevented.
 
 ### Honest local and live behavior
@@ -420,7 +436,9 @@ This is not a claim that outside solvers or rehearsed solutions can be prevented
   scores does not depend on enumerating a fixed season.
 - **Guide -> Manage saved data** lets the current player remove their score records.
   This also removes active timers and suppresses automatic re-saving of the
-  current completed attempt. A fresh countdown creates a new ranked attempt.
+  current completed attempt. From edition 2026-11-16, a used-turn marker survives
+  score removal until that edition's 30-day expiry, without the score or name.
+  A fresh countdown cannot obtain another ranked turn for that edition.
 - Native attempt metadata and hashed replay identifiers expire within 24 hours.
   Only recent attempts are retained. The local preview keeps attempts in memory;
   restarting its server invalidates open timers, but not saved scores.
@@ -484,8 +502,10 @@ grass, with a few subtle fish in open water. Decorations match between views,
 travel with exchanged patches and restore exactly with Undo; they never become
 input targets. Scenic motion pauses behind menus/background tabs and stays still
 under reduced motion.
-Original hand-carved A-F vector letters with small sprout details identify
-homes, their matching filled route badges and guide/preview plaques. Screen
+Original hand-carved A-F vector letters identify homes, their matching filled
+route badges and guide/preview plaques, with sprout details on larger lettering.
+Flat cottages use small roof-corner plaques, leaving their roofs, walls, windows
+and doors visible; the 3D home art and lettering are unchanged. Screen
 readers retain the ordinary letters. Expressive self-hosted headings keep
 instructions, buttons and timers in the clean interface face.
 The courier has the same teal coat, amber hat, scarf and satchel across views.
@@ -493,6 +513,29 @@ Its in-game scale is increased by about 35% in 3D and Flat, with tile-relative
 Flat dimensions and a 3D upper cap; the Flat offset keeps it inside edge cells.
 Dialogs use noninteractive botanical corners, and the landscape backdrop follows
 the chosen appearance. Decorative art never adds puzzle obstacles.
+
+### Living-island polish
+
+The island uses a tactile-world presentation: carved earth,
+rigid garden-parcel swaps, the courier watching the exchange, and a completed
+village with opening doors, growing gardens and a few greeting residents.
+The completed scene stays visible for three seconds before
+results. Daily results show a capped illustrative crowd derived from the exact
+saved-finisher count, plus an optional Top 10 fetched only after finishing.
+On Daily results, Top 10 replaces Practice map in the fixed footer beside
+Continue your journey, so it remains reachable without scrolling. The same
+button returns to the result; each view starts at the top. Practice results
+keep their map shortcut, and the normal map button remains available.
+Local rehearsal counts are labeled; the crowd is not a set of player avatars.
+Rankings remain fewest exchanges first, then server-measured time. There are
+no postcard albums, stamps, currency shops, permanent community gardens, paid
+hints, automated messages or cross-community rank claims.
+It preserves the puzzle, timing and scoring rules, whole-board fitting, reduced
+motion and animation pausing. Undo and a new island clear the completed scene.
+This presentation is enabled by default in production builds. The existing
+`?postcard=0` switch selects the previous presentation for comparison;
+`?postcard=1` explicitly selects the default. The current native installation
+is documented below.
 
 The 3D renderer batches repeated terrain into instanced draws, compacts invisible
 connections out of those draws, reuses frame geometry/materials and caches static
@@ -549,6 +592,8 @@ native post behavior and screen-reader operation still require platform testing.
 The owner-approved **private development build** is installed in a
 dedicated public test community:
 
+- Current test installation: **v0.1.9**, upgraded in place without changing
+  score keys, puzzle IDs or saved campaign progress.
 - [Play the Reddit example post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/).
 - [Test community: r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/).
 - [Owner's app page](https://developers.reddit.com/apps/one-small-detour).
@@ -557,6 +602,22 @@ The community and example post are public; the app upload is a private
 development version, not a reviewed public release. No `devvit publish`
 command or Devpost submission has been performed. Building and playing
 locally still does **not** upload anything.
+
+Version 0.1.8 enables the living-island finish by default, keeps three visible
+seconds before results, adds optional Daily Top 10, replaces viewpoint-dependent
+tutorial directions with exact "here" prompts, and gives Flat cottages smaller
+A-F plaques. The rejected album, stamps/shop, permanent garden and earned
+cosmetics are not included. Release checks passed 119 source tests, all three
+strict TypeScript checks, the production build and 288 focused browser checks.
+
+Version 0.1.9 keeps the original camera, pins Daily Top 10 beside Continue your
+journey, freezes first Daily completions from the November 16 edition, and
+automatically reveals the next Practice row after a finish. Existing scores
+remain rollout baselines, not reconstructed historical first attempts.
+Validation passed 126 source tests, all three strict TypeScript checks, the
+production build and 100 focused final browser assertions. Native v0.1.9's
+seven JS/CSS hashes and both platform-serialized HTML entrypoints match the
+tested release. Physical iOS/Android testing still remains.
 
 The GitHub source repository is private. A public code repository is optional
 under the [hackathon rules](https://redditgameofday2026.devpost.com/rules), so

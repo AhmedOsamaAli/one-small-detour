@@ -9,6 +9,8 @@ import type { WorldColor, WorldPalette } from './worldTheme.ts';
 import { sceneryOrigins, tileScenery, waterBanks } from './scenery.ts';
 import type { Flower } from './scenery.ts';
 import { HOME_GLYPHS, HOME_PLAQUE_PATH, HOME_SPROUT_PATH } from './homeLetter.ts';
+import { communityCrowd, parcelMotion, postcardGarden, villageProgress } from './postcard.ts';
+import { carvedEarth, postcardFlowers, postcardResident } from './postcardArt.ts';
 
 interface Callbacks {
   onCell: (cell: Cell) => void;
@@ -25,6 +27,7 @@ interface TileObject {
   links: { mesh: THREE.Mesh; row: number; col: number }[];
   bounds: THREE.Box3;
   batchParts: BatchedPart[];
+  sprout: THREE.Mesh | null;
 }
 
 interface BatchedPart {
@@ -39,6 +42,16 @@ interface Movement {
   next: Board;
   began: number;
   objects: { tile: TileObject; group: THREE.Group; from: THREE.Vector3; to: THREE.Vector3; side: number }[];
+  parcels: { side: number; from: THREE.Vector3; to: THREE.Vector3; objects: Movement['objects'] }[];
+  courierYaw: number;
+}
+
+interface PostcardHome {
+  door: THREE.Group;
+  garden: THREE.Group;
+  resident: THREE.Group | null;
+  arm: THREE.Group | null;
+  phase: number;
 }
 
 const hasWater = (tile: string | undefined): boolean => tile === '~' || tile === 'h' || tile === 'v';
@@ -182,6 +195,17 @@ export class LivingIsland {
   private labelScale = 0.52;
   private landmarkSprites: THREE.Sprite[] = [];
   private houseWindows = new Map<Anchor, THREE.MeshStandardMaterial>();
+  private postcardHomes = new Map<Anchor, PostcardHome>();
+  private postcardStarted: number | null = null;
+  private postcardSettled = false;
+  private postcardSoil: THREE.BufferGeometry | null = null;
+  private postcardFlowerGeometries: THREE.BufferGeometry[] = [];
+  private postcardMaterial: THREE.MeshStandardMaterial | null = null;
+  private communityCount: number | null = null;
+  private communityBodies: THREE.InstancedMesh | null = null;
+  private communityArms: THREE.InstancedMesh | null = null;
+  private crowdBodyPose = new THREE.Object3D();
+  private crowdArmPose = new THREE.Object3D();
   private festivities = new THREE.Group();
   private celebrationStarted = 0;
   private celebrationComplete = false;
@@ -248,10 +272,26 @@ export class LivingIsland {
   private greetingUntil = 0;
   private readonly container: HTMLElement;
   private readonly callbacks: Callbacks;
+  private readonly postcard: boolean;
 
-  constructor(container: HTMLElement, callbacks: Callbacks) {
+  constructor(container: HTMLElement, callbacks: Callbacks, postcard = false) {
     this.container = container;
     this.callbacks = callbacks;
+    this.postcard = postcard;
+    if (postcard) {
+      this.postcardSoil = this.track(carvedEarth(this.soilGeometry.clone()));
+      this.postcardMaterial = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.9 });
+      this.extraMaterials.push(this.postcardMaterial);
+      const neighbor = postcardResident('#507e78');
+      this.communityBodies = new THREE.InstancedMesh(this.track(neighbor.body), this.postcardMaterial, 12);
+      this.communityArms = new THREE.InstancedMesh(this.track(neighbor.arm), this.postcardMaterial, 12);
+      for (const crowd of [this.communityBodies, this.communityArms]) {
+        crowd.count = 0; crowd.visible = false; crowd.frustumCulled = false;
+        crowd.castShadow = true; crowd.receiveShadow = true;
+        crowd.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.scene.add(crowd);
+      }
+    }
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
     this.renderer.shadowMap.enabled = true;
@@ -264,6 +304,7 @@ export class LivingIsland {
     this.canvas = this.renderer.domElement;
     this.raycaster.layers.set(INPUT_LAYER);
     this.canvas.className = 'island-canvas';
+    this.canvas.dataset['postcard'] = postcard ? 'puzzle' : 'off';
     this.canvas.setAttribute('aria-hidden', 'true');
     this.renderer.debug.onShaderError = (gl, program, vertex, fragment) => {
       console.error('The terrain shader could not compile:', gl.getProgramInfoLog(program), gl.getShaderInfoLog(vertex), gl.getShaderInfoLog(fragment));
@@ -534,10 +575,13 @@ export class LivingIsland {
     house.add(roofSeams);
     this.mesh(this.boardTrack(new THREE.BoxGeometry(0.028, 0.028, 0.54)),
       new THREE.Color(roofColor).multiplyScalar(0.75).getStyle(), new THREE.Vector3(0, 0.86, 0), house);
-    this.mesh(this.boardTrack(new THREE.BoxGeometry(0.10, 0.19, 0.025)), '#704c33', new THREE.Vector3(0, 0.36, 0.221), house);
+    if (this.postcard) this.addPostcardHome(house, anchor);
+    else {
+      this.mesh(this.boardTrack(new THREE.BoxGeometry(0.10, 0.19, 0.025)), '#704c33', new THREE.Vector3(0, 0.36, 0.221), house);
+      this.mesh(this.boardTrack(new THREE.SphereGeometry(0.009, 5, 4)), '#e3b960', new THREE.Vector3(0.027, 0.355, 0.239), house);
+    }
     const doorPost = this.boardTrack(new THREE.BoxGeometry(0.018, 0.205, 0.035));
     for (const x of [-0.06, 0.06]) this.mesh(doorPost, '#c29c65', new THREE.Vector3(x, 0.36, 0.225), house);
-    this.mesh(this.boardTrack(new THREE.SphereGeometry(0.009, 5, 4)), '#e3b960', new THREE.Vector3(0.027, 0.355, 0.239), house);
     const windowGeometry = this.boardTrack(new THREE.BoxGeometry(0.075, 0.075, 0.022));
     const windows = new THREE.MeshStandardMaterial({ color: '#ffe6ad', emissive: '#edb252', emissiveIntensity: 0.12, roughness: 0.45 });
     this.boardMaterials.push(windows);
@@ -554,6 +598,46 @@ export class LivingIsland {
     this.mesh(this.boardTrack(new THREE.CylinderGeometry(0.012, 0.015, 0.20, 5)), '#92714f', new THREE.Vector3(0.31, 0.35, 0.18), house);
     this.mesh(this.boardTrack(roundedPrism(0.11, 0.11, 0.07, 0.025)), roofColor, new THREE.Vector3(0.31, 0.44, 0.18), house);
     group.add(this.label(anchor, roofColor));
+  }
+
+  private addPostcardHome(house: THREE.Group, anchor: Anchor): void {
+    const material = this.postcardMaterial;
+    const flowers = this.postcardFlowerGeometries[(anchor.charCodeAt(0) - 65) % 3];
+    if (!material || !flowers) throw new Error('The living village is missing its shared art.');
+    const phase = anchor.charCodeAt(0) - 65;
+    this.mesh(this.boardTrack(new THREE.BoxGeometry(0.102, 0.19, 0.007)), '#293d37', new THREE.Vector3(0, 0.36, 0.222), house);
+    const door = new THREE.Group();
+    door.position.set(-0.05, 0.36, 0.238);
+    this.mesh(this.boardTrack(new THREE.BoxGeometry(0.10, 0.19, 0.018)), '#785238', new THREE.Vector3(0.05, 0, 0), door);
+    this.mesh(this.boardTrack(new THREE.SphereGeometry(0.009, 5, 4)), '#e3b960', new THREE.Vector3(0.079, -0.005, 0.017), door);
+    house.add(door);
+    const garden = new THREE.Group();
+    garden.position.y = 0.45;
+    for (const x of [-0.14, 0.14]) {
+      const bloom = this.mesh(flowers, material, new THREE.Vector3(x, 0, 0.257), garden);
+      bloom.scale.setScalar(0.42);
+    }
+    garden.scale.y = 0.001;
+    garden.visible = false;
+    house.add(garden);
+    let resident: THREE.Group | null = null, arm: THREE.Group | null = null;
+    if (anchor === 'B' || anchor === 'C' || anchor === 'D') {
+      const art = postcardResident(HOME_COLORS[anchor]);
+      resident = new THREE.Group();
+      this.mesh(this.boardTrack(art.body), material, new THREE.Vector3(), resident);
+      arm = new THREE.Group();
+      arm.position.set(0.061, 0.186, 0.01);
+      this.mesh(this.boardTrack(art.arm), material, new THREE.Vector3(), arm);
+      resident.add(arm);
+      resident.position.set(0, 0.27, 0.12);
+      resident.visible = false;
+      house.add(resident);
+    }
+    for (const animated of [door, garden, resident]) animated?.traverse((part) => {
+      part.layers.disable(INPUT_LAYER);
+      if (part instanceof THREE.Mesh) part.userData['postcardMotion'] = true;
+    });
+    this.postcardHomes.set(anchor, { door, garden, resident, arm, phase });
   }
 
   setArrivals(anchors: readonly Anchor[]): void {
@@ -641,8 +725,10 @@ export class LivingIsland {
     this.waterSurround.scale.setScalar(this.size / 6);
     this.theme = theme;
     this.setAppearance(this.darkMode);
-    this.mesh(this.boardTrack(roundedPrism(this.size + 0.02, this.size + 0.02, 0.055, 0.16)),
-      this.terrainMaterial('soilEdge'), new THREE.Vector3(0, -0.08, 0), this.boardGroup);
+    if (this.postcard) this.postcardFlowerGeometries = FLOWER_COLORS[theme].map((color) => this.boardTrack(postcardFlowers(color)));
+    const islandBase = roundedPrism(this.size + 0.02, this.size + 0.02, this.postcard ? 0.14 : 0.055, 0.16);
+    this.mesh(this.boardTrack(this.postcard ? carvedEarth(islandBase, 0.14) : islandBase),
+      this.terrainMaterial(this.postcard ? 'soil' : 'soilEdge', this.postcard), new THREE.Vector3(0, this.postcard ? -0.15 : -0.08, 0), this.boardGroup);
     for (let row = 0; row < this.size; row++) {
       for (let col = 0; col < this.size; col++) {
         const tile = tileAt(board, { row, col });
@@ -652,11 +738,13 @@ export class LivingIsland {
         const random = randomSeed(seed + Math.floor(origin / this.size) * 731 + origin % this.size * 1591);
         const group = new THREE.Group();
         group.position.set(col - center, 0, row - center);
-        const soil = this.mesh(hasWater(tile) ? this.waterBedGeometry : this.soilGeometry, this.terrainMaterial('soil'), new THREE.Vector3(0, -0.015, 0), group);
+        const earth = !hasWater(tile) && this.postcardSoil ? this.postcardSoil : hasWater(tile) ? this.waterBedGeometry : this.soilGeometry;
+        const soil = this.mesh(earth, this.terrainMaterial('soil', this.postcard && !hasWater(tile)), new THREE.Vector3(0, -0.015, 0), group);
         soil.receiveShadow = true;
         const grassColor = GRASS_COLORS[Math.floor(random() * GRASS_COLORS.length)] ?? 'grass';
         if (!hasWater(tile)) this.mesh(this.topGeometry, this.terrainMaterial(grassColor), new THREE.Vector3(0, 0.22, 0), group);
         let water: THREE.ShaderMaterial | null = null;
+        let sprout: THREE.Mesh | null = null;
         const links: TileObject['links'] = [];
         if (hasWater(tile)) {
           const depth = this.mesh(this.waterDepthGeometry, this.terrainMaterial('water'), new THREE.Vector3(0, 0.125, 0), group);
@@ -726,9 +814,18 @@ export class LivingIsland {
           this.addGrass(group, random, Math.max(14, Math.round((this.container.clientWidth < 680 ? 26 : 48) * 6 / this.size)));
           if (scenery.flowers.length) this.addFlowers(group, scenery.flowers, theme);
           else if ((row === 0 || row === this.size - 1 || col === 0 || col === this.size - 1) && random() > 0.84) this.addTree(group, random, theme);
+          if (this.postcard && this.postcardMaterial) {
+            const geometry = this.postcardFlowerGeometries[scenery.variant % 3];
+            if (!geometry) throw new Error('The living garden is missing its flowers.');
+            sprout = this.mesh(geometry, this.postcardMaterial,
+              new THREE.Vector3((scenery.variant % 3 - 1) * 0.13, 0.255, (Math.floor(scenery.variant / 3) - 1) * 0.13), group);
+            sprout.layers.disable(INPUT_LAYER);
+            sprout.scale.setScalar(0.001);
+            sprout.visible = false;
+          }
         }
         this.boardGroup.add(group);
-        this.tiles.push({ origin, group, water, links, bounds: new THREE.Box3(), batchParts: [] });
+        this.tiles.push({ origin, group, water, links, bounds: new THREE.Box3(), batchParts: [], sprout });
       }
     }
     this.refreshTerrain();
@@ -745,6 +842,7 @@ export class LivingIsland {
     this.boardGroup.updateWorldMatrix(true, true);
     for (const tile of this.tiles) tile.group.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || !(object.material instanceof THREE.MeshStandardMaterial)) return;
+      if (object.userData['postcardMotion']) return;
       const key = `${object.geometry.uuid}:${object.material.uuid}:${object.castShadow}:${object.receiveShadow}`;
       const entries = groups.get(key) ?? [];
       entries.push({ tile, source: object });
@@ -865,7 +963,14 @@ export class LivingIsland {
         objects.push({ tile: a, group: a.group, from: a.group.position.clone(), to: b.group.position.clone(), side: 1 });
         objects.push({ tile: b, group: b.group, from: b.group.position.clone(), to: a.group.position.clone(), side: -1 });
     }
-    this.movement = { move, next, objects, began: this.visualTime };
+    const parcels = this.postcard ? [1, -1].map((side) => {
+      const parts = objects.filter((object) => object.side === side);
+      const from = new THREE.Vector3(), to = new THREE.Vector3();
+      for (const part of parts) { from.add(part.from); to.add(part.to); }
+      from.divideScalar(parts.length); to.divideScalar(parts.length);
+      return { side, from, to, objects: parts };
+    }) : [];
+    this.movement = { move, next, objects, parcels, courierYaw: this.traveler.rotation.y, began: this.visualTime };
     this.callbacks.onBusy(true);
     this.clearFrames();
     if (this.reduced) this.finishSwap();
@@ -879,6 +984,7 @@ export class LivingIsland {
       group.position.copy(to);
       group.rotation.set(0, 0, 0);
     });
+    if (this.postcard) this.traveler.rotation.y = movement.courierYaw;
     const { move } = movement;
     for (const { row, col } of patchCells({ row: 0, col: 0 }, move)) {
         const ai = (move.a.row + row) * this.size + move.a.col + col;
@@ -1106,6 +1212,19 @@ export class LivingIsland {
     this.celebrationStarted = this.visualTime;
     this.celebrationComplete = celebration.complete;
     this.greetingUntil = this.celebrationStarted + (celebration.complete ? COMPLETION_CELEBRATION_MS : 1100);
+    if (this.postcard && celebration.complete) {
+      this.postcardStarted = this.visualTime;
+      this.postcardSettled = false;
+      this.postcardHomes.forEach(({ garden, resident }) => {
+        garden.visible = true;
+        if (resident) resident.visible = this.communityCount === null || this.communityCount === 0;
+      });
+      this.tiles.forEach((tile, index) => {
+        if (tile.sprout) tile.sprout.visible = postcardGarden(this.board, { row: Math.floor(index / this.size), col: index % this.size });
+      });
+      this.refreshBatchSlots();
+      this.updatePostcard();
+    }
     const center = (this.size - 1) / 2;
     for (const anchor of celebration.anchors) {
       const cell = locate(this.board, anchor);
@@ -1150,7 +1269,86 @@ export class LivingIsland {
   clearCelebration(): void {
     this.clearFestivities();
     this.greetingUntil = 0;
+    if (this.postcard) {
+      this.postcardStarted = null;
+      this.postcardSettled = false;
+      this.postcardHomes.forEach(({ door, garden, resident, arm }) => {
+        door.rotation.y = 0; garden.visible = false; garden.scale.y = 0.001;
+        if (resident) resident.visible = false;
+        if (arm) arm.rotation.z = 0;
+      });
+      this.tiles.forEach(({ sprout }) => { if (sprout) { sprout.visible = false; sprout.scale.setScalar(0.001); } });
+      this.refreshBatchSlots();
+      this.canvas.dataset['postcard'] = 'puzzle';
+      this.updateCommunityCrowd(0);
+      this.shadowsDirty = true;
+    }
     this.dirty = true;
+  }
+
+  private updatePostcard(): boolean {
+    if (this.postcardStarted === null || this.postcardSettled) return false;
+    const elapsed = this.visualTime - this.postcardStarted;
+    this.postcardHomes.forEach(({ door, garden, resident, arm, phase }) => {
+      const progress = this.reduced ? 1 : villageProgress(elapsed, phase);
+      door.rotation.y = progress * 1.18;
+      garden.scale.y = Math.max(0.001, progress);
+      if (resident) resident.position.set(-0.20 * progress, 0.27, 0.12 + progress * 0.24);
+      if (arm) arm.rotation.z = progress * 2 + (!this.reduced && elapsed < 2500 ? Math.sin(elapsed / 110 + phase) * 0.16 * progress : 0);
+    });
+    const grown: TileObject[] = [];
+    for (const tile of this.tiles) {
+      if (!tile.sprout?.visible) continue;
+      const progress = this.reduced ? 1 : villageProgress(elapsed, tile.origin % 6);
+      const scale = Math.max(0.001, progress);
+      if (Math.abs(tile.sprout.scale.x - scale) < 0.00001) continue;
+      tile.sprout.scale.setScalar(scale);
+      grown.push(tile);
+    }
+    if (grown.length) this.syncTerrainBatches(grown);
+    this.updateCommunityCrowd(elapsed);
+    this.postcardSettled = this.reduced || elapsed >= 2500;
+    this.canvas.dataset['postcard'] = this.reduced || elapsed >= 1200 ? 'alive' : 'opening';
+    this.shadowsDirty = true;
+    this.dirty = true;
+    return !this.postcardSettled;
+  }
+
+  setCommunityCount(count: number | null): void {
+    if (!this.postcard) return;
+    communityCrowd([], count);
+    this.communityCount = count;
+    this.canvas.dataset['communityCount'] = count === null ? 'unknown' : String(count);
+    if (this.postcardStarted !== null) {
+      this.postcardHomes.forEach(({ resident }) => { if (resident) resident.visible = count === null || count === 0; });
+      this.updateCommunityCrowd(this.visualTime - this.postcardStarted);
+    }
+    this.shadowsDirty = true;
+    this.dirty = true;
+  }
+
+  private updateCommunityCrowd(elapsed: number): void {
+    const bodies = this.communityBodies, arms = this.communityArms;
+    if (!bodies || !arms) return;
+    const people = this.postcardStarted === null ? [] : communityCrowd([...this.postcardHomes.keys()], this.communityCount);
+    const center = (this.size - 1) / 2;
+    bodies.count = people.length; arms.count = people.length;
+    bodies.visible = people.length > 0; arms.visible = people.length > 0;
+    people.forEach((person, index) => {
+      const cell = locate(this.board, person.anchor);
+      if (!cell) throw new Error('The community illustration references a missing home.');
+      const progress = this.reduced ? 1 : villageProgress(elapsed, person.phase);
+      this.crowdBodyPose.position.set(cell.col - center + person.side * 0.30 * progress, 0.27, cell.row - center - 0.05 + progress * 0.26);
+      this.crowdBodyPose.updateMatrix();
+      bodies.setMatrixAt(index, this.crowdBodyPose.matrix);
+      this.crowdArmPose.position.set(0.061, 0.186, 0.01);
+      this.crowdArmPose.rotation.z = progress * 2 + (!this.reduced && elapsed < 2500 ? Math.sin(elapsed / 110 + person.phase) * 0.16 * progress : 0);
+      this.crowdArmPose.updateMatrix();
+      this.batchMatrix.multiplyMatrices(this.crowdBodyPose.matrix, this.crowdArmPose.matrix);
+      arms.setMatrixAt(index, this.batchMatrix);
+    });
+    bodies.instanceMatrix.needsUpdate = true;
+    arms.instanceMatrix.needsUpdate = true;
   }
 
   private makeTraveler(): void {
@@ -1446,7 +1644,24 @@ export class LivingIsland {
     if (this.movement) {
       const progress = Math.min(1, (this.visualTime - this.movement.began) / 680);
       const eased = progress * progress * (3 - 2 * progress);
-      for (const object of this.movement.objects) {
+      if (this.postcard) {
+        for (const parcel of this.movement.parcels) {
+          const pose = parcelMotion(progress, parcel.side);
+          const pivot = parcel.from.clone().lerp(parcel.to, pose.travel);
+          for (const object of parcel.objects) {
+            object.group.rotation.set(pose.tilt * 0.55, 0, pose.tilt);
+            object.group.position.copy(object.from).sub(parcel.from).applyQuaternion(object.group.quaternion).add(pivot);
+          }
+          const lift = Math.min(...parcel.objects.map((object) => this.fittedLift(object, pose.lift)));
+          for (const object of parcel.objects) object.group.position.y += lift;
+        }
+        const focus = this.movement.parcels[0]?.objects[0]?.group.position;
+        if (focus) {
+          const yaw = Math.atan2(focus.x - this.traveler.position.x, focus.z - this.traveler.position.z);
+          const difference = Math.atan2(Math.sin(yaw - this.movement.courierYaw), Math.cos(yaw - this.movement.courierYaw));
+          this.traveler.rotation.y = this.movement.courierYaw + difference * Math.sin(progress * Math.PI);
+        }
+      } else for (const object of this.movement.objects) {
         object.group.position.lerpVectors(object.from, object.to, eased);
         object.group.rotation.z = Math.sin(progress * Math.PI * 2) * 0.035 * object.side;
         object.group.position.y += this.fittedLift(object, Math.sin(Math.PI * progress) * (object.side === 1 ? 0.85 : 1.30));
@@ -1476,7 +1691,8 @@ export class LivingIsland {
       this.dirty = true;
     }
     if (import.meta.env.DEV) this.canvas.dataset['greetingActive'] = String(this.armRight.rotation.z !== 0);
-    const activeMotion = this.movement || this.travelerWalking || this.visualTime < this.greetingUntil || this.festivities.children.length > 0;
+    const postcardMoving = this.updatePostcard();
+    const activeMotion = this.movement || postcardMoving || this.travelerWalking || this.visualTime < this.greetingUntil || this.festivities.children.length > 0;
     if (this.dirty || activeMotion || (!this.reduced && now - this.lastRender >= 1000 / 30 - 0.5)) {
       if (this.shadowsDirty || this.movement) {
         this.renderer.shadowMap.needsUpdate = true;
@@ -1498,6 +1714,16 @@ export class LivingIsland {
     this.boardGroup.clear();
     this.landmarkSprites = [];
     this.houseWindows.clear();
+    this.postcardHomes.clear();
+    this.postcardFlowerGeometries = [];
+    this.postcardStarted = null;
+    this.postcardSettled = false;
+    this.communityCount = null;
+    if (this.communityBodies && this.communityArms) {
+      this.communityBodies.count = 0; this.communityBodies.visible = false;
+      this.communityArms.count = 0; this.communityArms.visible = false;
+    }
+    this.canvas.dataset['postcard'] = this.postcard ? 'puzzle' : 'off';
     this.greetingUntil = 0;
     this.clearFestivities();
     this.tiles = [];
@@ -1521,6 +1747,8 @@ export class LivingIsland {
     this.canvas.removeEventListener('click', this.pointerClick);
     this.canvas.removeEventListener('webglcontextlost', this.contextLost);
     this.clearBoard();
+    this.communityBodies?.dispose();
+    this.communityArms?.dispose();
     this.setRoutes([]);
     this.geometries.forEach((geometry) => geometry.dispose());
     this.materials.forEach((material) => material.dispose());

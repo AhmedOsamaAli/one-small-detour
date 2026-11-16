@@ -1,5 +1,6 @@
 import { patchCells } from '../shared/rules.ts';
 import type { Cell, Swap } from '../shared/types.ts';
+import { parcelMotion } from './postcard.ts';
 
 export const FLAT_EXCHANGE_MS = 520;
 
@@ -12,6 +13,7 @@ export interface FlatExchangeAnimation {
 export function animateFlatExchange(
   map: HTMLDivElement, stage: HTMLDivElement, move: Swap,
   onFinish: () => void, onError: (error: unknown) => void,
+  postcard = false,
 ): FlatExchangeAnimation {
   const animations: Animation[] = [];
   const moving: HTMLElement[] = [];
@@ -56,8 +58,9 @@ export function animateFlatExchange(
       if (!distance) throw new Error('Exchanged terrain patches must occupy different places.');
       const lift = Math.min(12, Math.min(frameBox.width, frameBox.height) * 0.18);
       const keyframes: Keyframe[] = [0, 0.2, 0.5, 0.8, 1].map((time) => {
-        const x = dx * (1 - time);
-        const y = dy * (1 - time);
+        const progress = postcard ? parcelMotion(time, side === 'a' ? 1 : -1).travel : time;
+        const x = dx * (1 - progress);
+        const y = dy * (1 - progress);
         const arc = Math.sin(time * Math.PI) * lift;
         const laneX = Math.max(stageBox.x + 10 - frameBox.x - x,
           Math.min(stageBox.right - 2 - frameBox.right - x, -dy / distance * arc));

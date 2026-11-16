@@ -11,6 +11,7 @@ import { frameArrowPath } from './frameArrow.ts';
 import { sceneryOrigins, tileScenery, waterBanks } from './scenery.ts';
 import type { FlatExchangeAnimation } from './flatAnimation.ts';
 import { viewportSize } from './viewport.ts';
+import { communityCrowd, postcardGarden } from './postcard.ts';
 
 export interface Transition {
   id: number;
@@ -36,6 +37,8 @@ interface BoardProps {
   dark: boolean;
   flat: boolean;
   guide: boolean;
+  postcard: boolean;
+  communityCount: number | null;
   celebration: Celebration | null;
   arrived: readonly Anchor[];
   restingStop: Anchor;
@@ -105,6 +108,8 @@ export function BoardView(props: BoardProps) {
   const [worldReady, setWorldReady] = useState(false);
   const [startMarkers, setStartMarkers] = useState<StartMarker[]>([]);
   const size = props.board.length;
+  const homes = useMemo(() => props.postcard ? props.board.join('').split('').filter(isAnchor) : [], [props.postcard, props.board]);
+  const neighbors = useMemo(() => communityCrowd(homes, props.postcard ? props.communityCount : null), [homes, props.postcard, props.communityCount]);
   const origins = useMemo(() => sceneryOrigins(size, props.moves), [size, props.puzzleId, props.moves]);
   const scenery = useMemo(() => origins.map((origin) => tileScenery(props.seed, origin)), [props.seed, origins]);
   useEffect(() => {
@@ -150,7 +155,7 @@ export function BoardView(props: BoardProps) {
     };
     let motion: FlatExchangeAnimation;
     try {
-      motion = animateFlatExchange(map, element, props.transition.move, finish, fail);
+      motion = animateFlatExchange(map, element, props.transition.move, finish, fail, props.postcard);
       flatMotion.current = motion;
       const paused = callbacks.current.paused || document.hidden;
       motion.setPaused(paused);
@@ -164,7 +169,7 @@ export function BoardView(props: BoardProps) {
       motion.cancel();
       if (flatMotion.current === motion) finish();
     };
-  }, [props.flat, props.transition, props.puzzleId, props.reduced]);
+  }, [props.flat, props.transition, props.puzzleId, props.reduced, props.postcard]);
 
   useEffect(() => {
     const element = container.current;
@@ -180,7 +185,7 @@ export function BoardView(props: BoardProps) {
         onBusy: (busy) => callbacks.current.onBusy(busy),
         onError: (message) => callbacks.current.onFallback(message),
         onProjection: (axes) => callbacks.current.onProjection(axes),
-      });
+      }, callbacks.current.postcard);
       world.setAppearance(callbacks.current.dark);
       island.current = world;
       previous.current = { puzzle: '', transition: null, board: null };
@@ -195,7 +200,7 @@ export function BoardView(props: BoardProps) {
       if (island.current === world) island.current = null;
       world?.dispose();
     };
-  }, [props.flat, props.onFallback]);
+  }, [props.flat, props.onFallback, props.postcard]);
 
   useEffect(() => {
     const world = island.current;
@@ -265,6 +270,7 @@ export function BoardView(props: BoardProps) {
   useEffect(() => { island.current?.setReducedMotion(props.reduced); }, [props.reduced, props.flat, worldReady]);
   useEffect(() => { island.current?.setAppearance(props.dark); }, [props.dark, props.flat, worldReady]);
   useEffect(() => { island.current?.setPaused(props.paused); }, [props.paused, props.flat, worldReady]);
+  useEffect(() => { island.current?.setCommunityCount(props.communityCount); }, [props.communityCount, props.flat, worldReady]);
   useEffect(() => {
     const update = (): void => {
       const paused = props.paused || document.hidden;
@@ -372,8 +378,9 @@ export function BoardView(props: BoardProps) {
       {frameContents(props.shape, invalid ? '!' : number)}
     </div>;
 
-  return <div ref={stage} className={`world-stage theme-${props.theme} ${props.flat ? 'is-flat' : ''} ${size > 6 ? 'large-world' : ''} ${props.locked ? 'input-locked' : ''}`} data-testid="world-stage"
+  return <div ref={stage} className={`world-stage theme-${props.theme} ${props.flat ? 'is-flat' : ''} ${size > 6 ? 'large-world' : ''} ${props.locked ? 'input-locked' : ''} ${props.postcard ? 'postcard-preview' : ''}`} data-testid="world-stage"
     style={worldCssVariables(props.theme, props.dark)}
+    data-postcard={props.postcard && props.celebration?.complete ? 'alive' : 'puzzle'}
     data-size={size} data-playback={props.playback ? 'active' : 'idle'} data-celebration={props.celebration?.complete ? 'complete' : props.celebration ? 'destination' : 'none'}>
     {!props.flat && <div ref={container} className="world-canvas-wrap" role="application" tabIndex={0}
       aria-busy={!worldReady}
@@ -433,7 +440,19 @@ export function BoardView(props: BoardProps) {
                 data-road-direction={direction.name} aria-hidden="true"/>)}
           </>}
           {isAnchor(tile) ? <span key={`${tile}:${props.celebration?.id ?? 0}`} style={{ fontSize: Math.max(12, Math.min(16, flatExtent / size * 0.52)) }}
-            className={`flat-landmark ${props.celebration?.anchors.includes(tile) ? 'destination-celebration' : ''}`}><HomeLetter anchor={tile}/><span className="sr-only">{tile}</span></span> :
+            className={`flat-landmark ${props.postcard && props.celebration?.complete ? 'flat-home-awake' : ''} ${props.celebration?.anchors.includes(tile) ? 'destination-celebration' : ''}`}>
+            <svg className="flat-cottage" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+              <path d="M46 19V7h7v18" fill="var(--world-wood)" stroke="var(--world-wood-shade)" strokeWidth="1.5"/>
+              <path className="flat-cottage-wall" d="M13 26h38v31H13Z" fill="var(--world-home-badge)" stroke="var(--home-roof)" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M5 28 32 6 59 28 55 32 32 13 9 32Z" fill="var(--home-roof)" stroke="var(--home-roof)" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="m11 27 21-17 21 17" stroke="var(--world-home-badge)" strokeOpacity=".3" strokeWidth="1.5"/>
+              <path d="M17 34h9v10h-9Zm21 0h9v10h-9Z" fill="var(--world-wood-light)" stroke="var(--world-wood-shade)" strokeWidth="1.5"/>
+              <path d="M21.5 34v10m-4.5-5h9m16.5-5v10M38 39h9" stroke="var(--world-wood-shade)" strokeWidth="1"/>
+              <rect className="flat-cottage-door" x="27" y="39" width="10" height="18" rx="1" fill="var(--world-wood)" stroke="var(--world-wood-shade)" strokeWidth="1.5"/>
+              <circle cx="34.5" cy="49" r="1" fill="var(--world-wood-light)"/>
+              <path d="M11 58h42" stroke="var(--world-wood-light)" strokeWidth="3" strokeLinecap="round"/>
+            </svg>
+            <HomeLetter anchor={tile} compact/><span className="sr-only">{tile}</span></span> :
             tile === 'o' ? null : tile === '~' ? <><i className="flat-ripples" aria-hidden="true"/>
               {decoration.fish && <i className="flat-fish" style={{ animationDelay: `${-decoration.variant}s` }} aria-hidden="true"/>}</> :
               tile === 'x' ? <i className="flat-rock"/> : tile === 'h' || tile === 'v'
@@ -446,6 +465,26 @@ export function BoardView(props: BoardProps) {
                 <circle cy="-4" r="1.3" fill="#f3d16f"/>
               </g>)}
           </svg>}
+          {props.postcard && props.celebration?.complete && postcardGarden(props.board, cell) && <svg className="postcard-blooms" viewBox="0 0 32 32"
+            style={{ animationDelay: `${decoration.variant % 6 * 90}ms` }} aria-hidden="true">
+            <path d="M8 29V17m14 11V12m-14 10-4-3m18 0 4-3" fill="none" stroke="var(--world-blade)" strokeWidth="1.5"/>
+            <g fill={FLOWER_CSS_COLORS[decoration.variant % 3]}><path d="M8 10q5-4 5 1 5 1 1 5 1 5-4 4-4 4-5-1-5-1-1-5-1-4 4-4ZM22 5q5-4 5 1 5 1 1 5 1 5-4 4-4 4-5-1-5-1-1-5-1-4 4-4Z"/></g>
+            <g fill="#f3cf75"><circle cx="8" cy="15" r="2"/><circle cx="22" cy="10" r="2"/></g>
+          </svg>}
+          {props.postcard && isAnchor(tile) && props.celebration?.complete && <span className="postcard-home-life" aria-hidden="true">
+            <i className="postcard-open-door"/>
+            {(props.communityCount !== null && props.communityCount > 0
+              ? neighbors.filter((person) => person.anchor === tile).map((person) => person.side)
+              : tile === 'B' || tile === 'C' || tile === 'D' ? [-1] : []).map((side) => <svg key={side} className="postcard-neighbor" viewBox="0 0 24 40"
+                style={side > 0 ? { left: 'auto', right: '2%' } : undefined}>
+              <path d="M8 30v8m8-8v8" stroke="#35474d" strokeWidth="4"/>
+              <path d="M7 18q5-4 10 0l2 14H5Z" fill={props.communityCount !== null && props.communityCount > 0 ? '#507e78' : `var(--world-home-${tile.toLowerCase()})`}/>
+              <circle cx="12" cy="12" r="6" fill="#ebc39b"/>
+              <path d="M4 8h16M8 7V4h8v3" fill="none" stroke="#e9c77f" strokeWidth="3" strokeLinecap="round"/>
+              <path d="m18 20 3-10" stroke="#ebc39b" strokeWidth="3" strokeLinecap="round" className="postcard-neighbor-arm"/>
+              <path d="M10 12h.2m3.6 0h.2" stroke="#253f43" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>)}
+          </span>}
           {blocked.has(key) && <span className="cell-warning"><Icon name="warning" size={12}/></span>}
         </button>;
       })}

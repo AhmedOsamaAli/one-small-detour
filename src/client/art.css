@@ -246,27 +246,77 @@
 .flat-grass::after { left: 85%; height: 65%; transform: rotate(20deg); }
 .flat-flowers { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
 .flat-cell .flat-landmark {
-  width: 61%;
-  height: 55%;
-  margin-top: 12%;
-  background: var(--world-home-badge);
-  border: 1px solid var(--home-roof);
-  border-radius: 2px 2px 3px 3px;
+  width: 100%;
+  height: 100%;
+  margin-top: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
   color: var(--home-roof);
   z-index: 3;
-  box-shadow: inset -3px 0 0 #9d774326, 0 2px 0 var(--world-mortar);
+  box-shadow: none;
+  pointer-events: none;
 }
-.flat-landmark::before {
-  content: '';
+.flat-cottage { display: block; width: 100%; height: 100%; }
+.flat-landmark > .home-letter {
   position: absolute;
-  bottom: calc(100% - 1px);
-  left: -22%;
-  width: 144%;
-  height: 43%;
-  background: var(--home-roof);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  top: 0;
+  right: 0;
+  width: clamp(8px, 52%, 21px);
+  height: clamp(8px, 52%, 21px);
+  padding: 0;
+  z-index: 1;
+  background: var(--world-home-badge);
+  border: 1px solid currentColor;
+  border-radius: 3px 1px 3px 1px;
+  box-shadow: 0 1px 0 var(--world-mortar);
 }
-.flat-landmark > .home-letter { position: relative; height: 125%; width: 100%; max-width: 32px; z-index: 1; background: var(--world-home-badge); border-radius: 4px 1px 4px 1px; }
+.flat-home-awake .flat-cottage-door { fill: var(--world-wood-shade); }
+.viewport-fit .postcard-preview .flat-map { box-shadow: inset 0 1px 0 var(--world-blade), 0 3px 0 var(--world-soil-edge), 0 7px 0 var(--world-soil), 0 13px 0 color-mix(in srgb, var(--world-soil) 78%, #30291f), 0 20px 28px var(--art-shadow); }
+.postcard-preview .flat-cell.flat-moving { filter: drop-shadow(0 5px 3px #18342b55); }
+.postcard-preview:is([data-flat-swap="running"],[data-flat-swap="paused"]) .flat-traveler > .guide-courier { transform: rotate(-7deg); transform-origin: 50% 85%; }
+.postcard-blooms { position: absolute; inset: 18% 12% 8%; width: 76%; height: 74%; overflow: hidden; pointer-events: none; transform-origin: 50% 90%; animation: postcard-grow .7s cubic-bezier(.2,.8,.25,1) both; }
+.postcard-home-life { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.postcard-open-door { position: absolute; left: 42%; bottom: 11%; width: 16%; height: 28%; border: 1px solid var(--world-wood-shade); background: var(--world-wood); transform: perspective(35px) rotateY(-65deg); transform-origin: 0 50%; animation: postcard-door .55s ease-out both; }
+.postcard-neighbor { position: absolute; left: 2%; bottom: 5%; width: 26%; height: 44%; overflow: visible; animation: postcard-neighbor .8s ease-out both; }
+.postcard-neighbor-arm { transform-origin: 18px 20px; animation: postcard-wave .45s ease-in-out 4 alternate; }
+.world-stage[data-animation-paused="true"] :is(.postcard-blooms,.postcard-open-door,.postcard-neighbor,.postcard-neighbor-arm) { animation-play-state: paused; }
+.reduce-motion :is(.postcard-blooms,.postcard-open-door,.postcard-neighbor,.postcard-neighbor-arm) { animation: none !important; }
+@keyframes postcard-grow { from { transform: scale(.01); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes postcard-door { from { transform: perspective(35px) rotateY(0); } to { transform: perspective(35px) rotateY(-65deg); } }
+@keyframes postcard-neighbor { from { transform: translate(10%, -8%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes postcard-wave { from { transform: rotate(-7deg); } to { transform: rotate(12deg); } }
+.postcard-community-results { flex: 1 0 100%; width: 100%; min-width: 0; border-top: 1px solid var(--line); padding-top: 12px; }
+.community-count { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; color: var(--green); }
+.community-count > svg { flex-shrink: 0; margin-top: 3px; }
+.community-count strong { display: block; font-size: 15px; }
+.community-count small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.standings-toggle { min-height: 44px; }
+.completion-dialog .standings-view > :is(.completion-seal,.result-copy,.completion-confetti) { display: none; }
+.standings-view .community-count { display: none; }
+.standings-view .postcard-community-results { border-top: 0; padding-top: 0; align-self: stretch; }
+.postcard-results-button { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 4px; color: var(--green); }
+.daily-standings { margin-top: 14px; min-width: 0; }
+.daily-standings h3 { margin: 0 0 6px; font: 520 22px/1.2 var(--serif); color: var(--ink); }
+.daily-standings p { margin: 6px 0 12px; color: var(--muted); font-size: 12px; }
+.daily-standings table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+.daily-standings .standing-rank { width: 34px; }
+.daily-standings .standing-moves { width: 42px; }
+.daily-standings .standing-time { width: 76px; }
+.daily-standings th, .daily-standings td { padding: 9px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; color: var(--ink); }
+.daily-standings thead th { font-size: 12px; color: var(--muted); font-weight: 600; }
+.daily-standings tbody th { overflow-wrap: anywhere; font-weight: 500; }
+.daily-standings td:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.daily-standings .standing-you { background: var(--surface-selected); }
+.daily-standings .standing-you th, .daily-standings .standing-you td { color: var(--green); font-weight: 700; }
+.daily-standings .standing-you small { font-size: 12px; }
+.standings-error { margin-top: 12px; color: var(--error); font-size: 14px; }
+@media (max-width: 300px) {
+  .daily-standings table { font-size: 12px; }
+  .daily-standings .standing-time { width: 68px; }
+  .daily-standings .standing-moves { width: 38px; }
+  .daily-standings .standing-rank { width: 30px; }
+}
 .flat-cell[data-tile=A] { --home-roof: var(--world-home-a); }
 .flat-cell[data-tile=B] { --home-roof: var(--world-home-b); }
 .flat-cell[data-tile=C] { --home-roof: var(--world-home-c); }

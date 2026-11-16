@@ -50,3 +50,30 @@ test('timed daily results survive reload without overwriting a faster equal-move
     await rmdir(directory);
   }
 });
+
+test('first Daily results survive file-store reload, simultaneous replays and deletion without granting another ranked turn', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'detour-first-daily-'));
+  try {
+    const file = join(directory, 'scores.json');
+    const store = new LocalScoreStore(file);
+    const date = new Date().toISOString().slice(0, 10);
+    const key = scoreKey(date, 'daily');
+    const record = { userId: 'owner', name: 'Owner', swaps: 5, footprint: 20, solveMs: 9000, submittedAt: new Date().toISOString() };
+    const first = '00000000-0000-4000-8000-000000000001';
+    const second = '00000000-0000-4000-8000-000000000002';
+    const writes = await Promise.all([store.put(key, record, first), store.put(key, { ...record, swaps: 3, solveMs: 100 }, second)]);
+    assert.deepEqual(writes, [{ ranking: 'recorded' }, { ranking: 'replay' }]);
+    const reload = new LocalScoreStore(file);
+    assert.equal(await reload.firstStatus(key, 'owner'), 'replay');
+    assert.equal(rankScores(await reload.list(key), 'owner', 'local').yourBest?.swaps, 5);
+    assert.deepEqual(await reload.put(key, record, first), { ranking: 'recorded' });
+    await reload.erase('owner');
+    assert.equal(await new LocalScoreStore(file).firstStatus(key, 'owner'), 'removed');
+    assert.deepEqual(await reload.put(key, { ...record, swaps: 3 }, second), { ranking: 'removed' });
+    assert.deepEqual(await reload.list(key), []);
+    assert.equal((await readFile(file, 'utf8')).includes('"name":"Owner"'), false);
+  } finally {
+    for (const name of await readdir(directory)) await rm(join(directory, name));
+    await rmdir(directory);
+  }
+});
