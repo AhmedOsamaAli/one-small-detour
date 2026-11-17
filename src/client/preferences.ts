@@ -1,6 +1,8 @@
 import { isGuideTopics } from '../shared/guidance.ts';
 import { isRecord } from '../shared/validation.ts';
 import type { GuideTopic } from '../shared/types.ts';
+import type { PracticeProgress } from '../shared/progression.ts';
+import { MAX_EXCHANGES } from '../shared/rules.ts';
 
 export type AppearancePreference = 'light' | 'dark';
 
@@ -10,6 +12,7 @@ export interface Preferences {
   soundWanted: boolean;
   seenGuides: GuideTopic[];
   appearance: AppearancePreference;
+  practice?: PracticeProgress;
 }
 
 export const PREF_KEY = 'detour:preferences:1';
@@ -47,8 +50,24 @@ export function loadPreferences(storage?: Pick<Storage, 'getItem'>): { value: Pr
         warnings.push('The saved appearance could not be read. Light mode is being used; other progress is safe.');
       }
     }
+    let practice: PracticeProgress | undefined;
+    if (value['practice'] !== undefined) {
+      const saved = value['practice'];
+      if (isRecord(saved) && isRecord(saved['bests']) && typeof saved['unlockedWorlds'] === 'number' &&
+          Number.isInteger(saved['unlockedWorlds']) && saved['unlockedWorlds'] >= 1 && saved['unlockedWorlds'] <= 10_000 &&
+          Object.entries(saved['bests']).every(([id, moves]) => id.length > 0 && id.length <= 150 &&
+            typeof moves === 'number' && Number.isInteger(moves) && moves >= 1 && moves <= MAX_EXCHANGES)) {
+        const bests: Record<string, number> = {};
+        for (const [id, moves] of Object.entries(saved['bests'])) if (typeof moves === 'number') bests[id] = moves;
+        practice = { bests, unlockedWorlds: saved['unlockedWorlds'] };
+      } else {
+        console.warn('Saved Practice star records could not be read.');
+        warnings.push('Practice stars could not be read. Completed stops are safe; world access will be restored from your discoveries.');
+      }
+    }
     return {
-      value: { flat: value['flat'], completed: value['completed'], soundWanted: value['soundWanted'], seenGuides, appearance },
+      value: { flat: value['flat'], completed: value['completed'], soundWanted: value['soundWanted'], seenGuides, appearance,
+        ...(practice ? { practice } : {}) },
       warning: warnings.length ? warnings.join(' ') : null,
     };
   } catch (error) {

@@ -1,16 +1,20 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import type { CatalogEntry } from '../shared/types.ts';
-import { campaignGates, campaignPlaces } from '../shared/progression.ts';
-import { Icon, LandscapeIllustration, ShapeGlyph } from './components.tsx';
+import type { CatalogEntry, Theme } from '../shared/types.ts';
+import { campaignGates, campaignPlaces, campaignWorlds, nextCampaignPlace, PRACTICE_WORLD_SIZE, practiceStars, worldStarRequirement, worldStars } from '../shared/progression.ts';
+import type { PracticeProgress } from '../shared/progression.ts';
+import { Icon, LandscapeIllustration, ShapeGlyph, StarRating } from './components.tsx';
 import { shapesFor } from '../shared/rules.ts';
 
 interface Point { x: number; y: number }
 interface Drag { id: number; y: number; offset: number; moved: boolean }
+const STOP_TOP_INSET = 34;
+const STOP_BOTTOM_INSET = 40;
 
 interface MapProps {
   places: readonly CatalogEntry[];
   completed: readonly string[];
+  progress: PracticeProgress;
   currentId: string;
   reduced: boolean;
   loading: string | null;
@@ -20,13 +24,14 @@ interface MapProps {
 }
 
 function nodePosition(index: number, width: number, rowGap: number): Point {
-  const row = Math.floor(index / 3);
-  const column = row % 2 ? 2 - index % 3 : index % 3;
+  const world = Math.floor(index / PRACTICE_WORLD_SIZE), local = index % PRACTICE_WORLD_SIZE;
+  const row = Math.floor(local / 3);
+  const column = row % 2 ? 2 - local % 3 : local % 3;
   const margin = Math.max(32, width * 0.16);
   return {
     x: margin + column * (width - margin * 2) / 2 + Math.sin(row * 0.9) * width * 0.012 +
       (column === 1 ? Math.sin(row * 1.1) * width * 0.035 : 0),
-    y: (row + 0.75 + (column === 1 ? 0.16 : column === 0 ? -0.12 : -0.08)) * rowGap,
+    y: (world * 9.2 + row + 1.5 + (column === 1 ? 0.16 : column === 0 ? -0.12 : -0.08)) * rowGap,
   };
 }
 
@@ -38,6 +43,32 @@ function roadSegment(a: Point, b: Point, width: number, rowGap: number): { path:
     middle: { x: (a.x + b.x) * 0.125 + control * 0.75, y: (a.y + b.y) / 2 },
     angle: Math.atan2((b.y - a.y) * 1.5, (b.x - a.x) * 0.75) * 180 / Math.PI,
   };
+}
+
+function islandCrossing(a: Point, b: Point, width: number, rowGap: number): { path: string; middle: Point; angle: number } {
+  const shore = Math.max(12, Math.min(20, width * .04));
+  const leave = a.y + rowGap * .95, arrive = b.y - rowGap * .45;
+  return {
+    path: `M${a.x} ${a.y}C${a.x} ${a.y + rowGap * .5} ${shore} ${a.y + rowGap * .4} ${shore} ${leave}L${shore} ${arrive}Q${shore} ${b.y} ${b.x} ${b.y}`,
+    middle: { x: shore, y: (leave + arrive) / 2 },
+    angle: 90,
+  };
+}
+
+function WorldHeading({ number, title, subtitle, width }: { number: number; title: string; subtitle: string; width: number }) {
+  const narrow = width < 300;
+  const words = title.split(' '), split = Math.ceil(words.length / 2);
+  const lines = narrow ? [words.slice(0, split).join(' '), words.slice(split).join(' ')] : [title];
+  const plateWidth = Math.min(320, width - 56), height = narrow ? 70 : 56;
+  return <g className={`world-map-heading ${narrow ? 'heading-narrow' : ''}`} data-testid="world-map-heading"
+    transform={`translate(${(width - plateWidth) / 2} 8)`}>
+    <rect className="world-heading-shadow" x="0" y="3" width={plateWidth} height={height} rx="13"/>
+    <rect className="world-heading-paper" width={plateWidth} height={height} rx="13"/>
+    <path d={`M12 14v-3h10m${plateWidth - 44} 0h10v3`} className="world-heading-detail"/>
+    {lines.map((line, index) => <text key={index} x={plateWidth / 2} y={narrow ? 23 + index * 18 : 25}
+      className="world-map-title" textAnchor="middle">{index === 0 ? `${number}. ` : ''}{line}</text>)}
+    <text x={plateWidth / 2} y={narrow ? 59 : 44} className="world-map-subtitle" textAnchor="middle">{subtitle}</text>
+  </g>;
 }
 
 function MapTree({ x, y, orchard = false }: { x: number; y: number; orchard?: boolean }) {
@@ -65,7 +96,41 @@ function MapWindmill() {
   </g>;
 }
 
-export function AdventureMap({ places, completed, currentId, reduced, loading, error, onSelect, onToday }: MapProps) {
+function MapLighthouse() {
+  return <g>
+    <path d="M-25 16q25-15 50 0" fill="#cfbf8a" stroke="#799e9f" strokeWidth="2"/>
+    <path d="m-11 13 5-43H6l5 43Z" fill="#faf0cf" stroke="#6b8d92" strokeWidth="2"/>
+    <path d="M-8-7H8v9H-9Z" fill="#ac6954"/>
+    <path d="M-8-30v-12H8v12M-12-30h24" stroke="#507786" strokeWidth="3" fill="#f3d37e"/>
+    <path d="m-12-43 12-10 12 10Z" fill="#517f88"/>
+    <path d="M-3 13V4h6v9" fill="#577c7e"/>
+  </g>;
+}
+
+function MapWorldScenery({ theme, width, height, rows, rowGap }: { theme: Theme; width: number; height: number; rows: number; rowGap: number }) {
+  return <g className="world-scenery">
+    {theme === 'coast' && <>
+      <path d={`M${width * .1} 80Q${width * .32} ${height * .38} ${width * .14} ${height * .58}T${width * .22} ${height - 28}`}
+        stroke="var(--region-shore)" strokeWidth="26" fill="none"/>
+      <path d={`M${width * .08} 80Q${width * .27} ${height * .38} ${width * .10} ${height * .58}T${width * .16} ${height - 28}`}
+        stroke="var(--region-water)" strokeWidth="17" fill="none"/>
+    </>}
+    {Array.from({ length: rows }, (_, row) => <g key={row}
+      transform={`translate(${width * (row % 2 ? .64 : .34)} ${(row + 1.9) * rowGap}) scale(${Math.min(.9, width / 580)})`}>
+      {theme === 'coast' ? row % 3 === 0 ? <MapLighthouse/> :
+        <><path d="m-20 15 9-7 11 8 14-10 14 9" stroke="#eef2d5" strokeWidth="2" fill="none"/>
+          <path d="M-7 5V-12m0 9-8-7m8 10 8-7m13 12V-8" stroke="#70997d" strokeWidth="3"/></> :
+        theme === 'orchard' ? <><MapTree x={-18} y={0} orchard/><MapTree x={23} y={10} orchard/></> :
+          row % 3 === 1 ? <MapWindmill/> : <>
+            <path d="m-29-8 39-12 25 24-41 13Z" fill="#b9c982" stroke="#82995b"/>
+            <path d="m-20-6 28-9m-19 17 28-9m-18 17 28-9" stroke="#e8d494" strokeWidth="3"/>
+            <MapTree x={28} y={-3}/>
+          </>}
+    </g>)}
+  </g>;
+}
+
+export function AdventureMap({ places, completed, progress, currentId, reduced, loading, error, onSelect, onToday }: MapProps) {
   const scene = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
   const suppressClick = useRef(false);
@@ -79,21 +144,28 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
   const [dragging, setDragging] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const entries = useMemo(() => campaignPlaces(places), [places]);
-  const gates = useMemo(() => campaignGates(entries, completed), [entries, completed]);
+  const gates = useMemo(() => campaignGates(entries, completed, progress), [entries, completed, progress]);
+  const worlds = useMemo(() => campaignWorlds(entries.length), [entries.length]);
   const done = useMemo(() => new Set(completed), [completed]);
-  const nextIndex = entries.findIndex((place) => !done.has(place.id));
+  const next = useMemo(() => nextCampaignPlace(entries, completed, progress), [entries, completed, progress]);
+  const nextIndex = next ? entries.findIndex((place) => place.id === next.id) : -1;
   const currentIndex = entries.findIndex((place) => place.id === currentId);
   const focusIndex = nextIndex >= 0 ? nextIndex : Math.max(0, currentIndex >= 0 ? currentIndex : entries.length - 1);
-  const rowGap = Math.max(64, viewport.width * 0.19);
+  const rowGap = Math.max(80, viewport.width * 0.19);
   const points = useMemo(() => entries.map((_, index) => nodePosition(index, viewport.width, rowGap)),
     [entries, viewport.width, rowGap]);
-  const rows = Math.ceil(entries.length / 3);
-  const worldHeight = Math.max(viewport.height, (rows + 0.65) * rowGap);
+  const worldHeight = Math.max(viewport.height, (points.at(-1)?.y ?? 0) + rowGap * 1.1);
   const maxOffset = Math.max(0, worldHeight - viewport.height);
   const panY = Math.max(0, Math.min(maxOffset, offsetRows * rowGap));
   const focusY = points[focusIndex]?.y ?? 0;
-  const focusRow = points.slice(Math.floor(focusIndex / 3) * 3, Math.floor(focusIndex / 3) * 3 + 3);
+  const focusWorldStart = Math.floor(focusIndex / PRACTICE_WORLD_SIZE) * PRACTICE_WORLD_SIZE;
+  const focusRowStart = focusWorldStart + Math.floor((focusIndex - focusWorldStart) / 3) * 3;
+  const focusRow = points.slice(focusRowStart, Math.min(focusRowStart + 3, focusWorldStart + PRACTICE_WORLD_SIZE));
   const rowFocusY = focusRow.length ? (Math.min(...focusRow.map((point) => point.y)) + Math.max(...focusRow.map((point) => point.y))) / 2 : focusY;
+  const headingTop = Math.floor(focusIndex / PRACTICE_WORLD_SIZE) * 9.2 * rowGap + 8;
+  const focusOffset = focusRow.length > 0 && focusRowStart === focusWorldStart &&
+    viewport.height >= Math.max(...focusRow.map((point) => point.y + STOP_BOTTOM_INSET)) - headingTop + 4
+    ? headingTop - 4 : rowFocusY - (viewport.height + STOP_TOP_INSET - STOP_BOTTOM_INSET) / 2;
   const completedCount = entries.filter((place) => done.has(place.id)).length;
 
   useLayoutEffect(() => {
@@ -115,7 +187,7 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
     const targetId = entries[focusIndex]?.id ?? null;
     let target = Math.max(0, Math.min(maxOffset, offset.current * rowGap));
     if (focusedStop.current !== targetId) {
-      target = rowFocusY - viewport.height * 0.5;
+      target = focusOffset;
       focusedStop.current = targetId;
       followingNext.current = true;
       setPreviewId(null);
@@ -123,20 +195,20 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
       suppressClick.current = false;
       setDragging(false);
     } else if (followingNext.current) {
-      target = rowFocusY - viewport.height * 0.5;
+      target = focusOffset;
     } else if (revealedPreview.current !== previewId) {
       const selectedIndex = entries.findIndex((place) => place.id === previewId);
       const selected = selectedIndex >= 0 ? points[selectedIndex] : null;
       if (selected) {
-        if (selected.y - target < 36) target = selected.y - 36;
-        else if (selected.y - target > viewport.height - 36) target = selected.y - viewport.height + 36;
+        if (selected.y - target < STOP_TOP_INSET) target = selected.y - STOP_TOP_INSET;
+        else if (selected.y - target > viewport.height - STOP_BOTTOM_INSET) target = selected.y - viewport.height + STOP_BOTTOM_INSET;
       }
     }
     revealedPreview.current = previewId;
     const rows = Math.max(0, Math.min(maxOffset, target)) / rowGap;
     offset.current = rows;
     setOffsetRows(rows);
-  }, [entries, points, previewId, focusIndex, rowFocusY, viewport.height, rowGap, maxOffset]);
+  }, [entries, points, previewId, focusIndex, focusOffset, viewport.height, rowGap, maxOffset]);
   useEffect(() => () => cancelAnimationFrame(animation.current), []);
 
   const panTo = (pixels: number, animate = false, follow = false): void => {
@@ -169,20 +241,22 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
   if (preview?.frame && !previewFrame) throw new Error('The selected Practice island has no supported frame.');
   const previewGate = preview ? gates.get(preview.id) : null;
   const previewIndex = preview ? entries.findIndex((place) => place.id === preview.id) : -1;
+  const previewWorld = worlds[Math.floor(Math.max(0, previewIndex) / PRACTICE_WORLD_SIZE)];
+  const previewStars = preview ? practiceStars(preview, progress.bests[preview.id], done.has(preview.id)) : 0;
+  const starsHere = previewWorld ? worldStars(previewWorld, entries, completed, progress) : 0;
   const replay = preview !== null && done.has(preview.id);
   const status = replay ? 'Completed' : previewGate?.unlocked ? 'Ready to play' : 'Locked';
   const w = viewport.width;
-  const land = `M${w * 0.2} 20Q${w * 0.5} -8 ${w * 0.8} 20Q${w * 0.96} 38 ${w * 0.93} 92
-    L${w * 0.93} ${worldHeight - 65}Q${w * 0.91} ${worldHeight + 4} ${w * 0.67} ${worldHeight - 8}
-    L${w * 0.3} ${worldHeight - 8}Q${w * 0.05} ${worldHeight - 12} ${w * 0.07} ${worldHeight - 80}
-    L${w * 0.07} 90Q${w * 0.03} 38 ${w * 0.2} 20Z`;
 
   return <div className="adventure-map" data-campaign-count={entries.length}>
     <div className="adventure-tools">
-      <div className="adventure-progress"><strong>Your road</strong><span aria-label={`${completedCount} of ${entries.length} stops completed`}>{completedCount} / {entries.length} <span className="progress-unit">completed</span></span></div>
+      <div className="adventure-progress"><strong>{previewWorld?.title ?? 'Your road'}</strong>
+        <span aria-label={`${completedCount} of ${entries.length} stops completed`}>{completedCount} / {entries.length} <span className="progress-unit">completed</span></span>
+        {previewWorld && <small className="world-star-total" data-testid="world-star-total">{starsHere} / {(previewWorld.end - previewWorld.start) * 3} stars</small>}
+      </div>
       <div className="adventure-controls">
         <button className="secondary-button adventure-focus" disabled={!entries.length} aria-label="Find my next stop"
-          title="Find my next stop" onClick={() => { setPreviewId(entries[focusIndex]?.id ?? null); panTo(rowFocusY - viewport.height * 0.5, true, true); }}>
+          title="Find my next stop" onClick={() => { setPreviewId(entries[focusIndex]?.id ?? null); panTo(focusOffset, true, true); }}>
           <Icon name="map" size={18}/><span className="control-full">Find my stop</span><span className="control-short">Find stop</span>
         </button>
         <button className="secondary-button adventure-daily" onClick={onToday} aria-label="Today's daily island">
@@ -240,55 +314,67 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
           <pattern id="adventure-waves" width="72" height="52" patternUnits="userSpaceOnUse">
             <path className="campaign-wave" d="M10 26q14-7 28 0" fill="none" stroke="var(--world-foam)" strokeWidth="1.2" opacity=".35"/>
           </pattern>
-          <linearGradient id="campaign-land" x1="0" y1="0" x2="0" y2={worldHeight} gradientUnits="userSpaceOnUse">
-            <stop stopColor="var(--map-land-one)"/><stop offset=".5" stopColor="var(--map-land-two)"/><stop offset="1" stopColor="var(--map-land-three)"/>
-          </linearGradient>
         </defs>
         <rect width={w} height={worldHeight} fill="var(--map-water)"/>
         <rect width={w} height={worldHeight} fill="url(#adventure-waves)"/>
-        <path d={land} fill="#79987b" opacity=".2" transform="translate(0 8)"/>
-        <path d={land} fill="url(#campaign-land)" stroke="var(--map-border)" strokeWidth="2" data-testid="connected-world-land"/>
-        {Array.from({ length: rows }, (_, row) => <g key={row}>
-          <g transform={`translate(${w * (row % 2 ? 0.66 : 0.3)} ${(row + 1.3) * rowGap}) scale(${Math.min(0.9, w / 580)})`}>
-            {row % 5 === 2 ? <MapWindmill/> : <><MapTree x={0} y={0} orchard={row < rows / 3}/>
-              <MapTree x={35} y={10} orchard={row < rows / 3}/></>}
-          </g>
-          {row % 7 === 4 && <path d={`M${w * .08} ${(row + .45) * rowGap}Q${w * .5} ${(row + .15) * rowGap} ${w * .92} ${(row + .42) * rowGap}`}
-            fill="none" stroke="#a5c6b5" strokeWidth="9" opacity=".6"/>}
-        </g>)}
+        {worlds.map((world) => {
+          const rows = Math.ceil((world.end - world.start) / 3), height = (rows + 1.5) * rowGap;
+          const land = `M${w * .2} 20Q${w * .5} -8 ${w * .8} 20Q${w * .96} 38 ${w * .93} 92
+            L${w * .93} ${height - 65}Q${w * .91} ${height + 4} ${w * .67} ${height - 8}
+            L${w * .3} ${height - 8}Q${w * .05} ${height - 12} ${w * .07} ${height - 80}
+            L${w * .07} 90Q${w * .03} 38 ${w * .2} 20Z`;
+          return <g key={world.index} className={`campaign-world world-${world.theme} ${world.index >= progress.unlockedWorlds ? 'world-locked' : ''}`}
+            data-world={world.index + 1} transform={`translate(0 ${world.index * 9.2 * rowGap})`}>
+            <defs><linearGradient id={`campaign-land-${world.index}`} x2="0" y2="1">
+              <stop stopColor="var(--region-land-one)"/><stop offset="1" stopColor="var(--region-land-two)"/>
+            </linearGradient></defs>
+            <path d={land} fill="var(--region-shadow)" transform="translate(0 8)" opacity=".4"/>
+            <path d={land} fill={`url(#campaign-land-${world.index})`} stroke="var(--map-border)" strokeWidth="2" data-testid="connected-world-land"/>
+            <MapWorldScenery theme={world.theme} width={w} height={height} rows={rows} rowGap={rowGap}/>
+          </g>;
+        })}
         <g className="adventure-trails">{entries.slice(1).map((place, index) => {
           const from = points[index];
           const to = points[index + 1];
           const prior = entries[index];
           const gate = gates.get(place.id);
           if (!from || !to || !prior || !gate) throw new Error('The campaign road has a missing stop.');
-          const road = roadSegment(from, to, w, rowGap);
-          return <g key={place.id}>
+          const crossing = (index + 1) % PRACTICE_WORLD_SIZE === 0;
+          const road = crossing ? islandCrossing(from, to, w, rowGap) : roadSegment(from, to, w, rowGap);
+          return <g key={place.id} className={crossing ? 'island-crossing' : undefined}>
             <path d={road.path} className="trail-underlay"/>
             <path d={road.path} className={done.has(prior.id) && done.has(place.id) ? 'trail-discovered' : gate.unlocked ? 'trail-open' : 'trail-locked'}
               data-testid="campaign-road-link"/>
-            <path d="m-3-3 4 3-4 3" transform={`translate(${road.middle.x} ${road.middle.y}) rotate(${road.angle})`}
+            {crossing && <circle className="crossing-direction-halo" cx={road.middle.x} cy={road.middle.y} r="7"/>}
+            <path d={crossing ? 'm-3-4 4 4-4 4' : 'm-3-3 4 3-4 3'} transform={`translate(${road.middle.x} ${road.middle.y}) rotate(${road.angle})`}
               className="trail-direction"/>
           </g>;
         })}</g>
-        {['The orchard', 'The meadow', 'The coast'].map((name, index) =>
-          <text key={name} x={w / 2} y={Math.floor(index * rows / 3) * rowGap + rowGap * .25}
-            className="campaign-land-label" textAnchor="middle">{name}</text>)}
+        {worlds.map((world) => {
+          const prior = worlds[world.index - 1], locked = world.index >= progress.unlockedWorlds;
+          return <g key={world.index} transform={`translate(0 ${world.index * 9.2 * rowGap})`}>
+            <WorldHeading number={world.index + 1} title={world.title} width={w}
+              subtitle={locked && prior ? `${worldStarRequirement(prior)} stars + clear island ${world.index}` :
+                `${world.end - world.start} stops / ${(world.end - world.start) * 3} stars`}/>
+          </g>;
+        })}
       </svg>
       {entries.map((place, index) => {
         const point = points[index];
         const gate = gates.get(place.id);
         if (!point || !gate) throw new Error('The campaign stop is missing.');
         const y = point.y - panY;
-        if (y < 31 || y > viewport.height - 31) return null;
+        if (y < STOP_TOP_INSET || y > viewport.height - STOP_BOTTOM_INSET) return null;
         const discovered = done.has(place.id);
+        const stars = practiceStars(place, progress.bests[place.id], discovered);
         return <button key={place.id} className={`adventure-stop ${discovered ? 'is-discovered' : ''} ${!gate.unlocked ? 'is-locked' : ''} ${index === nextIndex ? 'is-next' : ''} ${place.id === currentId ? 'is-current' : ''} ${place.id === preview?.id ? 'is-previewed' : ''}`}
           style={{ left: point.x, top: y }} disabled={loading !== null} data-campaign-stop={place.id} data-ordinal={index + 1}
           aria-pressed={place.id === preview?.id}
-          aria-label={`Preview stop ${index + 1}. ${place.title}. ${discovered ? 'Completed; replay available.' : gate.unlocked ? 'Ready to play.' : 'Locked.'}`}
+          aria-label={`Preview stop ${index + 1}. ${place.title}. ${discovered ? `Completed; ${stars} of 3 stars; replay available.` : gate.unlocked ? 'Ready to play.' : 'Locked.'}`}
           onFocus={() => { followingNext.current = false; setPreviewId(place.id); }}
           onClick={() => { followingNext.current = false; setPreviewId(place.id); }}>
           <span>{index + 1}</span>
+          {discovered && <StarRating stars={stars}/>}
           {(discovered || !gate.unlocked) && <span className="campaign-stop-badge"><Icon name={discovered ? 'check' : 'lock'} size={11}/></span>}
         </button>;
       })}
@@ -296,26 +382,29 @@ export function AdventureMap({ places, completed, currentId, reduced, loading, e
     <section className={`campaign-preview ${replay ? 'preview-done' : previewGate?.unlocked ? 'preview-ready' : 'preview-locked'}`}
       aria-label="Selected stop preview" data-testid="campaign-preview">
       {preview && previewGate ? <>
-        <div className="preview-picture">{previewFrame ? <ShapeGlyph shape={previewFrame}/> : <LandscapeIllustration theme={preview.theme}/>}</div>
+        <div className="preview-picture">{previewFrame ? <ShapeGlyph shape={previewFrame}/> : <LandscapeIllustration theme={previewWorld?.theme ?? preview.theme}/>}</div>
         <div className="preview-copy">
           <div className="preview-eyebrow"><span>STOP {previewIndex + 1}</span><span className="preview-state">
             <Icon name={replay ? 'check' : previewGate.unlocked ? 'play' : 'lock'} size={12}/>{status}
           </span></div>
           <h3>{preview.title}</h3>
+          <StarRating stars={previewStars} label={`${previewStars} of 3 stars kept for this stop`}/>
           <div className="preview-facts">
             <span><Icon name="grid" size={14}/>{preview.size} x {preview.size}</span>
             <span title="Proved minimum number of exchanges"><Icon name="swap" size={14}/>Goal: {preview.minimum ?? '?'} {preview.minimum === 1 ? 'move' : 'moves'}</span>
           </div>
         </div>
         <p className={`preview-message ${error ? 'adventure-error' : ''}`} role={error ? 'alert' : 'status'}>
-          {error ?? (loading ? 'Opening your stop...' : !previewGate.unlocked
-            ? `Finish stop ${nextIndex + 1} to unlock this stop.` : preview.frame ? preview.note : 'Connect the full road through every home.')}
+          {error ?? (loading ? 'Opening your stop...' : !previewGate.unlocked ? previewGate.reason :
+            preview.minimum !== undefined ? `${replay && progress.bests[preview.id] === undefined ? 'Earlier clear: 1 star kept; replay to record moves. ' : ''}
+              3 stars: ${preview.minimum} ${preview.minimum === 1 ? 'move' : 'moves'}. 2 stars: ${preview.minimum + 2} or fewer. Finish for 1 star. No time targets.` :
+              preview.frame ? preview.note : 'Connect the full road through every home.')}
         </p>
         <button className="primary-button campaign-play" disabled={!previewGate.unlocked || loading !== null}
           onClick={() => onSelect(preview.id)}
-          aria-label={loading ? 'Opening practice stop' : previewGate.unlocked ? `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}` : `Stop ${previewIndex + 1} is locked; finish stop ${nextIndex + 1} first`}>
+          aria-label={loading ? 'Opening practice stop' : previewGate.unlocked ? `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}` : `Stop ${previewIndex + 1} is locked. ${previewGate.reason}`}>
           <Icon name={!previewGate.unlocked ? 'lock' : replay ? 'reset' : 'play'} size={17}/>
-          {loading ? 'Opening...' : !previewGate.unlocked ? `Finish stop ${nextIndex + 1} first` : error ? 'Try again' : `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}`}
+          {loading ? 'Opening...' : !previewGate.unlocked ? 'Island locked' : error ? 'Try again' : `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}`}
         </button>
       </> : <p className="preview-message" role="status">Preparing your road...</p>}
     </section>

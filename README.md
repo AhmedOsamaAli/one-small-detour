@@ -79,12 +79,20 @@ without calling a projected tile "left" or "top".
 On-board arrows follow that frame's long axis: down for tall and right for wide
 in Flat, or the corresponding real camera projection in 3D. Their tips remain
 at the first square when the view changes or resizes.
-The welcome explicitly offers **3D (the default)** or **Try Flat** before the
+The moves screen explicitly offers **3D (the default)** or **Try Flat** before the
 untimed lesson. Choosing a view does not start a ranked attempt.
-The guide then introduces the tools, views, daily ranking and 212 practice places. New rocks and
+After the example, the guide introduces daily ranking and 212 practice places. New rocks and
 bridges get a short explanation before that island's countdown starts.
 Completing or skipping the guide is remembered; the question-mark help button
 can replay it anytime.
+
+The onboarding follows this order:
+**goal -> available moves and view choice -> hands-on example**. It first
+explains the complete A-B-C road and waiting courier, then frames, exchanges,
+Undo and fixed homes, before the same three guided exchanges. Back retains
+the chosen view; every intro remains skippable. The toolkit is not repeated
+after solving. Existing guide flags are preserved. This reordered introduction
+is included in the v0.1.11 test build.
 
 Orange frame **1** is the first patch; blue frame **2** is the second. Solid,
 white-backed borders are confirmed selections; dashed frames are previews.
@@ -245,6 +253,39 @@ the end of a 42-map season:
   always accessible without completing campaign prerequisites.
 - Browser discoveries from older builds remain stored, but independent-delivery
   maps are no longer in the live ordered-journey catalog.
+
+### Practice worlds and stars
+
+The game groups the same 212 ordered Practice places into eleven islands:
+twenty stops each, with twelve on the final island. Meadows have fields and
+windmills, riverlands have shorelines and lighthouses, and autumn orchards have
+fruit groves. The Practice board uses its island's matching theme; puzzle IDs,
+boards, goals, frame rules and proven minimums are unchanged.
+Island names sit on opaque, high-contrast nameplates. Slim inter-island
+crossings follow the shoreline rather than cutting across those headings.
+
+Completed Practice solutions earn three stars at the proven minimum moves, two
+within two extra moves, and one for any valid finish. Time does not affect stars.
+Only the lowest move count is kept, so worse replays cannot remove earned stars.
+Stars and world access persist in the existing browser preference record, not
+in a competitive server entitlement or the Daily leaderboard.
+
+Finish all twenty stops and collect at least thirty of that island's sixty
+stars to open the next one. At a star gate, Continue offers a completed stop
+with room to improve rather than sending the player to a locked island. The
+map explains the missing stars, centres the next actionable row and still
+allows manual browsing. Previously opened islands stay open.
+
+Old completion-only progress keeps one guaranteed completion star per clear;
+no historical perfect solution or move count is invented. Migration preserves
+the next previously reachable island and every old completed stop. A replay
+can add its actual best-move record. New islands beyond that preserved frontier
+use the star gates.
+
+These worlds and stars were introduced in the **v0.1.10 test build** and remain
+in the current installation.
+No extra levels, animal hazards, paid items or standalone app have been added,
+and the original 3D camera is unchanged.
 
 Release verification samples a full year: **365 distinct terrain and road
 decision layouts**, all certified and regenerated independently, with **no
@@ -592,7 +633,7 @@ native post behavior and screen-reader operation still require platform testing.
 The owner-approved **private development build** is installed in a
 dedicated public test community:
 
-- Current test installation: **v0.1.9**, upgraded in place without changing
+- Current test installation: **v0.1.11**, upgraded in place without changing
   score keys, puzzle IDs or saved campaign progress.
 - [Play the Reddit example post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/).
 - [Test community: r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/).
@@ -618,6 +659,23 @@ Validation passed 126 source tests, all three strict TypeScript checks, the
 production build and 100 focused final browser assertions. Native v0.1.9's
 seven JS/CSS hashes and both platform-serialized HTML entrypoints match the
 tested release. Physical iOS/Android testing still remains.
+
+Version 0.1.10 adds the approved themed Practice islands, move-based stars,
+gentle island gates, protected island nameplates and shoreline connections.
+Old completions and previously reachable islands are preserved. Validation
+passed 131 source tests, all three strict TypeScript checks, the production
+build and 126 browser assertions. All seven served JS/CSS hashes and both
+entrypoint DOMs match the approved build; the existing post references
+v0.1.10. The goal-first tutorial was added in the following version.
+
+Version 0.1.11 teaches the ordered-road goal first, the available moves and
+view choices second, and the same three hands-on example exchanges last.
+Back preserves the view choice, Skip stays available, and no ranked attempt
+starts before the player explicitly chooses the Daily. Compact layouts retain
+all goal text and reachable actions. Existing guide flags are not reset.
+Validation passed 131 source tests, all three strict TypeScript checks, the
+production build and 139 browser assertions. All seven served JS/CSS hashes
+and both entrypoint DOMs match the approved build.
 
 The GitHub source repository is private. A public code repository is optional
 under the [hackathon rules](https://redditgameofday2026.devpost.com/rules), so

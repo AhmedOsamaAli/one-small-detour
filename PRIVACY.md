@@ -12,6 +12,13 @@ rehearsal identifier, which is not a password or production authentication
 credential. The production client does not send that local identity header.
 Native identity comes from Reddit.
 
+Practice worlds additionally keep the lowest move count for
+each completed Practice stop and the number of opened campaign islands in that
+same browser record. Stars are derived from those move counts, not time.
+Earlier completion-only discoveries keep a completion star without inventing
+move history. These unranked records are not sent to Reddit or the leaderboard.
+This browser-only Practice record is included in the v0.1.10 test build.
+
 Campaign unlocking is based on those browser-local discoveries. It is not a
 competitive or server-authoritative entitlement. Undo history and unfinished
 attempts remain in page memory; refreshing starts a fresh attempt. The traveler

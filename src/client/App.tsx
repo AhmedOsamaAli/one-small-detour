@@ -3,13 +3,13 @@ import { gameApi, takeStorageNotice } from './api.ts';
 import { IslandAudio } from './audio.ts';
 import { BoardView } from './BoardView.tsx';
 import type { Transition } from './BoardView.tsx';
-import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, HomeLetter, Icon, LandscapeIllustration, Modal, ScenicBackdrop, ShapeGlyph, TileGuide, WalkthroughFeatures } from './components.tsx';
+import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, HomeLetter, Icon, LandscapeIllustration, Modal, ScenicBackdrop, ShapeGlyph, StarRating, TileGuide, WalkthroughFeatures } from './components.tsx';
 import { worldCssVariables } from './worldTheme.ts';
 import { applySwap, checkPuzzle, patchArea, patchCells, RuleError, rulesFor, selectionIssue, shapesFor, tileAt } from '../shared/rules.ts';
 import type { PatchIssue } from '../shared/rules.ts';
 import { difficultyLabel } from '../shared/difficulty.ts';
 import { CelebrationHold } from '../shared/playback.ts';
-import { campaignPlaces, nextCampaignPlace, practiceGate } from '../shared/progression.ts';
+import { advancePracticeWorlds, campaignPlaces, campaignWorlds, initializePracticeProgress, nextCampaignPlace, PRACTICE_WORLD_SIZE, practiceGate, practiceStars, recordPracticeMoves, worldStarRequirement, worldStars } from '../shared/progression.ts';
 import { TUTORIAL, TUTORIAL_MOVES, TUTORIAL_START_SHAPE, tutorialStage } from '../shared/tutorial.ts';
 import { TutorialCoach } from './TutorialCoach.tsx';
 import { AdventureMap } from './AdventureMap.tsx';
@@ -141,6 +141,7 @@ export default function App() {
   const [frameAxes, setFrameAxes] = useState<FrameAxes>(FLAT_AXES);
   const guideWrites = useRef(new Set<Promise<void>>());
   const [practiceLoading, setPracticeLoading] = useState<string | null>(null);
+  const [practiceBefore, setPracticeBefore] = useState<{ stars: number; best: number | null; worlds: number }>({ stars: 0, best: null, worlds: 1 });
   const practiceRequest = useRef(0);
   const warnedStorage = useRef(false);
   const stageSection = useRef<HTMLElement>(null);
@@ -182,6 +183,10 @@ export default function App() {
     practiceRequest.current++;
     setPracticeLoading(null);
     setRun(next);
+    const saved = preferencesRef.current;
+    const best = saved.practice?.bests[next.puzzle.id];
+    setPracticeBefore({ stars: next.kind === 'studio' ? practiceStars(next.puzzle, best, saved.completed.includes(next.puzzle.id)) : 0,
+      best: best ?? null, worlds: saved.practice?.unlockedWorlds ?? 1 });
     setPendingRun(null);
     setBoard(next.puzzle.board);
     setMoves([]);
@@ -228,7 +233,9 @@ export default function App() {
       setBootstrap(data);
       const localSeen = preferencesRef.current.seenGuides;
       const seen = mergeGuideTopics(localSeen, data.seenGuides);
-      setPreferences((current) => ({ ...current, seenGuides: mergeGuideTopics(current.seenGuides, seen) }));
+      setPreferences((current) => ({ ...current, seenGuides: mergeGuideTopics(current.seenGuides, seen),
+        practice: advancePracticeWorlds(data.catalog, current.completed,
+          current.practice ?? initializePracticeProgress(data.catalog, current.completed)) }));
       syncGuides(localSeen.filter((topic) => !data.seenGuides.includes(topic)), data.playerName !== null);
       if (!seen.includes('basics')) startWalkthrough();
       else if (data.edition) openRun({ puzzle: data.edition.puzzle, kind: 'daily', edition: data.edition.id, number: data.edition.number }, seen);
@@ -312,9 +319,17 @@ export default function App() {
   const allHomesArrived = roadReady && lastHome !== undefined && arrived.includes(lastHome);
   const won = roadReady && arrivalComplete && resultRevealed;
   const campaign = useMemo(() => campaignPlaces(bootstrap?.catalog ?? []), [bootstrap?.catalog]);
+  const practiceProgress = useMemo(() => preferences.practice ?? initializePracticeProgress(campaign, preferences.completed),
+    [preferences.practice, campaign, preferences.completed]);
+  const worlds = useMemo(() => campaignWorlds(campaign.length), [campaign.length]);
   const currentCampaignIndex = run?.kind === 'studio' ? campaign.findIndex((place) => place.id === run.puzzle.id) : -1;
-  const nextCampaign = useMemo(() => nextCampaignPlace(campaign, preferences.completed), [campaign, preferences.completed]);
+  const currentWorld = currentCampaignIndex >= 0 ? worlds[Math.floor(currentCampaignIndex / PRACTICE_WORLD_SIZE)] : null;
+  const nextCampaign = useMemo(() => nextCampaignPlace(campaign, preferences.completed, practiceProgress), [campaign, preferences.completed, practiceProgress]);
   const nextCampaignIndex = nextCampaign ? campaign.findIndex((place) => place.id === nextCampaign.id) : -1;
+  const replayForStars = nextCampaign !== null && preferences.completed.includes(nextCampaign.id);
+  const practiceAward = run?.kind === 'studio' && roadReady ? practiceStars(run.puzzle, moves.length, true) : 0;
+  const bestPracticeStars = Math.max(practiceBefore.stars, practiceAward);
+  const gateWorld = replayForStars ? worlds[practiceProgress.unlockedWorlds - 1] : null;
   const playback = useMemo<JourneyPlayback | null>(() => {
     const plan = roadReady && !arrivalComplete ? check.journey : null;
     return plan ? { revision, plan } : null;
@@ -368,9 +383,14 @@ export default function App() {
     finishedRevision.current = eventRevision;
     setArrivalComplete(true);
     audio.current?.finish(check.journey?.path ?? []);
-    if (run.kind !== 'guide') setPreferences((current) => current.completed.includes(run.puzzle.id) ? current :
-      { ...current, completed: [...current.completed, run.puzzle.id] });
-  }, [run, roadReady, check.journey]);
+    if (run.kind !== 'guide') setPreferences((current) => {
+      const completed = current.completed.includes(run.puzzle.id) ? current.completed : [...current.completed, run.puzzle.id];
+      if (run.kind !== 'studio') return completed === current.completed ? current : { ...current, completed };
+      const previous = current.practice ?? initializePracticeProgress(campaign, current.completed);
+      const practice = advancePracticeWorlds(campaign, completed, recordPracticeMoves(previous, run.puzzle, moves.length));
+      return completed === current.completed && practice === current.practice ? current : { ...current, completed, practice };
+    });
+  }, [run, roadReady, check.journey, campaign, moves.length]);
 
   useEffect(() => {
     if (!allHomesArrived || resultRevealed || dialog || !boardReady) return;
@@ -545,14 +565,19 @@ export default function App() {
 
   const openPractice = (id: string): void => {
     if (!bootstrap) { notify('The world map is still loading.'); return; }
-    const gate = practiceGate(bootstrap.catalog, preferences.completed, id);
+    const gate = practiceGate(bootstrap.catalog, preferences.completed, id, practiceProgress);
     if (!gate.unlocked) { setDialogError(gate.reason); return; }
     const request = ++practiceRequest.current;
     setPracticeLoading(id);
     setDialogError(null);
     const seen = run?.kind === 'guide' ? rememberGuides(['basics']) : preferencesRef.current.seenGuides;
     void gameApi.place(id).then((puzzle) => {
-      if (request === practiceRequest.current) openRun({ puzzle, kind: 'studio', edition: null, number: null }, seen);
+      if (request === practiceRequest.current) {
+        const index = campaign.findIndex((place) => place.id === id);
+        const world = worlds[Math.floor(index / PRACTICE_WORLD_SIZE)];
+        if (!world) throw new Error('That Practice stop has no world.');
+        openRun({ puzzle: { ...puzzle, theme: world.theme }, kind: 'studio', edition: null, number: null }, seen);
+      }
     }).catch((error: unknown) => {
       console.error('The practice island could not load:', error);
       if (request === practiceRequest.current) setDialogError(messageOf(error));
@@ -761,7 +786,8 @@ export default function App() {
     {!loading && !loadError && run && bootstrap && <main className={`game-layout board-first ${run.kind === 'studio' || run.kind === 'guide' ? 'practice-play' : ''}`}>
       <aside className="story-panel">
         <div className="place-heading">
-          <div className="edition-label">{run.kind === 'guide' ? 'GUIDED PRACTICE' : run.kind === 'studio' ? 'UNRANKED CHALLENGE' : `${todayLabel.toUpperCase()} / NO. ${run.number?.toString().padStart(3, '0')}`}</div>
+          <div className="edition-label">{run.kind === 'guide' ? 'GUIDED PRACTICE' : run.kind === 'studio' ?
+            `ISLAND ${(currentWorld?.index ?? 0) + 1} / STOP ${currentCampaignIndex + 1}` : `${todayLabel.toUpperCase()} / NO. ${run.number?.toString().padStart(3, '0')}`}</div>
           <h1 title={run.puzzle.title}>{run.puzzle.title}<span className="title-period">.</span></h1>
           <div className="challenge-facts"><span>{board.length} x {board.length}</span><span>{difficultyLabel(run.puzzle.minimum)}</span>
             {run.puzzle.frame && <span>{run.puzzle.frame === 'ell' ? '4-square L' : run.puzzle.frame === 'strip' ? '3-square strips' : '2 x 2 squares'}</span>}
@@ -774,7 +800,7 @@ export default function App() {
           {firstResultOnly && <p className="practice-note daily-policy" data-testid="daily-policy"><Icon name={replayStatus ? 'book' : 'trophy'} size={16}/>
             {replayStatus ? 'Daily replay · unranked' : 'Daily · first finish counts'}</p>}
           {run.kind !== 'daily' && <p className="practice-note"><Icon name={run.kind === 'guide' ? 'book' : 'map'} size={16}/>
-            {run.kind === 'guide' ? 'Practice · no timer' : 'Practice · unranked'}</p>}
+            {run.kind === 'guide' ? 'Practice · no timer' : `Practice · ${currentWorld?.title ?? 'unranked'}`}</p>}
         </div>
         <div className="mission" aria-label="Connect every home in this order before the traveler starts">
           <ol className="journey-order" aria-label={`Visit ${run.puzzle.journey?.join(', then ') ?? ''} in order`}>
@@ -873,9 +899,26 @@ export default function App() {
               <span><Icon name="swap" size={15}/>{moves.length} {moves.length === 1 ? 'exchange' : 'exchanges'}</span>
               <span><Icon name={timed ? 'clock' : 'grid'} size={15}/>{timed ? formatSolveTime(elapsedMs, true) : `${footprint} tiles moved`}</span>
             </div>
+            {run.kind === 'studio' && <div className="practice-star-result" data-testid="practice-star-result">
+              <StarRating stars={practiceAward} label={`${practiceAward} of 3 stars for this solution`}/>
+              <strong>{practiceAward === 3 ? 'The smallest detour.' : practiceAward > practiceBefore.stars ? 'A brighter little journey.' : 'Another road home.'}</strong>
+              <p>{run.puzzle.minimum !== undefined ? practiceAward < 3 ?
+                `For ${practiceAward === 1 ? '2' : '3'} stars: finish in ${run.puzzle.minimum + (practiceAward === 1 ? 2 : 0)} ${run.puzzle.minimum + (practiceAward === 1 ? 2 : 0) === 1 ? 'move' : 'moves'} or fewer.` :
+                `You matched the ${run.puzzle.minimum}-move minimum.` : 'One completion star kept.'}</p>
+              <small>Best kept: {bestPracticeStars} / 3 stars{practiceBefore.best !== null && practiceBefore.best < moves.length ?
+                `, in ${practiceBefore.best} moves` : ''}. Time does not affect Practice stars.</small>
+              {practiceProgress.unlockedWorlds > practiceBefore.worlds && <p className="practice-world-open" role="status">
+                <Icon name="map" size={16}/>New island open: {worlds[practiceProgress.unlockedWorlds - 1]?.title}.
+              </p>}
+            </div>}
             {run.kind === 'studio' && currentCampaignIndex >= 0 && <p className="completion-next">
-              {nextCampaignIndex === currentCampaignIndex + 1 ? `Next: stop ${nextCampaignIndex + 1}.` :
+              {replayForStars ? `Replay stop ${nextCampaignIndex + 1} for more stars.` :
+                nextCampaignIndex === currentCampaignIndex + 1 ? `Next: stop ${nextCampaignIndex + 1}.` :
                 nextCampaign ? 'Your next stop is ready.' : `All ${campaign.length} stops complete.`}
+            </p>}
+            {gateWorld && <p className="completion-next" data-testid="practice-star-gate">
+              {worldStars(gateWorld, campaign, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title}.
+              {' '}Replay earlier stops to open the next island.
             </p>}
             {run.kind === 'daily' && nextCampaign && <p className="completion-next">Continue in unranked Practice: stop {nextCampaignIndex + 1}.</p>}
             {run.kind === 'daily' && <p className={`score-save-status ${saveError ? 'save-failed' : ''}`} data-testid="save-status">
@@ -897,13 +940,13 @@ export default function App() {
           </section>}
         </div>
           <div className="result-actions completion-actions">
-            {run.kind === 'guide' ? <button className="primary-button" onClick={() => setDialog('tour-tools')}>See your tools <Icon name="arrow" size={17}/></button> :
+            {run.kind === 'guide' ? <button className="primary-button" onClick={() => setDialog('tour-places')}>Choose your next road <Icon name="arrow" size={17}/></button> :
               <>{run.kind === 'daily' && saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}
                 {run.kind === 'daily' && replayRankError && <button className="secondary-button" onClick={() => setReplayRankRetry((current) => current + 1)}
                   aria-label="Retry loading recorded rank"><Icon name="reset" size={17}/>Retry rank</button>}
                 {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
-                  onClick={() => { if (nextCampaign) openPractice(nextCampaign.id); }} aria-label="Continue your journey">
-                  Continue your journey <Icon name="arrow" size={17}/>
+                  onClick={() => { if (nextCampaign) openPractice(nextCampaign.id); }} aria-label={replayForStars ? 'Replay for stars' : 'Continue your journey'}>
+                  {replayForStars ? 'Replay for stars' : 'Continue your journey'} <Icon name="arrow" size={17}/>
                 </button>}
                 {POSTCARD_PREVIEW && run.kind === 'daily' ? <button className={`${nextCampaign ? 'secondary-button' : 'primary-button'} standings-toggle`}
                   aria-label={standingsOpen ? 'Back to result' : 'View Daily Top 10'} aria-expanded={standingsOpen} aria-controls="daily-top-ten"
@@ -926,10 +969,33 @@ export default function App() {
     {notice && <div className={`toast ${notice.error ? 'toast-error' : ''}`} role={notice.error ? 'alert' : 'status'}><Icon name={notice.error ? 'warning' : 'check'} size={18}/><span>{notice.message}</span><button aria-label="Dismiss message" onClick={() => setNotice(null)}><Icon name="close" size={15}/></button></div>}
 
     {dialog === 'welcome' && <Modal title="Move a little world." kind="guide" className="walkthrough-dialog" onClose={() => finishWalkthrough(true)}>
-      <div className="welcome-vignette"><LandscapeIllustration/></div>
-      <p className="tour-eyebrow">1 / 3 · A LITTLE PRACTICE</p>
+      <p className="tour-eyebrow">1 / 3 · THE GOAL</p>
+      <div className="tutorial-goal" data-testid="tutorial-goal">
+        <GuideIllustration step={3}/>
+        <ol className="tutorial-goal-route" aria-label="Example route: A, then B, then C">
+          {TUTORIAL.journey?.map((anchor, index, stops) => <li key={anchor}>
+            <span style={{ color: `var(--world-home-${anchor.toLowerCase()})` }}><HomeLetter anchor={anchor} plaque/><span className="sr-only">{anchor}</span></span>
+            {index < stops.length - 1 && <Icon name="arrow" size={23}/>}
+          </li>)}
+        </ol>
+      </div>
+      <p className="dialog-intro tutorial-goal-copy"><strong>Give everyone a way home.</strong>
+        Make one continuous road from A, through B, to C. C is the final home in this example.
+        The courier waits at A until the whole road is ready, then follows it through every home in order.
+        No gaps, diagonals or revisiting a square.</p>
+      <p className="tour-reassurance"><Icon name="clock" size={18}/>This example has no timer and cannot affect your rank.</p>
+      <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
+        <button className="primary-button" onClick={() => setDialog('tour-tools')}>See the moves <Icon name="arrow" size={17}/></button></div>
+    </Modal>}
+
+    {dialog === 'tour-tools' && <Modal title="Your little toolkit." kind="guide" className="walkthrough-dialog tutorial-tools" wide onClose={() => finishWalkthrough(true)}>
+      <div className="tutorial-step-nav"><p className="tour-eyebrow">2 / 3 · YOUR MOVES</p>
+        <button className="text-button tutorial-back" onClick={() => setDialog('welcome')} aria-label="Back" title="Back to the goal"><Icon name="undo" size={16}/>Back</button>
+      </div>
+      <p className="dialog-intro">Move the land, not the courier. Homes stay fixed.</p>
+      <WalkthroughFeatures section="tools" places={campaign.length}/>
       <div className="welcome-view-choice">
-        <p><strong>Start in 3D.</strong> Prefer a simpler top-down map? Try Flat. You can switch below the island at any time.</p>
+        <p><strong>3D or Flat.</strong> You can switch below the island at any time.</p>
         <div role="group" aria-label="Choose your practice view">
           <button className="secondary-button" aria-label="Use 3D for this practice" aria-pressed={!preferences.flat}
             onClick={() => setPreferences((current) => ({ ...current, flat: false }))}><Icon name="cube" size={18}/>3D <span>Default</span></button>
@@ -937,21 +1003,19 @@ export default function App() {
             onClick={() => setPreferences((current) => ({ ...current, flat: true }))}><Icon name="grid" size={18}/>Try Flat</button>
         </div>
       </div>
-      <div className="dialog-welcome"><GuideCourier/><p className="dialog-intro"><strong>I'll show you the way.</strong>
-        I'll guide three little exchanges to connect A, then B, then C. Choose the glowing frame and follow my next tap. Homes stay fixed.</p></div>
-      <p className="tour-reassurance"><Icon name="clock" size={18}/>This practice has no timer and cannot affect your rank.</p>
+      <p className="tutorial-next">Next: 3 / 3. Try three exchanges with my tap markers.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
         <button className="primary-button" onClick={() => setDialog(null)}>Show me <Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
-    {(dialog === 'tour-tools' || dialog === 'tour-places') && <Modal
-      title={dialog === 'tour-tools' ? 'Your little toolkit.' : 'A new way, every day.'}
+    {dialog === 'tour-places' && <Modal
+      title="A new way, every day."
       kind="guide" className="walkthrough-dialog" emblem={<GuideCourier portrait/>} wide onClose={() => finishWalkthrough(true)}>
-      <p className="tour-eyebrow">{dialog === 'tour-tools' ? '2 / 3 · MAKE IT YOURS' : '3 / 3 · CHOOSE YOUR ROAD'}</p>
-      <WalkthroughFeatures section={dialog === 'tour-tools' ? 'tools' : 'places'} places={campaign.length}/>
+      <p className="tour-eyebrow">YOU'RE READY · CHOOSE YOUR ROAD</p>
+      <WalkthroughFeatures section="places" places={campaign.length}/>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
-        <button className="primary-button" onClick={() => dialog === 'tour-tools' ? setDialog('tour-places') : finishWalkthrough(false)}>
-          {dialog === 'tour-tools' ? 'Continue' : bootstrap?.edition ? 'Play today' : 'Explore'}<Icon name="arrow" size={17}/></button></div>
+        <button className="primary-button" onClick={() => finishWalkthrough(false)}>
+          {bootstrap?.edition ? 'Play today' : 'Explore'}<Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
     {dialog === 'tiles' && <Modal title="A little new terrain." kind="guide" className="walkthrough-dialog terrain-intro" wide onClose={acceptTileGuide}>
@@ -978,6 +1042,8 @@ export default function App() {
         The clock starts after 3, 2, 1 and stops on the winning exchange.</p></div>
         <button className="primary-button" onClick={startWalkthrough}><Icon name="play" size={17}/>Replay walkthrough</button></div>
       <div className="guide-footnotes">
+        <p><Icon name="trophy" size={18}/><span>Practice stars: 3 for minimum moves, 2 within two extra moves, 1 for finishing.
+          Keep your highest stars. Finish an island's stops and collect 30 of its 60 stars to open the next one. Daily ranking is separate.</span></p>
         <p><Icon name="undo" size={18}/><span>Undo is free and keeps the clock running. It cancels the walk and returns the traveler to A.</span></p>
         <p><Icon name="grid" size={18}/><span>Keyboard: arrows choose a square; Space selects it; Escape clears a cut. Flat map has individual labeled buttons.</span></p>
         <p><Icon name="lock" size={18}/><span>Saved scores are yours to control. <button className="text-button data-management-link"
@@ -988,7 +1054,7 @@ export default function App() {
     {dialog === 'atlas' && <Modal title="Practice map." kind="map" className="adventure-dialog" onClose={() => {
       practiceRequest.current++; setPracticeLoading(null); setDialog(null);
     }} wide>
-      <AdventureMap places={bootstrap?.catalog ?? []} completed={preferences.completed} currentId={run?.puzzle.id ?? ''}
+      <AdventureMap places={bootstrap?.catalog ?? []} completed={preferences.completed} progress={practiceProgress} currentId={run?.puzzle.id ?? ''}
         reduced={reducedMotion}
         loading={practiceLoading} error={dialogError} onSelect={openPractice} onToday={visitToday}/>
     </Modal>}

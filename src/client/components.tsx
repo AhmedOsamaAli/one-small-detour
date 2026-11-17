@@ -45,6 +45,14 @@ export function HomeLetter({ anchor, plaque = false, compact = false }: { anchor
   </svg>;
 }
 
+export function StarRating({ stars, label }: { stars: number; label?: string }) {
+  return <span className="practice-stars" role="img" aria-label={label ?? `${stars} of 3 stars`}>
+    {[1, 2, 3].map((number) => <svg key={number} className={number <= stars ? 'star-earned' : 'star-empty'} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m12 2.5 2.9 5.9 6.5 1-4.7 4.5 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.5 6.5-1Z" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>)}
+  </span>;
+}
+
 export function BrandMark() {
   return <svg width="35" height="35" viewBox="0 0 40 40" fill="none" aria-hidden="true">
     <path d="m5 14 12-7 12 7-12 7L5 14Z" fill="#9eaf7d" stroke="#456b58" strokeWidth="1.3"/>
@@ -273,14 +281,13 @@ export function TileGuide({ only }: { only?: readonly GuideTopic[] }) {
 
 export function WalkthroughFeatures({ section, places }: { section: 'tools' | 'places'; places: number }) {
   const entries: { icon: IconName; title: string; text: string }[] = section === 'tools' ? [
-    { icon: 'undo', title: 'One tap back', text: 'Reverse the last exchange. Fix a mistaken tap.' },
-    { icon: 'sound', title: 'A little sound', text: 'Tap the speaker to listen or mute. Sound is optional.' },
-    { icon: 'cube', title: 'Two ways to see it', text: '3D is the default. Try Flat for a simpler top-down map. Switch below the island any time.' },
-    { icon: 'swap', title: 'Choose a frame', text: 'Picture buttons choose a tall or wide patch. Tiles do not rotate.' },
+    { icon: 'grid', title: '1. Choose a frame', text: 'Tall or wide: the frame picks a patch. Pieces do not rotate.' },
+    { icon: 'swap', title: '2. Tap two patches', text: 'Tap a starting square, then another matching patch. Both patches exchange places.' },
+    { icon: 'undo', title: 'Change your mind', text: 'Undo reverses an exchange. Tap the same starting square again to clear a selection.' },
   ] : [
     { icon: 'sun', title: 'One daily island', text: 'One shared UTC puzzle. Its countdown starts after this practice.' },
-    { icon: 'trophy', title: 'Earn your comparison', text: 'Shown after a saved finish. Fewest moves, then fastest time.' },
-    { icon: 'map', title: `Practice: ${places} places`, text: 'Start with easy islands. Bigger 12 x 12 landscapes wait at the end. Finish a stop to open the next.' },
+    { icon: 'trophy', title: 'Earn your comparison', text: 'Your first saved Daily finish counts. Fewest moves, then fastest time. Replays are unranked.' },
+    { icon: 'map', title: `Practice: ${places} places`, text: 'Explore themed islands and improve your stars. Finish each island and meet its star goal to open the next.' },
     { icon: 'help', title: 'A guide nearby', text: 'Tap the top question mark to replay this walkthrough or read every tile rule.' },
   ];
   return <div className="tour-feature-grid">{entries.map((entry) =>

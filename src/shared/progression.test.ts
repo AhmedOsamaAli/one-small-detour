@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getCatalog } from './puzzles.ts';
-import { campaignGates, campaignPlaces, nextCampaignPlace, practiceGate } from './progression.ts';
+import { advancePracticeWorlds, campaignGates, campaignPlaces, campaignWorlds, initializePracticeProgress, nextCampaignPlace, practiceGate, practiceStars, recordPracticeMoves, worldStarRequirement, worldStars } from './progression.ts';
 
 test('shape lessons enter gradually while original islands retain their relative order', () => {
   const catalog = getCatalog();
@@ -62,4 +62,59 @@ test('every stop unlocks in order and the completed campaign remains fully repla
   assert.equal(completed.length, 212);
   assert.equal(nextCampaignPlace(catalog, completed), null);
   assert.ok([...campaignGates(catalog, completed).values()].every((gate) => gate.unlocked));
+});
+
+test('Practice stars depend only on a completed move record and worse replays cannot replace a better one', () => {
+  const place = { id: 'a-practice-place', minimum: 3 };
+  assert.equal(practiceStars(place, 3, false), 0);
+  assert.equal(practiceStars(place, undefined, true), 1);
+  assert.equal(practiceStars(place, 3, true), 3);
+  assert.equal(practiceStars(place, 4, true), 2);
+  assert.equal(practiceStars(place, 5, true), 2);
+  assert.equal(practiceStars(place, 6, true), 1);
+  const initial = { bests: {}, unlockedWorlds: 1 };
+  const first = recordPracticeMoves(initial, place, 5);
+  const best = recordPracticeMoves(first, place, 3);
+  assert.equal(recordPracticeMoves(best, place, 6), best);
+  assert.equal(best.bests[place.id], 3);
+  assert.deepEqual(initial.bests, {});
+  assert.throws(() => recordPracticeMoves(best, place, 2), /valid move count/);
+});
+
+test('new worlds require completed stops and 30 of 60 stars, then stay unlocked through later replays', () => {
+  const catalog = getCatalog(), entries = campaignPlaces(catalog), worlds = campaignWorlds(entries.length);
+  const world = worlds[0], next = entries[20];
+  assert.ok(world && next);
+  assert.equal(worldStarRequirement(world), 30);
+  let progress = initializePracticeProgress(catalog, []);
+  const completed = entries.slice(0, 20).map((place) => place.id);
+  assert.equal(worldStars(world, entries, completed, progress), 20);
+  assert.equal(practiceGate(catalog, completed, next.id, progress).unlocked, false);
+  assert.match(practiceGate(catalog, completed, next.id, progress).reason ?? '', /10 more stars/);
+  assert.equal(nextCampaignPlace(catalog, completed, progress)?.id, entries[0]?.id);
+  for (const place of entries.slice(0, 5)) progress = recordPracticeMoves(progress, place, place.minimum ?? 1);
+  assert.equal(worldStars(world, entries, completed, progress), 30);
+  assert.equal(advancePracticeWorlds(catalog, completed.slice(0, -1), progress).unlockedWorlds, 1);
+  progress = advancePracticeWorlds(catalog, completed, progress);
+  assert.equal(progress.unlockedWorlds, 2);
+  assert.equal(practiceGate(catalog, completed, next.id, progress).unlocked, true);
+  assert.equal(nextCampaignPlace(catalog, completed, progress)?.id, next.id);
+  assert.equal(advancePracticeWorlds(catalog, [], progress).unlockedWorlds, 2);
+});
+
+test('legacy discoveries keep their completion stars and their already reachable world, without inventing perfect move counts', () => {
+  const catalog = getCatalog(), entries = campaignPlaces(catalog);
+  const completed = [...entries.slice(0, 40).map((place) => place.id), entries.at(-1)?.id ?? '', 'daily-v4-2026-11-16'];
+  const progress = initializePracticeProgress(catalog, completed), next = entries[40], last = entries.at(-1);
+  assert.ok(next && last);
+  assert.deepEqual(progress.bests, {});
+  assert.equal(progress.unlockedWorlds, 3);
+  assert.equal(practiceGate(catalog, completed, next.id, progress).unlocked, true);
+  assert.equal(practiceGate(catalog, completed, last.id, progress).unlocked, true);
+  const firstWorld = campaignWorlds(entries.length)[0];
+  assert.ok(firstWorld);
+  assert.equal(worldStars(firstWorld, entries, completed, progress), 20);
+  assert.equal(nextCampaignPlace(catalog, completed, progress)?.id, next.id);
+  assert.equal(campaignWorlds(entries.length).length, 11);
+  assert.equal(campaignWorlds(entries.length).at(-1)?.end, entries.length);
 });

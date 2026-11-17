@@ -393,7 +393,7 @@ posting. The moderator's create-post action is explicit.
 
 | Item | Status |
 |---|---|
-| App page | [one-small-detour](https://developers.reddit.com/apps/one-small-detour), private development upload; v0.1.9 installed only in the existing test community |
+| App page | [one-small-detour](https://developers.reddit.com/apps/one-small-detour), private development upload; v0.1.11 installed only in the existing test community |
 | Test subreddit | [r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/), public |
 | Playable Reddit example post | [Open the verified game post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/) |
 | Demo video | Pending genuine native recording |

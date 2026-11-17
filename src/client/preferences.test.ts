@@ -62,3 +62,18 @@ test('unreadable storage and malformed JSON remain explicit failures with safe l
   }
   assert.equal(warning.mock.calls.length, 3);
 });
+
+test('Practice move records and earned world access survive reload without changing existing settings', () => {
+  const practice = { bests: { 'routes-01': 3 }, unlockedWorlds: 2 };
+  const result = loadPreferences(saved({ ...existing, appearance: 'dark', practice }));
+  assert.deepEqual(result.value, { ...existing, appearance: 'dark', practice });
+  assert.equal(result.warning, null);
+});
+
+test('invalid Practice stars are reported while old discoveries, sound and appearance survive', (t) => {
+  const warning = t.mock.method(console, 'warn', () => {});
+  const result = loadPreferences(saved({ ...existing, appearance: 'dark', practice: { bests: { 'routes-01': -1 }, unlockedWorlds: 2 } }));
+  assert.deepEqual(result.value, { ...existing, appearance: 'dark' });
+  assert.match(result.warning ?? '', /stars could not be read/);
+  assert.equal(warning.mock.calls.length, 1);
+});
