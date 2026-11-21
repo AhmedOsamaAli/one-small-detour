@@ -18,14 +18,22 @@ export function postcardGarden(board: Board, cell: Cell): boolean {
   ].some((step) => walkable(board[cell.row + step.row]?.[cell.col + step.col]));
 }
 
+export function postcardGardens(board: Board): Cell[] {
+  const grass = board.flatMap((row, r) => [...row].flatMap((tile, col) => tile === '.' ? [{ row: r, col }] : []));
+  const roadside = grass.filter((cell) => postcardGarden(board, cell));
+  if (roadside.length) return roadside;
+  const spacing = Math.max(1, Math.ceil(grass.length / 12));
+  return grass.filter((_, index) => index % spacing === 0);
+}
+
 export function villageProgress(elapsedMs: number, phase = 0): number {
   return smooth((elapsedMs - phase * 90) / 700);
 }
 
-export function communityCrowd(anchors: readonly Anchor[], participants: number | null): { anchor: Anchor; side: -1 | 1; phase: number }[] {
+export function communityCrowd(anchors: readonly Anchor[], participants: number | null, occupiedHome: Anchor | null = null): { anchor: Anchor; side: -1 | 1; phase: number }[] {
   if (participants === null) return [];
   if (!Number.isSafeInteger(participants) || participants < 0) throw new Error('The saved-finisher count is invalid.');
-  const homes = [...new Set(anchors)].sort();
+  const homes = [...new Set(anchors)].filter(anchor => anchor !== occupiedHome).sort();
   return Array.from({ length: Math.min(participants, homes.length * 2) }, (_, index) => {
     const anchor = homes[index % homes.length];
     if (!anchor) throw new Error('The representative crowd is missing its home.');

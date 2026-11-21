@@ -11,17 +11,17 @@ test('shape lessons enter gradually while original islands retain their relative
   const second = ordered[1];
   const third = ordered[2];
   assert.ok(first && second && third);
-  assert.equal(ordered.length, 212);
+  assert.equal(ordered.length, 218);
   assert.deepEqual(catalog.map((place) => place.id), original);
   assert.deepEqual(campaignPlaces([...catalog].reverse()).map((place) => place.id), ordered.map((place) => place.id));
   assert.equal(first.minimum, 1);
-  assert.equal(ordered.at(-1)?.minimum, 15);
+  assert.equal(ordered[211]?.minimum, 15);
   const legacy = ordered.filter((place) => place.practiceAfter === undefined);
   assert.deepEqual(legacy.map((place) => place.id),
     campaignPlaces(catalog.filter((place) => place.practiceAfter === undefined)).map((place) => place.id));
   assert.ok(legacy.every((place, index) => !index || index === 200 ||
     (place.minimum ?? 1) >= (legacy[index - 1]?.minimum ?? 1)));
-  assert.deepEqual(ordered.slice(-3).map((place) => place.size), [12, 12, 12]);
+  assert.deepEqual(ordered.slice(209, 212).map((place) => place.size), [12, 12, 12]);
   assert.ok(ordered.slice(0, 12).every((place) => place.frame === undefined));
   assert.deepEqual(ordered.slice(12, 15).map((place) => place.frame), ['strip', 'strip', 'strip']);
   assert.deepEqual(ordered.slice(39, 42).map((place) => place.frame), ['square', 'square', 'square']);
@@ -49,6 +49,21 @@ test('old discoveries remain replayable but cannot bypass unfinished earlier sto
   assert.throws(() => practiceGate(catalog, [], 'not-a-place'));
 });
 
+test('replacing Sakura with meadow keeps every later world and saved stop in its existing slot', () => {
+  const catalog = getCatalog(), entries = campaignPlaces(catalog), worlds = campaignWorlds(entries.length);
+  assert.deepEqual(worlds.map(world => world.theme),
+    ['meadow', 'coast', 'orchard', 'winter', 'meadow', 'maple', 'ginkgo', 'lavender', 'meadow', 'coast', 'orchard']);
+  const garden = worlds[4];
+  assert.ok(garden);
+  assert.equal(garden.title, 'Meadow gardens');
+  assert.deepEqual([garden.start, garden.end], [80, 100]);
+  const completed = entries.slice(0, garden.end).map(place => place.id);
+  const progress = initializePracticeProgress(catalog, completed);
+  assert.equal(progress.unlockedWorlds, 6);
+  assert.equal(nextCampaignPlace(catalog, completed, progress)?.id, entries[100]?.id);
+  for (const place of entries.slice(garden.start, garden.end)) assert.equal(practiceGate(catalog, completed, place.id, progress).unlocked, true);
+});
+
 test('every stop unlocks in order and the completed campaign remains fully replayable', () => {
   const catalog = getCatalog();
   const ordered = campaignPlaces(catalog);
@@ -59,7 +74,7 @@ test('every stop unlocks in order and the completed campaign remains fully repla
     assert.deepEqual(available.map((entry) => entry.id), [place.id]);
     completed.push(place.id);
   }
-  assert.equal(completed.length, 212);
+  assert.equal(completed.length, 218);
   assert.equal(nextCampaignPlace(catalog, completed), null);
   assert.ok([...campaignGates(catalog, completed).values()].every((gate) => gate.unlocked));
 });

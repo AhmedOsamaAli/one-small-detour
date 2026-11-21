@@ -1,6 +1,17 @@
 Devvit server and build configuration follows Reddit's official Three.js template.
-The game's code, terrain, characters, puzzles, graphics and synthesized music are
-original to this project. No Reddit mascot or other game's art or levels is used.
+The game mechanics, puzzles, courier, cottage design, compositions and synthesized
+music were created for this project. Some material maps, foliage and rock inputs
+are Poly Haven CC0 assets; their sources are listed below. No Reddit mascot or
+other game's art or levels is used.
+
+The MIT licence in LICENSE applies to this project's original code. It does not
+replace the licences of the template, dependencies, fonts or source art.
+
+Poly Haven source art - CC0-1.0
+See src/client/assets/garden/LICENSES.txt and
+src/client/assets/landscape/LICENSES.txt for source links and credits.
+The craft-world geometry and renders combine project-authored models with these
+licensed inputs. See src/client/assets/craft/LICENSES.txt.
 
 Reddit Devvit template - BSD-3-Clause
 Copyright (c) 2025 Reddit Inc.

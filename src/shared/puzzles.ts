@@ -2,9 +2,14 @@ import { boardFingerprint, MAX_EXCHANGES, roadFingerprint, RULE_VERSION } from '
 import { CHALLENGES } from './challenges.generated.ts';
 import { CAMPAIGN_ADDITIONS } from './campaign.generated.ts';
 import { FRAME_LESSONS } from './frameLessons.ts';
+import { FRAME_CHALLENGES } from './frameChallenges.ts';
 import { certifyMinimum } from './difficulty.ts';
 import { generateDailyChallenge, PLACE_TITLES, seedOf } from './generation.ts';
 import type { AuthoredPuzzle, CatalogEntry, Edition, Puzzle, Swap, Theme } from './types.ts';
+import { dailyLandscapeTheme } from './biomes.ts';
+import { REASONING_AUDIT, REASONING_CAMPAIGN } from './reasoningCampaign.generated.ts';
+import { REASONING_REFINEMENTS, REFINEMENT_AUDIT } from './reasoningRefinements.generated.ts';
+import { campaignPlaces } from './progression.ts';
 
 const s = (ar: number, ac: number, br: number, bc: number, rows = 1, cols = 1): Swap => ({
   a: { row: ar - 1, col: ac - 1 }, b: { row: br - 1, col: bc - 1 }, rows, cols,
@@ -107,9 +112,14 @@ export const AUTHORED: readonly AuthoredPuzzle[] = [
   },
 ];
 
+function displayTitle(id: string, title: string): string {
+  // Display-only renames preserve the certified banks and saved puzzle identities.
+  return id === 'routes-01' ? 'My sunrise' : title;
+}
+
 function publicPuzzle(puzzle: AuthoredPuzzle): Puzzle {
   const { witness: _witness, ...safe } = puzzle;
-  return { ...safe, budget: MAX_EXCHANGES };
+  return { ...safe, title: displayTitle(puzzle.id, puzzle.title), budget: MAX_EXCHANGES };
 }
 
 let seasonChecked = false;
@@ -117,6 +127,7 @@ const dailyCache = new Map<string, AuthoredPuzzle>();
 let expeditions: readonly AuthoredPuzzle[] | null = null;
 let campaign: readonly AuthoredPuzzle[] | null = null;
 let widePractice: readonly AuthoredPuzzle[] | null = null;
+let revised: readonly AuthoredPuzzle[] | null = null;
 
 function getWidePractice(): readonly AuthoredPuzzle[] {
   if (!widePractice) {
@@ -173,9 +184,9 @@ export function getSeasonPuzzles(): readonly AuthoredPuzzle[] {
   return CHALLENGES;
 }
 
-export function getPuzzles(): readonly AuthoredPuzzle[] {
+export function getLegacyPuzzles(): readonly AuthoredPuzzle[] {
   if (!campaign) {
-    const puzzles = [...getSeasonPuzzles(), ...getExpeditions(), ...CAMPAIGN_ADDITIONS, ...getWidePractice(), ...FRAME_LESSONS];
+    const puzzles = [...getSeasonPuzzles(), ...getExpeditions(), ...CAMPAIGN_ADDITIONS, ...getWidePractice(), ...FRAME_LESSONS, ...FRAME_CHALLENGES];
     const ids = new Set<string>();
     const roads = new Set<string>();
     for (const puzzle of puzzles) {
@@ -189,6 +200,40 @@ export function getPuzzles(): readonly AuthoredPuzzle[] {
     campaign = puzzles;
   }
   return campaign;
+}
+
+export function getPuzzles(revision: 1 | 2 = 1): readonly AuthoredPuzzle[] {
+  if (revision === 1) return getLegacyPuzzles();
+  if (!revised) {
+    if (REASONING_CAMPAIGN.length !== 1000 || REASONING_AUDIT.count !== 1000 ||
+        REFINEMENT_AUDIT.baseSha256 !== REASONING_AUDIT.sha256 || REFINEMENT_AUDIT.count !== REASONING_REFINEMENTS.length) {
+      throw new Error('The revised Practice bank is incomplete.');
+    }
+    const previous = new Map(REASONING_CAMPAIGN.map(puzzle => [puzzle.id, puzzle])), refinements = new Map<string, AuthoredPuzzle>();
+    for (const puzzle of REASONING_REFINEMENTS) {
+      const original = puzzle.legacyId ? previous.get(puzzle.legacyId) : undefined;
+      if (!original || puzzle.campaignSlot !== original.campaignSlot || refinements.has(original.id) || previous.has(puzzle.id)) {
+        throw new Error('The refined Practice manifest is inconsistent.');
+      }
+      refinements.set(original.id, puzzle);
+    }
+    const places = REASONING_CAMPAIGN.map(puzzle => refinements.get(puzzle.id) ?? puzzle);
+    const active = new Set<string>();
+    for (const [slot, puzzle] of places.entries()) {
+      if (puzzle.campaignSlot !== slot || active.has(puzzle.id) || puzzle.minimum !== puzzle.witness.length) {
+        throw new Error('The revised Practice manifest is inconsistent.');
+      }
+      active.add(puzzle.id);
+    }
+    const originalSlots = new Map(campaignPlaces(getCatalog(1)).map((place, index) => [place.id, index]));
+    const originals = new Map([...getLegacyPuzzles(), ...REASONING_CAMPAIGN].map(puzzle => [puzzle.id, puzzle]));
+    revised = [...places, ...[...originals.values()].filter(puzzle => !active.has(puzzle.id)).map(puzzle => ({ ...puzzle, archived: true }))]
+      .map(puzzle => {
+        const originalSlot = originalSlots.get(puzzle.id);
+        return originalSlot === undefined ? puzzle : { ...puzzle, originalSlot };
+      });
+  }
+  return revised;
 }
 
 export const SEASON_START = '2026-11-11';
@@ -233,6 +278,7 @@ export function dailyPuzzleForDate(date: Date): AuthoredPuzzle | null {
     minimum,
     seed: seedOf(`detour:journey-v${RULE_VERSION}:${id}`), chapter: index + 1,
   });
+  puzzle.theme = dailyLandscapeTheme(id, puzzle.theme);
   dailyCache.set(id, puzzle);
   if (dailyCache.size > 48) {
     const oldest = dailyCache.keys().next().value;
@@ -254,17 +300,22 @@ export function editionById(id: string): Edition | null {
   return date ? editionForDate(date) : null;
 }
 
-export function findPuzzle(id: string): Puzzle | null {
-  const puzzle = getPuzzles().find((item) => item.id === id);
+export function findPuzzle(id: string, revision: 1 | 2 = 1): Puzzle | null {
+  const puzzle = getPuzzles(revision).find((item) => item.id === id);
   return puzzle ? publicPuzzle(puzzle) : null;
 }
 
-export function getCatalog(): CatalogEntry[] {
-  return getPuzzles().map(({ id, title, note, theme, chapter, area, board, minimum, frame, practiceAfter }) => ({
-    id, title, note, theme, chapter, area, budget: MAX_EXCHANGES, size: board.length,
+export function getCatalog(revision: 1 | 2 = 1): CatalogEntry[] {
+  return getPuzzles(revision).map(({ id, title, note, theme, chapter, area, board, minimum, frame, practiceAfter, campaignSlot, originalSlot, legacyId, archived, challengeTier }) => ({
+    id, title: displayTitle(id, title), note, theme, chapter, area, budget: MAX_EXCHANGES, size: board.length,
     ...(minimum === undefined ? {} : { minimum }),
     ...(frame === undefined ? {} : { frame }),
     ...(practiceAfter === undefined ? {} : { practiceAfter }),
+    ...(campaignSlot === undefined ? {} : { campaignSlot }),
+    ...(originalSlot === undefined ? {} : { originalSlot }),
+    ...(legacyId === undefined ? {} : { legacyId }),
+    ...(archived === undefined ? {} : { archived }),
+    ...(challengeTier === undefined ? {} : { challengeTier }),
   }));
 }
 

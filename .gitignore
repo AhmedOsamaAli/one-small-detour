@@ -7,3 +7,5 @@ dist/
 !.env.example
 *.tsbuildinfo
 *.log
+__pycache__/
+*.py[cod]

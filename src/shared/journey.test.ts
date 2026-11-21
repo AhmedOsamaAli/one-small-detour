@@ -14,6 +14,9 @@ test('ordered journey cannot visit C before B, even when separate connections ex
   const journey = planJourney(board, ['A', 'B', 'C']);
   assert.equal(journey.solved, false);
   assert.deepEqual(journey.stops.map((stop) => stop.anchor), ['A']);
+  const diagnostics = { explored: -1 };
+  assert.deepEqual(planJourney(board, ['A', 'B', 'C'], diagnostics), journey);
+  assert.ok(diagnostics.explored > 0);
 });
 
 test('journey finds a continuous no-retrace tour, and an honest reachable prefix', () => {
@@ -22,6 +25,13 @@ test('journey finds a continuous no-retrace tour, and an honest reachable prefix
   assert.equal(plan.solved, true);
   assert.deepEqual(plan.stops, [{ anchor: 'A', pathIndex: 0 }, { anchor: 'B', pathIndex: 2 }, { anchor: 'C', pathIndex: 4 }]);
   assert.equal(new Set(plan.path.map((cell) => `${cell.row}:${cell.col}`)).size, plan.path.length);
+  const diagnostics = { explored: -1 };
+  const original = getSeasonPuzzles()[0];
+  assert.ok(original);
+  const puzzle = { ...original, board: full, journey: ['A', 'B', 'C'] as const };
+  const baseline = checkPuzzle(full, puzzle);
+  assert.deepEqual(checkPuzzle(full, puzzle, diagnostics), baseline);
+  assert.ok(diagnostics.explored > 0);
   const partial = planJourney(['AoB...', '......', '..C...', '......', '......', '......'], ['A', 'B', 'C']);
   assert.equal(partial.solved, false);
   assert.deepEqual(partial.stops.map((stop) => stop.anchor), ['A', 'B']);
@@ -53,6 +63,16 @@ test('B and C celebrations emit once, at arrival; full completion waits at the f
   assert.equal(atC.finished, false);
   assert.equal(player.advance(ARRIVAL_PAUSE_MS).finished, true);
   assert.deepEqual(player.advance(10_000).arrivals, []);
+});
+
+test('the courier takes a readable, slower step before reaching the next square', () => {
+  const player = new JourneyPlayer(route);
+  const moving = player.advance(200);
+  assert.ok(moving.position.col > 0 && moving.position.col < 1);
+  assert.equal(moving.walking, true);
+  assert.deepEqual(moving.arrivals, []);
+  assert.deepEqual(player.advance(80).position, { row: 0, col: 1 });
+  assert.deepEqual(player.advance(280).arrivals.map((stop) => stop.anchor), ['B']);
 });
 
 test('reduced motion still emits every arrival in order without continuous walking', () => {

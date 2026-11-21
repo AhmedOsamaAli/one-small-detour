@@ -10,6 +10,8 @@ import { isGuideTopics } from '../shared/guidance.ts';
 import type { Leaderboard, Mode, Player, RankedScore, ScoreRecord } from '../shared/types.ts';
 import type { DailyRankingStore } from './indexedRanking.ts';
 import type { DailyWrite, FirstDailyStatus } from './firstDaily.ts';
+import { isPracticeState, normalizePracticeState, projectPracticeSnapshot } from '../shared/practiceProgress.ts';
+import type { PracticeStore } from './practiceProgress.ts';
 
 export interface ScoreStore {
   list(key: string): Promise<ScoreRecord[]>;
@@ -28,6 +30,14 @@ export interface GameServiceOptions {
   now?: () => Date;
   accountExists?: (userId: string) => Promise<boolean>;
   dailyRanking?: DailyRankingStore;
+  practice?: PracticeStore;
+}
+
+function campaignRevision(url: string): 1 | 2 {
+  const revision = new URL(url).searchParams.get('campaign');
+  if (revision === null || revision === '1') return 1;
+  if (revision === '2') return 2;
+  throw new RuleError('This Practice campaign version is not supported. Refresh the game.', 'campaign_version');
 }
 
 export function scoreKey(edition: string, mode: Mode, version = mode === 'daily' ? TIMED_SCORE_VERSION : RULE_VERSION): string {
@@ -113,7 +123,8 @@ export function createGameApi(options: GameServiceOptions): Hono {
 
   api.onError((error, c) => {
     if (error instanceof RuleError) {
-      const temporary = error.code === 'ranking_busy' || error.code === 'ranking_indexing';
+      const temporary = error.code === 'ranking_busy' || error.code === 'ranking_indexing' || error.code === 'practice_busy';
+      if (error.code === 'practice_reset') return c.json({ error: error.message, code: error.code }, 409);
       if (temporary) c.header('Retry-After', '1');
       return c.json({ error: error.message, code: error.code }, temporary ? 503 : 400);
     }
@@ -126,7 +137,8 @@ export function createGameApi(options: GameServiceOptions): Hono {
     const player = await options.player(c.req.raw);
     return c.json({
       edition: editionForDate(now),
-      catalog: getCatalog(),
+      catalog: getCatalog(campaignRevision(c.req.url)),
+      campaignRevision: campaignRevision(c.req.url),
       source: options.source,
       community: options.community(),
       playerName: player?.name ?? null,
@@ -153,8 +165,32 @@ export function createGameApi(options: GameServiceOptions): Hono {
     return c.json({ seenGuides: await options.guides.seen(player.id) });
   });
 
+  api.all('/api/me/progress', async (c) => {
+    const catalog = getCatalog(campaignRevision(c.req.url));
+    const player = await options.player(c.req.raw);
+    if (!player) return c.json({ error: 'Sign in to Reddit to sync your Practice stops across devices.', code: 'sign_in' }, 401);
+    const store = options.practice;
+    if (!store) return c.json({ error: 'Practice sync is temporarily unavailable. Your local stops are safe.', code: 'practice_unavailable' }, 503);
+    const owner = createHash('sha256').update(`${options.source}:${options.community()}:${player.id}`).digest('hex');
+    if (c.req.method === 'GET') return c.json({ owner, snapshot: projectPracticeSnapshot(catalog, await store.read(player.id)) });
+    if (c.req.method === 'DELETE') return c.json({ owner, snapshot: projectPracticeSnapshot(catalog, await store.erase(player.id)) });
+    if (c.req.method !== 'POST') return c.json({ error: 'Choose a supported Practice sync action.', code: 'method' }, 405);
+    let input: unknown;
+    try { input = await c.req.json<unknown>(); }
+    catch (error) {
+      if (error instanceof SyntaxError) throw new RuleError('The Practice progress could not be read.', 'invalid_json');
+      throw error;
+    }
+    if (!isPracticeState(input) || !isRecord(input) || typeof input['generation'] !== 'number' ||
+        !Number.isSafeInteger(input['generation']) || input['generation'] < 0) {
+      throw new RuleError('Choose valid Practice progress to sync. Your saved progress was not replaced.', 'practice_invalid');
+    }
+    const scoped = normalizePracticeState(catalog, input);
+    return c.json({ owner, snapshot: projectPracticeSnapshot(catalog, await store.merge(player.id, input['generation'], scoped)) });
+  });
+
   api.get('/api/places/:id', (c) => {
-    const puzzle = findPuzzle(c.req.param('id'));
+    const puzzle = findPuzzle(c.req.param('id'), campaignRevision(c.req.url));
     return puzzle ? c.json(puzzle) : c.json({ error: 'That place is not in the atlas.', code: 'not_found' }, 404);
   });
 

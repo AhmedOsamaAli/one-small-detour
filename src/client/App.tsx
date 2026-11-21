@@ -3,34 +3,51 @@ import { gameApi, takeStorageNotice } from './api.ts';
 import { IslandAudio } from './audio.ts';
 import { BoardView } from './BoardView.tsx';
 import type { Transition } from './BoardView.tsx';
-import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, HomeLetter, Icon, LandscapeIllustration, Modal, ScenicBackdrop, ShapeGlyph, StarRating, TileGuide, WalkthroughFeatures } from './components.tsx';
+import { BrandMark, CompletionSeal, FLAT_AXES, GuideCourier, GuideIllustration, HomeLetter, Icon, JourneyCottage, LandscapeIllustration, Modal, ScenicBackdrop, ShapeGlyph, StarRating, TileGuide, WalkthroughFeatures } from './components.tsx';
 import { worldCssVariables } from './worldTheme.ts';
 import { applySwap, checkPuzzle, patchArea, patchCells, RuleError, rulesFor, selectionIssue, shapesFor, tileAt } from '../shared/rules.ts';
 import type { PatchIssue } from '../shared/rules.ts';
 import { difficultyLabel } from '../shared/difficulty.ts';
 import { CelebrationHold } from '../shared/playback.ts';
-import { advancePracticeWorlds, campaignPlaces, campaignWorlds, initializePracticeProgress, nextCampaignPlace, PRACTICE_WORLD_SIZE, practiceGate, practiceStars, recordPracticeMoves, worldStarRequirement, worldStars } from '../shared/progression.ts';
-import { TUTORIAL, TUTORIAL_MOVES, TUTORIAL_START_SHAPE, tutorialStage } from '../shared/tutorial.ts';
+import { advancePracticeWorlds, campaignAchievements, campaignPlaces, campaignWorlds, completedOriginalRoad, initializePracticeProgress, nextCampaignPlace, PRACTICE_WORLD_SIZE, practiceGate, practiceStars, recordPracticeMoves, worldStarRequirement, worldStars } from '../shared/progression.ts';
+import { guidePatchStart, pendingTutorialProbe, TUTORIAL, TUTORIAL_LESSONS, tutorialLesson, tutorialStage } from '../shared/tutorial.ts';
 import { TutorialCoach } from './TutorialCoach.tsx';
 import { AdventureMap } from './AdventureMap.tsx';
 import { useSolveTimer } from './useSolveTimer.ts';
 import { firstDailyResultOnly, formatSolveTime } from '../shared/timing.ts';
 import { mergeGuideTopics, newTileGuides } from '../shared/guidance.ts';
 import { loadPreferences, PREF_KEY, resolveAppearance } from './preferences.ts';
-import type { Anchor, Board, Bootstrap, Celebration, Cell, FrameAxes, GuideTarget, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
+import type { Anchor, Board, Bootstrap, CatalogEntry, Celebration, Cell, Edition, FrameAxes, GuideTarget, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
+import type { TutorialProbe } from '../shared/tutorial.ts';
 import { sameGuideTarget } from './coachLayout.ts';
 import { DailyStandings } from './DailyStandings.tsx';
 import type { StandingsState } from './DailyStandings.tsx';
+import { usePracticeSync } from './usePracticeSync.ts';
+import { GardenArtContext, GardenArtDefinitions } from './GardenArt.tsx';
+import { SavedDailyResults } from './SavedDailyResults.tsx';
+import type { RecordedDailyRank } from './SavedDailyResults.tsx';
+import { CraftArtContext, CraftFinishCourier, CraftScene } from './CraftArt.tsx';
+import { CraftTerrainDefinitions } from './CraftTerrainArt.tsx';
+import { GameHome } from './GameHome.tsx';
+import { useDailyHome } from './useDailyHome.ts';
+import { createDailyClock } from './nextDaily.ts';
 
 type Kind = 'daily' | 'studio' | 'guide';
-type Dialog = 'guide' | 'atlas' | 'erase' | 'welcome' | 'tour-tools' | 'tour-places' | 'tiles' | null;
+type Dialog = 'guide' | 'atlas' | 'erase' | 'erase-practice' | 'welcome' | 'tour-tools' | 'tour-places' | 'tiles' | null;
 interface Run { puzzle: Puzzle; kind: Kind; edition: string | null; number: number | null }
 interface Notice { message: string; error: boolean }
 
 const EMPTY_ROUTES: Cell[][] = [];
 const EMPTY_CELLS: readonly Cell[] = [];
+const EMPTY_CATALOG: readonly CatalogEntry[] = [];
 const postcardQuery = new URLSearchParams(window.location.search).get('postcard');
 const POSTCARD_PREVIEW = postcardQuery !== '0';
+const miniatureQuery = new URLSearchParams(window.location.search).get('miniature');
+const MINIATURE_PREVIEW = miniatureQuery === '1' || (import.meta.env.DEV && miniatureQuery !== '0');
+const GARDEN_PREVIEW = new URLSearchParams(window.location.search).get('art') !== 'classic';
+const craftQuery = new URLSearchParams(window.location.search).get('craft');
+const CRAFT_PREVIEW = GARDEN_PREVIEW && craftQuery !== '0';
+const CRAFT_TOUR = CRAFT_PREVIEW && new URLSearchParams(window.location.search).get('tour') === '1';
 const selectionLabels: Record<PatchIssue['code'], string> = {
   shape: 'Use whole squares.',
   bounds: 'Keep the patch on the map.',
@@ -77,18 +94,32 @@ function useMediaQuery(query: string): boolean {
 
 export default function App() {
   const initial = useMemo(loadPreferences, []);
+  const craftTourOpened = useRef(false);
   const [preferences, setPreferences] = useState(initial.value);
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const [pageVisible, setPageVisible] = useState(!document.hidden);
+  useEffect(() => {
+    const update = (): void => setPageVisible(!document.hidden);
+    document.addEventListener('visibilitychange', update);
+    return () => document.removeEventListener('visibilitychange', update);
+  }, []);
   const appearance = resolveAppearance(preferences.appearance);
   const dark = appearance === 'dark';
   useLayoutEffect(() => { document.documentElement.dataset['appearance'] = appearance; }, [appearance]);
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
+  const dailyClock = useMemo(() => bootstrap ? createDailyClock(bootstrap.nextReset, bootstrap.now, Date.now()) : null, [bootstrap]);
+  const catalogRef = useRef<readonly CatalogEntry[]>(EMPTY_CATALOG);
+  catalogRef.current = bootstrap?.catalog ?? EMPTY_CATALOG;
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [screen, setScreen] = useState<'home' | 'game' | 'results'>('home');
   const [run, setRun] = useState<Run | null>(null);
   const [pendingRun, setPendingRun] = useState<Run | null>(null);
+  const [recordedDaily, setRecordedDaily] = useState<{ edition: Edition; result: RecordedDailyRank } | null>(null);
+  const homeDaily = useDailyHome(bootstrap?.edition?.id ?? null, bootstrap !== null && screen === 'home',
+    JSON.stringify([bootstrap?.source, bootstrap?.community, bootstrap?.playerName]));
   const [board, setBoard] = useState<Board>([]);
   const [moves, setMoves] = useState<Swap[]>([]);
   const [shape, setShape] = useState<Shape>({ rows: 1, cols: 2 });
@@ -97,6 +128,7 @@ export default function App() {
   const hoverForFeedback = useRef<Cell | null>(null);
   hoverForFeedback.current = hover;
   const [selectionFeedback, setSelectionFeedback] = useState<PatchIssue | null>(null);
+  const [invalidPick, setInvalidPick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [transition, setTransition] = useState<Transition | null>(null);
   const transitionId = useRef(0);
@@ -110,6 +142,7 @@ export default function App() {
   const [standings, setStandings] = useState<StandingsState>({ status: 'idle' });
   const [standingsOpen, setStandingsOpen] = useState(false);
   const standingsRequest = useRef(0);
+  const automaticStandings = useRef<{ revision: number; saved: boolean } | null>(null);
   const resultCard = useRef<HTMLDivElement>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -137,6 +170,8 @@ export default function App() {
   const [resultRevealed, setResultRevealed] = useState(false);
   const [resultDismissed, setResultDismissed] = useState(false);
   const [guideBounds, setGuideBounds] = useState<GuideTarget | null>(null);
+  const [guideProbesDone, setGuideProbesDone] = useState<string[]>([]);
+  const [guideFeedback, setGuideFeedback] = useState<TutorialProbe | null>(null);
   const celebrationHold = useRef<{ revision: number; flat: boolean; clock: CelebrationHold } | null>(null);
   const [frameAxes, setFrameAxes] = useState<FrameAxes>(FLAT_AXES);
   const guideWrites = useRef(new Set<Promise<void>>());
@@ -147,12 +182,13 @@ export default function App() {
   const stageSection = useRef<HTMLElement>(null);
   const rankEdition = run?.kind === 'daily' ? run.edition : null;
   const timed = run !== null && run.kind !== 'guide';
-  const timer = useSolveTimer(timerGeneration, rankEdition, timed, boardReady);
+  const timer = useSolveTimer(timerGeneration, rankEdition, timed, boardReady, dialog === null);
   const firstResultOnly = rankEdition !== null && firstDailyResultOnly(rankEdition);
   const replayStatus = firstResultOnly ? replayMode ??
     (timer.attempt?.ranking === 'replay' || timer.attempt?.ranking === 'removed' ? timer.attempt.ranking : null) : null;
 
   const notify = useCallback((message: string, error = false) => setNotice({ message, error }), []);
+  const progressSync = usePracticeSync(bootstrap, preferences, setPreferences);
   const syncGuides = useCallback((topics: readonly GuideTopic[], signedIn: boolean): void => {
     if (!signedIn || topics.length === 0) return;
     const request = gameApi.rememberGuides(topics).catch((error: unknown) => {
@@ -180,12 +216,18 @@ export default function App() {
   }, [notify]);
 
   const begin = useCallback((next: Run) => {
+    setScreen('game');
+    setRecordedDaily(null);
+    setLoading(false);
+    setLoadError(null);
     practiceRequest.current++;
     setPracticeLoading(null);
     setRun(next);
     const saved = preferencesRef.current;
     const best = saved.practice?.bests[next.puzzle.id];
-    setPracticeBefore({ stars: next.kind === 'studio' ? practiceStars(next.puzzle, best, saved.completed.includes(next.puzzle.id)) : 0,
+    const earned = next.kind === 'studio' && !next.puzzle.archived ? campaignAchievements(catalogRef.current, saved.completed,
+      saved.practice ?? initializePracticeProgress(catalogRef.current, saved.completed)).get(next.puzzle.id) : undefined;
+    setPracticeBefore({ stars: next.kind === 'studio' ? earned?.stars ?? practiceStars(next.puzzle, best, saved.completed.includes(next.puzzle.id)) : 0,
       best: best ?? null, worlds: saved.practice?.unlockedWorlds ?? 1 });
     setPendingRun(null);
     setBoard(next.puzzle.board);
@@ -193,7 +235,10 @@ export default function App() {
     setFirst(null);
     setHover(null);
     setSelectionFeedback(null);
-    setShape(next.kind === 'guide' ? TUTORIAL_START_SHAPE : defaultShape(next.puzzle));
+    setShape(next.kind === 'guide' ? tutorialLesson(next.puzzle.id).startShape : defaultShape(next.puzzle));
+    setGuideProbesDone([]);
+    setGuideFeedback(null);
+    setNotice(null);
     setTransition(null);
     setBusy(false);
     setPublished(false);
@@ -225,9 +270,21 @@ export default function App() {
     } else begin(next);
   }, [begin]);
 
+  const openDaily = useCallback((edition: Edition, seen: readonly GuideTopic[]): void => {
+    if (!seen.includes('basics')) {
+      notify('Finish the guided lessons to unlock today.', true);
+      return;
+    }
+    openRun({ puzzle: edition.puzzle, kind: 'daily', edition: edition.id, number: edition.number }, seen);
+  }, [openRun, notify]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setScreen('home');
+    setRun(null);
+    setPendingRun(null);
+    setRecordedDaily(null);
     try {
       const data = await gameApi.bootstrap();
       setBootstrap(data);
@@ -237,12 +294,9 @@ export default function App() {
         practice: advancePracticeWorlds(data.catalog, current.completed,
           current.practice ?? initializePracticeProgress(data.catalog, current.completed)) }));
       syncGuides(localSeen.filter((topic) => !data.seenGuides.includes(topic)), data.playerName !== null);
-      if (!seen.includes('basics')) startWalkthrough();
-      else if (data.edition) openRun({ puzzle: data.edition.puzzle, kind: 'daily', edition: data.edition.id, number: data.edition.number }, seen);
-      else if (data.catalog[0]) {
-        const puzzle = await gameApi.place(data.catalog[0].id);
-        openRun({ puzzle, kind: 'studio', edition: null, number: null }, seen);
-        notify(data.seasonComplete ? 'This season is complete. The unranked atlas is still yours to explore.' : 'The season has not opened yet. Explore a practice place in the meantime.');
+      if (CRAFT_TOUR && !craftTourOpened.current) {
+        craftTourOpened.current = true;
+        startWalkthrough();
       }
       const storageWarning = takeStorageNotice();
       if (storageWarning) notify(storageWarning, true);
@@ -252,14 +306,40 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [startWalkthrough, openRun, notify, syncGuides]);
+  }, [startWalkthrough, notify, syncGuides]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    const instrument = new IslandAudio((message) => { setSoundOn(false); notify(message, true); });
+    if (!loading && !loadError && screen !== 'game') {
+      document.getElementById(screen === 'home' ? 'home-title' : 'saved-daily-title')?.focus({ preventScroll: true });
+    }
+  }, [screen, loading, loadError]);
+  useEffect(() => {
+    const instrument = new IslandAudio((message) => {
+      setSoundOn(false);
+      setPreferences((current) => ({ ...current, soundWanted: false }));
+      notify(message, true);
+    }, setSoundOn);
     audio.current = instrument;
     return () => { instrument.dispose(); audio.current = null; };
   }, [notify]);
+  useEffect(() => {
+    const start = (): void => {
+      const instrument = audio.current;
+      if (!preferences.soundWanted || document.hidden || !instrument) return;
+      try {
+        setSoundOn(instrument.tryAutoplay());
+      } catch (error) {
+        console.error('Could not start the default soundscape:', error);
+        instrument.disable();
+        setPreferences((current) => ({ ...current, soundWanted: false }));
+        notify(messageOf(error), true);
+      }
+    };
+    start();
+    document.addEventListener('visibilitychange', start);
+    return () => document.removeEventListener('visibilitychange', start);
+  }, [preferences.soundWanted, notify]);
   useEffect(() => {
     try { localStorage.setItem(PREF_KEY, JSON.stringify(preferences)); }
     catch (error) {
@@ -284,8 +364,8 @@ export default function App() {
   }, [dialog]);
 
   useEffect(() => {
-    if (!bootstrap) return;
-    const offset = Date.parse(bootstrap.now) - Date.now();
+    if (!bootstrap || !dailyClock) return;
+    const offset = dailyClock.serverOffsetMs;
     let active = true;
     let refreshing = false;
     const tick = (): void => {
@@ -296,7 +376,7 @@ export default function App() {
           if (!active) return;
           setBootstrap(data);
           if (data.edition?.id !== bootstrap.edition?.id) {
-            notify('A new daily island is ready. Tap the title when you are ready; your current repair is safe.');
+            notify('A new Daily island is ready. Open Home when you are ready; your current repair is safe.');
           }
         }).catch((error: unknown) => {
           console.error('Daily rollover could not refresh:', error);
@@ -307,9 +387,10 @@ export default function App() {
     const visible = (): void => { if (!document.hidden) tick(); };
     tick();
     const timer = window.setInterval(tick, 60_000);
+    const boundary = window.setTimeout(tick, Math.max(0, dailyClock.resetAtMs - Date.now() - offset) + 10);
     document.addEventListener('visibilitychange', visible);
-    return () => { active = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
-  }, [bootstrap, notify]);
+    return () => { active = false; window.clearInterval(timer); window.clearTimeout(boundary); document.removeEventListener('visibilitychange', visible); };
+  }, [bootstrap, dailyClock, notify]);
 
   const area = run?.puzzle.area ?? 2;
   const rules = useMemo(() => run ? rulesFor(run.puzzle, 'daily') : { areas: [2], budget: 1 }, [run]);
@@ -318,15 +399,22 @@ export default function App() {
   const lastHome = run?.puzzle.journey?.at(-1);
   const allHomesArrived = roadReady && lastHome !== undefined && arrived.includes(lastHome);
   const won = roadReady && arrivalComplete && resultRevealed;
-  const campaign = useMemo(() => campaignPlaces(bootstrap?.catalog ?? []), [bootstrap?.catalog]);
-  const practiceProgress = useMemo(() => preferences.practice ?? initializePracticeProgress(campaign, preferences.completed),
-    [preferences.practice, campaign, preferences.completed]);
+  const catalog = bootstrap?.catalog ?? EMPTY_CATALOG;
+  const campaign = useMemo(() => campaignPlaces(catalog), [catalog]);
+  const practiceProgress = useMemo(() => preferences.practice ?? initializePracticeProgress(catalog, preferences.completed),
+    [preferences.practice, catalog, preferences.completed]);
+  const achievements = useMemo(() => campaignAchievements(catalog, preferences.completed, practiceProgress), [catalog, preferences.completed, practiceProgress]);
   const worlds = useMemo(() => campaignWorlds(campaign.length), [campaign.length]);
-  const currentCampaignIndex = run?.kind === 'studio' ? campaign.findIndex((place) => place.id === run.puzzle.id) : -1;
+  const currentCampaignIndex = run?.kind === 'studio' ? run.puzzle.campaignSlot ?? run.puzzle.originalSlot ??
+    campaign.findIndex((place) => place.id === run.puzzle.id || place.legacyId === run.puzzle.id) : -1;
   const currentWorld = currentCampaignIndex >= 0 ? worlds[Math.floor(currentCampaignIndex / PRACTICE_WORLD_SIZE)] : null;
-  const nextCampaign = useMemo(() => nextCampaignPlace(campaign, preferences.completed, practiceProgress), [campaign, preferences.completed, practiceProgress]);
+  const nextCampaign = useMemo(() => nextCampaignPlace(catalog, preferences.completed, practiceProgress), [catalog, preferences.completed, practiceProgress]);
   const nextCampaignIndex = nextCampaign ? campaign.findIndex((place) => place.id === nextCampaign.id) : -1;
-  const replayForStars = nextCampaign !== null && preferences.completed.includes(nextCampaign.id);
+  const replayForStars = nextCampaign !== null && achievements.get(nextCampaign.id)?.completed === true;
+  const starRepairLabel = nextCampaign && achievements.get(nextCampaign.id)?.solved ? 'Replay for stars' : 'Play for stars';
+  const currentAchievement = currentCampaignIndex >= 0 ? achievements.get(campaign[currentCampaignIndex]?.id ?? '') : undefined;
+  const originalTarget = run?.kind === 'studio' && currentCampaignIndex >= 0 ? run.puzzle.archived ?
+    campaign[currentCampaignIndex]?.id : completedOriginalRoad(catalog, preferences.completed, run.puzzle.id) : null;
   const practiceAward = run?.kind === 'studio' && roadReady ? practiceStars(run.puzzle, moves.length, true) : 0;
   const bestPracticeStars = Math.max(practiceBefore.stars, practiceAward);
   const gateWorld = replayForStars ? worlds[practiceProgress.unlockedWorlds - 1] : null;
@@ -338,14 +426,34 @@ export default function App() {
   const routes = roadReady ? check.routes : EMPTY_ROUTES;
   const footprint = moves.reduce((total, move) => total + 2 * patchArea(move), 0);
   const shapes = useMemo(() => shapesFor(area, board.length || 6, run?.puzzle.frame), [area, board.length, run?.puzzle.frame]);
-  const guideMove = TUTORIAL_MOVES[moves.length] ?? null;
-  const guideStage = run?.kind === 'guide' ? tutorialStage(shape, first, roadReady, guideMove) : null;
+  const guideLesson = run?.kind === 'guide' ? tutorialLesson(run.puzzle.id) : null;
+  const guideLessonIndex = guideLesson ? TUTORIAL_LESSONS.indexOf(guideLesson) : -1;
+  const nextGuideLesson = guideLesson ? TUTORIAL_LESSONS[guideLessonIndex + 1] ?? null : null;
+  const guideMove = guideLesson?.moves[moves.length] ?? null;
+  const guideProbe = guideLesson ? pendingTutorialProbe(guideLesson, moves.length, guideProbesDone) : null;
+  const guideRepair = guideLesson?.repairs[moves.length] ?? null;
+  const guideStage = guideLesson ? guideProbe || guideLesson.moves.length === 0 ? 'check' : tutorialStage(shape, first, roadReady, guideMove) : null;
   const hoverIssue = useMemo(() => {
     if (!hover || !run || run.kind === 'guide' || roadReady || busy || !timer.canPlay) return null;
     return selectionIssue(board, hover, shape, first);
   }, [hover, first, shape, board, run, roadReady, busy, timer.canPlay]);
   const feedback = selectionFeedback ?? hoverIssue;
-  const feedbackCells = feedback?.cells ?? EMPTY_CELLS;
+  const probeFeedbackCells = useMemo(() => guideFeedback ? [guideFeedback.cell] : EMPTY_CELLS, [guideFeedback]);
+  const feedbackCells = feedback?.cells ?? probeFeedbackCells;
+  useEffect(() => {
+    if (!guideFeedback || !guideLesson || dialog !== null || !pageVisible || !boardReady) return;
+    const finishedChecks = guideLesson.moves.length === 0 && !guideProbe;
+    if (guideFeedback.blockedToward) return;
+    const timeout = window.setTimeout(() => {
+      if (finishedChecks) {
+        if (!nextGuideLesson) { notify('The next guided lesson could not be found. Return home and restart the guide.', true); return; }
+        begin({ puzzle: nextGuideLesson.puzzle, kind: 'guide', edition: null, number: null });
+        return;
+      }
+      setGuideFeedback(null);
+    }, finishedChecks ? 250 : 600);
+    return () => window.clearTimeout(timeout);
+  }, [guideFeedback, guideProbe, guideLesson, nextGuideLesson, dialog, pageVisible, boardReady, begin, notify]);
   useEffect(() => {
     if (!feedback) return;
     const capturedHover = hoverForFeedback.current;
@@ -357,6 +465,8 @@ export default function App() {
     return () => window.clearTimeout(expiry);
   }, [feedback]);
   const onHover = useCallback((cell: Cell | null) => {
+    const previous = hoverForFeedback.current;
+    if (previous?.row === cell?.row && previous?.col === cell?.col) return;
     setHover(cell);
     if (cell) setSelectionFeedback(null);
   }, []);
@@ -383,19 +493,28 @@ export default function App() {
     finishedRevision.current = eventRevision;
     setArrivalComplete(true);
     audio.current?.finish(check.journey?.path ?? []);
-    if (run.kind !== 'guide') setPreferences((current) => {
+    if (run.kind === 'guide') {
+      if (!nextGuideLesson) {
+        const topics: GuideTopic[] = ['basics', 'rocks', 'bridges'];
+        setPreferences(current => ({ ...current, seenGuides: mergeGuideTopics(current.seenGuides, topics) }));
+        syncGuides(topics, bootstrap !== null && bootstrap.playerName !== null);
+      }
+      return;
+    }
+    setPreferences((current) => {
       const completed = current.completed.includes(run.puzzle.id) ? current.completed : [...current.completed, run.puzzle.id];
       if (run.kind !== 'studio') return completed === current.completed ? current : { ...current, completed };
       const previous = current.practice ?? initializePracticeProgress(campaign, current.completed);
-      const practice = advancePracticeWorlds(campaign, completed, recordPracticeMoves(previous, run.puzzle, moves.length));
+      const practice = advancePracticeWorlds(catalog, completed, recordPracticeMoves(previous, run.puzzle, moves.length));
       return completed === current.completed && practice === current.practice ? current : { ...current, completed, practice };
     });
-  }, [run, roadReady, check.journey, campaign, moves.length]);
+  }, [run, roadReady, check.journey, campaign, moves.length, bootstrap, syncGuides, nextGuideLesson]);
 
   useEffect(() => {
     if (!allHomesArrived || resultRevealed || dialog || !boardReady) return;
     if (!celebrationHold.current || celebrationHold.current.revision !== revision || celebrationHold.current.flat !== preferences.flat) {
-      celebrationHold.current = { revision, flat: preferences.flat, clock: POSTCARD_PREVIEW ? new CelebrationHold(3000) : new CelebrationHold() };
+      celebrationHold.current = { revision, flat: preferences.flat, clock: run?.kind === 'guide' ? new CelebrationHold(650) :
+        POSTCARD_PREVIEW ? new CelebrationHold(3000) : new CelebrationHold() };
     }
     const hold = celebrationHold.current;
     let active = true;
@@ -419,14 +538,20 @@ export default function App() {
       cancelAnimationFrame(frameId);
       document.removeEventListener('visibilitychange', resetTime);
     };
-  }, [allHomesArrived, resultRevealed, dialog, boardReady, revision, preferences.flat]);
+  }, [allHomesArrived, resultRevealed, dialog, boardReady, revision, preferences.flat, run?.kind]);
 
   const resumePreferredSound = useCallback(() => {
     const instrument = audio.current;
     if (preferences.soundWanted && instrument && !instrument.enabled) {
       void instrument.enable().then(() => {
         if (audio.current === instrument) setSoundOn(instrument.enabled);
-      }).catch((error: unknown) => notify(messageOf(error), true));
+      }).catch((error: unknown) => {
+        if (audio.current !== instrument) return;
+        console.error('Could not start the preferred soundscape:', error);
+        setSoundOn(false);
+        setPreferences((current) => ({ ...current, soundWanted: false }));
+        notify(messageOf(error), true);
+      });
     }
   }, [preferences.soundWanted, notify]);
 
@@ -456,63 +581,65 @@ export default function App() {
     }
   }, [run, timer.canPlay, timer.stop, busy, travelerMoving, roadReady, shape, board, rules, moves.length, reducedMotion, restartPlayback, notify]);
 
-  const onCell = useCallback((cell: Cell) => {
+  const onCell = useCallback((picked: Cell) => {
     if (!run || !timer.canPlay || busy) return;
     resumePreferredSound();
-    if (travelerMoving) { notify('Let the traveler reach the next home. Undo is still free.'); return; }
-    if (roadReady) { notify(allHomesArrived ? 'Journey complete. Undo to try another repair.' : 'The traveler is on the way. Undo if you want to change the route.'); return; }
+    if (travelerMoving) { notify('Let the traveler finish the delivery.'); return; }
+    if (roadReady) { notify(allHomesArrived ? 'Journey complete. Choose another stop or replay from the map.' : 'The traveler is on the way.'); return; }
+    if (guideProbe) {
+      if (picked.row !== guideProbe.cell.row || picked.col !== guideProbe.cell.col) {
+        notify(guideProbe.instruction);
+        return;
+      }
+      setGuideProbesDone((completed) => [...completed, guideProbe.id]);
+      setGuideFeedback(guideProbe);
+      setInvalidPick((current) => current + 1);
+      if (!reducedMotion) navigator.vibrate?.(35);
+      setFirst(null);
+      setHover(null);
+      setSelectionFeedback(null);
+      setNotice(null);
+      return;
+    }
+    if (guideLesson?.moves.length === 0) return;
     if (run.kind === 'guide' && guideStage === 'frame') { notify('First choose the glowing frame beside the board.'); return; }
-    if (moves.length >= rules.budget) { notify('This long attempt has reached its save limit. Undo a swap to continue.'); return; }
+    if (moves.length >= rules.budget) { notify('This attempt has reached its exchange limit. Choose the island again to start fresh.'); return; }
+    const cell = run.kind === 'guide' && guideMove ? guidePatchStart(picked, guideMove, first) : picked;
     const issue = selectionIssue(board, cell, shape, first);
-    if (issue) { setHover(cell); setSelectionFeedback(issue); return; }
+    if (issue) {
+      setHover(cell);
+      setSelectionFeedback(issue);
+      setInvalidPick((current) => current + 1);
+      if (!reducedMotion) navigator.vibrate?.(35);
+      return;
+    }
     setSelectionFeedback(null);
     if (first?.row === cell.row && first.col === cell.col) {
       setFirst(null); setHover(null); return;
     }
     if (!first) {
       if (run.kind === 'guide' && (cell.row !== guideMove?.a.row || cell.col !== guideMove?.a.col)) {
-        notify('Tap the marked starting square, not the other square in the frame.');
+        notify('Tap inside the outlined orange patch. The dot marks its start.');
         return;
       }
       setFirst(cell); setHover(null); audio.current?.select(false);
     } else {
       if (run.kind === 'guide' && (cell.row !== guideMove?.b.row || cell.col !== guideMove?.b.col)) {
-        notify('Tap the marked starting square in the blue frame to exchange both patches.');
+        notify('Tap inside the outlined blue patch to exchange both patches.');
         return;
       }
       audio.current?.select(true);
+      setGuideFeedback(null);
       commitSwap(first, cell);
     }
-  }, [run, timer.canPlay, busy, travelerMoving, allHomesArrived, roadReady, moves.length, rules.budget, board, shape, first, guideStage, guideMove, notify, resumePreferredSound, commitSwap]);
-
-  const undo = (): void => {
-    if (!run || moves.length === 0 || busy) return;
-    const removed = moves.at(-1);
-    if (!removed) return;
-    if (run.edition && firstDailyResultOnly(run.edition) && completedDailies.current.has(run.edition)) setReplayMode('replay');
-    setReplayRankError(null);
-    const previousMoves = moves.slice(0, -1);
-    let restored = run.puzzle.board;
-    previousMoves.forEach((move, used) => { restored = applySwap(restored, move, rules, used); });
-    setBoard(restored); setMoves(previousMoves);
-    restartPlayback();
-    timer.resume();
-    setSolveId(null);
-    saveRequest.current++;
-    setPublishing(false);
-    setSaveError(null);
-    setSavedSolveMs(null);
-    setBusy(!reducedMotion);
-    setTransition({ id: ++transitionId.current, move: removed });
-    setFirst(null); setHover(null); setSelectionFeedback(null); setPublished(false);
-    setMyRank(null);
-    audio.current?.undo();
-  };
+  }, [run, timer.canPlay, busy, travelerMoving, allHomesArrived, roadReady, moves.length, rules.budget, board, shape, first, guideStage, guideMove, guideProbe, guideLesson, notify, resumePreferredSound, commitSwap, reducedMotion]);
 
   const reset = (): void => {
     if (!run || busy) return;
     setBoard(run.puzzle.board); setMoves([]); setTransition(null);
     setFirst(null); setHover(null); setSelectionFeedback(null); setPublished(false);
+    setGuideProbesDone([]);
+    setGuideFeedback(null);
     setMyRank(null);
     setReplayMode(null);
     setReplayRankError(null);
@@ -537,17 +664,11 @@ export default function App() {
   };
 
   const finishWalkthrough = (skip: boolean): void => {
+    if (skip) { visitToday();return; }
     const edition = bootstrap?.edition;
-    const topics: GuideTopic[] = ['basics', ...(skip && edition ? newTileGuides(edition.puzzle.board, []) : [])];
-    const seen = rememberGuides(topics);
-    if (edition) {
-      const next: Run = { puzzle: edition.puzzle, kind: 'daily', edition: edition.id, number: edition.number };
-      if (skip) begin(next);
-      else openRun(next, seen);
-    } else {
-      setDialogError(null);
-      setDialog('atlas');
-    }
+    const seen = preferencesRef.current.seenGuides;
+    if (edition && homeDaily.state.status === 'ready') openDaily(edition, seen);
+    else visitToday();
   };
 
   const acceptTileGuide = (): void => {
@@ -558,9 +679,20 @@ export default function App() {
   };
 
   const visitToday = (): void => {
-    if (run?.kind === 'guide') { finishWalkthrough(true); return; }
-    const edition = bootstrap?.edition;
-    if (edition) openRun({ puzzle: edition.puzzle, kind: 'daily', edition: edition.id, number: edition.number }, preferencesRef.current.seenGuides);
+    practiceRequest.current++;
+    saveRequest.current++;
+    setPracticeLoading(null);
+    setPublishing(false);
+    setRun(null);
+    setPendingRun(null);
+    setRecordedDaily(null);
+    setBoardReady(false);
+    setBusy(false);
+    setDialog(null);
+    setDialogError(null);
+    setScreen('home');
+    restartPlayback();
+    homeDaily.refresh();
   };
 
   const openPractice = (id: string): void => {
@@ -570,17 +702,20 @@ export default function App() {
     const request = ++practiceRequest.current;
     setPracticeLoading(id);
     setDialogError(null);
-    const seen = run?.kind === 'guide' ? rememberGuides(['basics']) : preferencesRef.current.seenGuides;
+    const seen = preferencesRef.current.seenGuides;
     void gameApi.place(id).then((puzzle) => {
       if (request === practiceRequest.current) {
-        const index = campaign.findIndex((place) => place.id === id);
+        const index = puzzle.campaignSlot ?? puzzle.originalSlot ?? campaign.findIndex((place) => place.id === id || place.legacyId === id);
         const world = worlds[Math.floor(index / PRACTICE_WORLD_SIZE)];
         if (!world) throw new Error('That Practice stop has no world.');
         openRun({ puzzle: { ...puzzle, theme: world.theme }, kind: 'studio', edition: null, number: null }, seen);
       }
     }).catch((error: unknown) => {
       console.error('The practice island could not load:', error);
-      if (request === practiceRequest.current) setDialogError(messageOf(error));
+      if (request === practiceRequest.current) {
+        setDialogError(messageOf(error));
+        if (dialog !== 'atlas') notify(messageOf(error), true);
+      }
     }).finally(() => {
       if (request === practiceRequest.current) setPracticeLoading(null);
     });
@@ -590,7 +725,7 @@ export default function App() {
     const instrument = audio.current;
     if (!instrument) return;
     try {
-      if (soundOn) {
+      if (preferences.soundWanted) {
         instrument.disable();
         setSoundOn(false);
         setPreferences((current) => ({ ...current, soundWanted: false }));
@@ -613,6 +748,7 @@ export default function App() {
     const savingRequest = ++saveRequest.current;
     const savedRevision = currentRevision.current;
     setPublishing(true);
+    setSaveError(null);
     setSaveError(null);
     try {
       const result = await gameApi.submit({ edition: run.edition, mode: 'daily', moves, attemptId, solveId });
@@ -684,6 +820,7 @@ export default function App() {
   useEffect(() => {
     if (!POSTCARD_PREVIEW) return;
     standingsRequest.current++;
+    automaticStandings.current = null;
     setStandings({ status: 'idle' });
     setStandingsOpen(false);
     setCommunity(null);
@@ -710,11 +847,11 @@ export default function App() {
     return () => { active = false; };
   }, [run, roadReady, published, myRank, bootstrap, autoSaveSuppressed, replayStatus]);
 
-  const loadStandings = async (): Promise<void> => {
+  const loadStandings = useCallback(async (open = true): Promise<void> => {
     if (!POSTCARD_PREVIEW || !won || run?.kind !== 'daily' || !run.edition) return;
     const request = ++standingsRequest.current;
     const savedRevision = currentRevision.current;
-    setStandingsOpen(true);
+    if (open) setStandingsOpen(true);
     setStandings({ status: 'loading' });
     try {
       const board = await gameApi.standings(run.edition);
@@ -726,7 +863,16 @@ export default function App() {
       console.error('Could not load Daily standings:', error);
       if (request === standingsRequest.current && savedRevision === currentRevision.current) setStandings({ status: 'error', message: messageOf(error) });
     }
-  };
+  }, [won, run]);
+
+  useEffect(() => {
+    if (!won || resultDismissed || dialog || autoSaveSuppressed || run?.kind !== 'daily' || !run.edition) return;
+    const saved = published && myRank?.edition === run.edition;
+    const previous = automaticStandings.current;
+    if (previous?.revision === revision && previous.saved === saved) return;
+    automaticStandings.current = { revision, saved };
+    void loadStandings(previous?.revision !== revision);
+  }, [won, resultDismissed, dialog, autoSaveSuppressed, run, published, myRank?.edition, revision, loadStandings]);
 
   useLayoutEffect(() => { resultCard.current?.scrollTo(0, 0); }, [standingsOpen]);
 
@@ -737,61 +883,101 @@ export default function App() {
   const status = !timer.canPlay ? timer.phase === 'countdown' ? 'Get ready.' : 'Preparing the timer...' :
     busy ? 'Exchanging...' : allHomesArrived ? 'Everyone made it home!' : travelerMoving ? `On the way to ${nextStop ?? 'the final home'}...` :
     roadReady ? nextStop ? `Next stop: ${nextStop}` : 'Final stop reached.' :
-    moves.length >= rules.budget ? 'Undo a swap to continue.' :
-    run?.kind === 'guide' ? guideStage === 'frame' ? 'Choose the glowing frame.' : !first ? 'Tap the orange pair.' : 'Tap the blue pair.' :
-    !first ? run?.puzzle.frame === 'ell' ? 'Choose an L patch.' : run?.puzzle.frame === 'strip' ? 'Choose a 3-square strip.' :
-      run?.puzzle.frame === 'square' ? 'Choose a 4-square patch.' : 'Choose a patch.' : 'Pick 2; tap start to clear.';
+    moves.length >= rules.budget ? 'Exchange limit reached. Start a fresh island.' :
+    run?.kind === 'guide' ? guideProbe?.instruction ?? (guideStage === 'frame' ? 'Choose the glowing frame.' : !first ? 'Tap the orange patch.' : 'Tap the blue patch.') :
+    !first ? shape.rows > 1 && shape.cols > 1 ? 'Start at the top-left.' :
+      shape.rows > shape.cols ? 'Start at the top.' : 'Start at the left.' : 'Pick 2; tap start to clear.';
   const earnedRank = won && published && run?.kind === 'daily' && myRank?.edition === run.edition && myRank.rank !== null ? myRank : null;
   const rankLabel = run?.edition === bootstrap?.edition?.id ? 'today' : `on ${todayLabel}`;
   const pendingTopics = pendingRun ? newTileGuides(pendingRun.puzzle.board, preferences.seenGuides) : [];
+  const guestDailyComplete = bootstrap?.playerName === null && homeDaily.state.status === 'ready' &&
+    bootstrap.edition !== null && preferences.completed.includes(bootstrap.edition.puzzle.id);
   const completionOpen = won && !busy && !resultDismissed && dialog === null;
-  const guideInstruction = busy ? 'Watch the swap.' : guideStage === 'frame' ?
+  const guideInstruction = busy ? 'Watch the swap.' : guideProbe ? guideProbe.instruction :
+    guideLesson?.moves.length === 0 && guideFeedback ? guideFeedback.answer : guideStage === 'frame' ?
     `Tap the ${guideMove?.rows === 1 ? 'wide' : 'tall'} frame.` : guideStage === 'home' ? 'Watch the way home.' :
-      `Tap ${guideStage === 'second' ? 'blue' : 'orange'} here.`;
+      (guideStage === 'second' ? guideRepair?.second : guideRepair?.first) ?? 'Choose the outlined patch.';
+  const guideDetail = (guideProbe ? guideFeedback?.response ?? guideProbe.detail :
+    guideFeedback && (guideStage === 'frame' || guideLesson?.moves.length === 0) ? guideFeedback.response : null) ?? (guideStage === 'frame' ?
+    `Start at the ${guideMove?.rows === 1 ? 'left' : 'top'} tile. The frame changes; the tiles never rotate.` :
+    guideRepair?.detail ?? 'The whole road comes first. Then everyone goes home.');
+  const soundToggle = <button className={`icon-button sound-toggle ${preferences.soundWanted ? 'sound-is-on' : ''}`} onClick={() => { void toggleSound(); }}
+    aria-label={preferences.soundWanted ? 'Turn sound off' : 'Turn sound on'} aria-pressed={preferences.soundWanted}
+    title={soundOn ? 'Soundscape on' : preferences.soundWanted ? 'The browser is waiting for a tap to enable sound. Tap here to mute.' : 'Listen to the island'}>
+    <Icon name={preferences.soundWanted ? 'sound' : 'mute'}/>
+  </button>;
 
-  return <div className={`app-shell focused-game direct-play viewport-fit ${reducedMotion ? 'reduce-motion' : ''}`}
-    style={worldCssVariables(run?.puzzle.theme ?? pendingRun?.puzzle.theme ?? 'meadow', dark)}
+  return <GardenArtContext.Provider value={GARDEN_PREVIEW}><CraftArtContext.Provider value={CRAFT_PREVIEW}><div className={`app-shell focused-game direct-play viewport-fit ${GARDEN_PREVIEW ? 'art-realistic' : ''} ${CRAFT_PREVIEW ? 'craft-preview' : ''} ${reducedMotion ? 'reduce-motion' : ''}`}
+    style={worldCssVariables(run?.puzzle.theme ?? pendingRun?.puzzle.theme ?? recordedDaily?.edition.puzzle.theme ?? bootstrap?.edition?.puzzle.theme ?? 'meadow', dark, CRAFT_PREVIEW)}
     data-appearance={dark ? 'dark' : 'light'} data-onboarding={run?.kind === 'guide' ? 'practice' : dialog === 'tiles' ? 'tiles' : 'complete'}
+    data-page-visible={pageVisible}
+    data-screen={screen}
     data-guide-step={run?.kind === 'guide' ? guideStage : undefined}
-    data-guide-exchange={run?.kind === 'guide' ? Math.min(moves.length + 1, TUTORIAL_MOVES.length) : undefined}
+    data-guide-exchange={guideLesson ? Math.min(moves.length + 1, guideLesson.moves.length) : undefined}
+    data-guide-lesson={guideLesson ? guideLessonIndex + 1 : undefined} data-guide-probe={guideProbe?.id}
+    data-guide-feedback={guideFeedback?.id}
     data-timer-phase={timer.phase} data-score-state={publishing ? 'saving' : published ? 'saved' : saveError ? 'error' : 'idle'}
-    data-completion-state={won ? 'result' : allHomesArrived ? 'celebrating' : roadReady ? 'walking' : 'repairing'}>
+    data-completion-state={won ? 'result' : allHomesArrived ? 'celebrating' : roadReady ? 'walking' : 'repairing'}
+    onClickCapture={(event) => {
+      if (event.isTrusted && event.target instanceof Element && !event.target.closest('.sound-toggle')) resumePreferredSound();
+    }}>
+    {GARDEN_PREVIEW && <GardenArtDefinitions/>}
+    {CRAFT_PREVIEW && <CraftTerrainDefinitions/>}
     <ScenicBackdrop/>
-    <a className="skip-link" href="#game-controls">Skip to game controls</a>
+    <a className="skip-link" href={screen === 'game' ? '#game-controls' : screen === 'results' ? '#saved-daily-controls' : '#home-controls'}>
+      {screen === 'game' ? 'Skip to game controls' : 'Skip to choices'}</a>
     <header className="site-header">
-      <button className="wordmark" onClick={visitToday} aria-label="One Small Detour, today's island">
+      <button className="wordmark" disabled={loading || busy || publishing} onClick={visitToday} aria-label="One Small Detour, home"
+        title={run && moves.length > 0 && !roadReady ? 'Home. Unfinished swaps are not saved.' : 'Home'}>
         <BrandMark/><span className="wordmark-full">one small detour<span className="wordmark-dot">.</span></span><span className="wordmark-compact">detour.</span>
       </button>
       <nav className="header-nav" aria-label="Game navigation">
-        <button className="icon-button map-toggle" disabled={!bootstrap} onClick={() => { setDialogError(null); setDialog('atlas'); }}
+        <button className="icon-button map-toggle" disabled={!bootstrap || loading} onClick={() => { setDialogError(null); setDialog('atlas'); }}
           aria-label="Practice map" title="Practice map"><Icon name="map"/></button>
-        <button className={`icon-button sound-toggle ${soundOn ? 'sound-is-on' : ''}`} onClick={() => { void toggleSound(); }}
-          aria-label={soundOn ? 'Turn sound off' : 'Turn sound on'} aria-pressed={soundOn} title={soundOn ? 'Soundscape on' : 'Listen to the island'}>
-          <Icon name={soundOn ? 'sound' : 'mute'}/>
-        </button>
+        {soundToggle}
         <button className="icon-button theme-toggle" aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
           title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
           onClick={() => setPreferences((current) => ({ ...current,
             appearance: resolveAppearance(current.appearance) === 'dark' ? 'light' : 'dark' }))}>
           <Icon name={dark ? 'sun' : 'moon'} size={21}/>
         </button>
-        <button className="icon-button help-toggle" onClick={() => setDialog('guide')} aria-label="How to play and tile rules" title="How to play and tile rules"><Icon name="help" size={22}/></button>
+        <button className="icon-button help-toggle" disabled={loading} onClick={() => setDialog('guide')} aria-label="How to play and tile rules" title="How to play and tile rules"><Icon name="help" size={22}/></button>
       </nav>
     </header>
 
-    {loading && <main className="loading-place"><LandscapeIllustration/><p className="eyebrow"><Icon name="leaf" size={14}/>A LITTLE PATIENCE</p><h1>Unfolding your little place...</h1><p>The roads, the ponds, the possibilities.</p></main>}
-    {!loading && loadError && <main className="loading-place"><LandscapeIllustration theme="coast"/><h1>The island is taking its time.</h1><p className="inline-error" role="alert"><Icon name="warning" size={18}/>{loadError}</p><button className="primary-button" onClick={() => { void load(); }}>Try again <Icon name="arrow"/></button></main>}
-    {!loading && !loadError && !run && pendingRun && <main className="loading-place"><LandscapeIllustration theme={pendingRun.puzzle.theme}/><h1>Before the clock starts.</h1></main>}
+    {loading && <main className="loading-place">{CRAFT_PREVIEW ? <BrandMark/> : <LandscapeIllustration/>}<p className="eyebrow"><Icon name="leaf" size={14}/>A LITTLE PATIENCE</p><h1>Unfolding your little place...</h1><p>The roads, the ponds, the possibilities.</p></main>}
+    {!loading && loadError && <main className="loading-place">{CRAFT_PREVIEW ? <BrandMark/> : <LandscapeIllustration theme="coast"/>}<h1>The island is taking its time.</h1><p className="inline-error" role="alert"><Icon name="warning" size={18}/>{loadError}</p><button className="primary-button" onClick={() => { void load(); }}>Try again <Icon name="arrow"/></button></main>}
+    {!loading && !loadError && screen === 'home' && bootstrap && dailyClock && <GameHome
+      edition={bootstrap.edition} nextDailyClock={dailyClock} daily={homeDaily.state} firstVisit={!preferences.seenGuides.includes('basics')}
+      guestComplete={guestDailyComplete} local={bootstrap.source === 'local'} nextPractice={nextCampaign}
+      nextPracticeNumber={nextCampaignIndex + 1} completed={[...achievements.values()].filter(value => value.completed).length}
+      total={campaign.length} practiceBusy={practiceLoading !== null} practiceSyncing={progressSync.phase === 'loading'}
+      practiceNeedsStars={replayForStars}
+      practiceError={dialogError} syncError={progressSync.phase === 'error' ? progressSync.message : null}
+      onGuide={startWalkthrough} onRetry={homeDaily.refresh} onRetrySync={progressSync.retry}
+      onPlay={() => { if (bootstrap.edition) openDaily(bootstrap.edition, preferencesRef.current.seenGuides); }}
+      onResults={() => {
+        if (bootstrap.edition && homeDaily.state.status === 'complete' && homeDaily.state.edition === bootstrap.edition.id) {
+          setRecordedDaily({ edition: bootstrap.edition, result: homeDaily.state.result });
+          setScreen('results');
+        }
+      }}
+      onPractice={() => { if (nextCampaign) openPractice(nextCampaign.id); else { setDialogError(null);setDialog('atlas'); } }}
+      onMap={() => { setDialogError(null);setDialog('atlas'); }}/> }
+    {!loading && !loadError && screen === 'results' && recordedDaily && <SavedDailyResults key={recordedDaily.edition.id}
+      edition={recordedDaily.edition} result={recordedDaily.result}
+      onReplay={() => openRun({ puzzle: recordedDaily.edition.puzzle, kind: 'daily', edition: recordedDaily.edition.id, number: recordedDaily.edition.number }, preferencesRef.current.seenGuides)}
+      onPractice={() => { setDialogError(null); setDialog('atlas'); }}/>}
+    {!loading && !loadError && screen !== 'home' && !run && pendingRun && <main className="loading-place">{CRAFT_PREVIEW ? <BrandMark/> : <LandscapeIllustration theme={pendingRun.puzzle.theme}/>}<h1>Before the clock starts.</h1></main>}
 
-    {!loading && !loadError && run && bootstrap && <main className={`game-layout board-first ${run.kind === 'studio' || run.kind === 'guide' ? 'practice-play' : ''}`}>
+    {!loading && !loadError && screen === 'game' && run && bootstrap && <main className={`game-layout board-first ${run.kind === 'studio' || run.kind === 'guide' ? 'practice-play' : ''}`}>
       <aside className="story-panel">
         <div className="place-heading">
-          <div className="edition-label">{run.kind === 'guide' ? 'GUIDED PRACTICE' : run.kind === 'studio' ?
-            `ISLAND ${(currentWorld?.index ?? 0) + 1} / STOP ${currentCampaignIndex + 1}` : `${todayLabel.toUpperCase()} / NO. ${run.number?.toString().padStart(3, '0')}`}</div>
+          <div className="edition-label">{run.kind === 'guide' ? `LESSON ${guideLessonIndex + 1} / ${TUTORIAL_LESSONS.length}` : run.kind === 'studio' ?
+            `${run.puzzle.archived ? 'ORIGINAL ROAD' : `ISLAND ${(currentWorld?.index ?? 0) + 1}`} / STOP ${currentCampaignIndex + 1}` : `${todayLabel.toUpperCase()} / NO. ${run.number?.toString().padStart(3, '0')}`}</div>
           <h1 title={run.puzzle.title}>{run.puzzle.title}<span className="title-period">.</span></h1>
-          <div className="challenge-facts"><span>{board.length} x {board.length}</span><span>{difficultyLabel(run.puzzle.minimum)}</span>
+          <div className="challenge-facts"><span>{board.length} x {board.length}</span><span>{difficultyLabel(run.puzzle.minimum, run.kind === 'studio' ? run.puzzle.challengeTier : undefined)}</span>
             {run.puzzle.frame && <span>{run.puzzle.frame === 'ell' ? '4-square L' : run.puzzle.frame === 'strip' ? '3-square strips' : '2 x 2 squares'}</span>}
-            {run.puzzle.minimum && <span title="A checked solution matches the proven lower bound for this patch size.">Minimum {run.puzzle.minimum} {run.puzzle.minimum === 1 ? 'exchange' : 'exchanges'}</span>}
           </div>
           {earnedRank && earnedRank.solveMs !== null && <div className="my-rank-line" data-testid="my-rank" role="status"
             title={`${firstResultOnly ? 'First result' : 'Best'}: ${earnedRank.swaps} moves in ${formatSolveTime(earnedRank.solveMs, true)}. Among ${earnedRank.participants} genuine finishers for ${run.edition}. Tied results share a percentage.`}>
@@ -800,7 +986,10 @@ export default function App() {
           {firstResultOnly && <p className="practice-note daily-policy" data-testid="daily-policy"><Icon name={replayStatus ? 'book' : 'trophy'} size={16}/>
             {replayStatus ? 'Daily replay · unranked' : 'Daily · first finish counts'}</p>}
           {run.kind !== 'daily' && <p className="practice-note"><Icon name={run.kind === 'guide' ? 'book' : 'map'} size={16}/>
-            {run.kind === 'guide' ? 'Practice · no timer' : `Practice · ${currentWorld?.title ?? 'unranked'}`}</p>}
+            {run.kind === 'guide' ? 'Practice · no timer' : run.puzzle.archived ? 'Practice · Original route' : `Practice · ${currentWorld?.title ?? 'unranked'}`}
+            {originalTarget && <button className="text-button original-route-toggle" disabled={practiceLoading !== null}
+              onClick={() => openPractice(originalTarget)} aria-label={run.puzzle.archived ? 'Play the revised route for this stop' : 'Replay the original route for this stop'}>
+              <Icon name="book" size={15}/>{run.puzzle.archived ? 'New road' : 'Original road'}</button>}</p>}
         </div>
         <div className="mission" aria-label="Connect every home in this order before the traveler starts">
           <ol className="journey-order" aria-label={`Visit ${run.puzzle.journey?.join(', then ') ?? ''} in order`}>
@@ -808,7 +997,7 @@ export default function App() {
               data-stop={anchor} data-arrived={index === 0 || arrived.includes(anchor) ? 'true' : 'false'}
               aria-current={anchor === nextStop ? 'step' : undefined}>
               <span className={`journey-stop ${index === 0 || arrived.includes(anchor) ? 'arrived' : ''} ${anchor === celebration?.anchors[0] ? 'stop-celebrating' : ''}`}
-                aria-label={`${anchor}: ${index === 0 ? 'start' : arrived.includes(anchor) ? 'arrived' : anchor === nextStop ? 'next stop' : 'later stop'}`}><HomeLetter anchor={anchor}/><span className="sr-only">{anchor}</span>
+                aria-label={`${anchor}: ${index === 0 ? 'start' : arrived.includes(anchor) ? 'arrived' : anchor === nextStop ? 'next stop' : 'later stop'}`}><JourneyCottage anchor={anchor}/><span className="sr-only">{anchor}</span>
                 {(index === 0 || arrived.includes(anchor)) && <span className="journey-arrival-mark" aria-hidden="true"><Icon name="check" size={9}/></span>}
               </span>
               {index < stops.length - 1 && <span className="journey-arrow" aria-hidden="true">→</span>}
@@ -819,6 +1008,11 @@ export default function App() {
       </aside>
 
       <section ref={stageSection} className="island-panel" aria-label="The playable island">
+        {guideLesson && <TutorialCoach target={guideBounds} frame={guideStage === 'frame'} second={guideStage === 'second'}
+          step={Math.min(moves.length + 1, guideLesson.moves.length)} total={guideLesson.moves.length}
+          lesson={guideLesson.name} instruction={guideInstruction} detail={guideDetail} checking={guideProbe !== null || guideLesson.moves.length === 0}
+          pointing={!busy && !roadReady && dialog === null && boardReady}
+          onSkip={() => finishWalkthrough(true)}/>}
         <div className="play-toolbar" id="game-controls" tabIndex={-1}>
           <div className="visual-frames" role="group" aria-label="Frame orientation" aria-describedby={run.kind === 'guide' ? 'lesson-instruction' : undefined}>
             <span className="frame-label">Frame</span>
@@ -843,13 +1037,15 @@ export default function App() {
               <Icon name="clock" size={15}/>{formatSolveTime(elapsedMs, timer.phase === 'solved')}
             </span>}
           </div>
-          <button className="icon-button undo-control" disabled={!timer.canPlay || moves.length === 0 || busy} onClick={undo} aria-label="Undo" title="Undo"><Icon name="undo" size={20}/></button>
         </div>
         <BoardView board={board} moves={moves} puzzleId={run.puzzle.id} theme={run.puzzle.theme} seed={localHash(run.puzzle.id)}
           shape={shape} axes={frameAxes} first={first} second={null}
-          hover={run.kind === 'guide' ? !roadReady && guideStage !== 'frame' ? first ? guideMove?.b ?? null : guideMove?.a ?? null : null : hover}
-          invalid={run.kind === 'guide' ? false : feedback !== null} blockedCells={feedbackCells}
+          hover={run.kind === 'guide' ? !roadReady && !guideProbe && guideStage !== 'frame' ? first ? guideMove?.b ?? null : guideMove?.a ?? null : null : hover}
+          invalid={run.kind === 'guide' ? false : feedback !== null} invalidPick={selectionFeedback || guideFeedback ? invalidPick : null} blockedCells={feedbackCells}
           routes={routes} transition={transition} reduced={reducedMotion} dark={dark} flat={preferences.flat} guide={run.kind === 'guide'} postcard={POSTCARD_PREVIEW}
+          guideProbe={guideProbe?.cell ?? (guideLesson?.moves.length === 0 ? guideFeedback?.cell : null) ?? null}
+          guideBlockedLink={guideFeedback?.blockedToward ? { from: guideFeedback.cell, to: guideFeedback.blockedToward } : null}
+          miniature={MINIATURE_PREVIEW}
           communityCount={POSTCARD_PREVIEW && allHomesArrived ? community?.players ?? null : null}
           celebration={celebration} arrived={arrived} restingStop={restingStop}
           onMoving={setTravelerMoving}
@@ -864,11 +1060,15 @@ export default function App() {
           onGuideBounds={updateGuideBounds} onArrival={onArrival} onJourneyEnd={onJourneyEnd}
           onCell={onCell} onHover={onHover} onBusy={setBusy} onFallback={fallback}/>
         <div className="board-footer">
-        <div className={`island-status ${feedback ? 'selection-warning' : ''}`}
+        <div key={invalidPick} className={`island-status ${feedback ? 'selection-warning' : ''}`}
+          data-selection-error={selectionFeedback ? 'tap' : feedback ? 'hover' : undefined}
           role={selectionFeedback ? 'alert' : 'status'} aria-live={selectionFeedback ? 'assertive' : 'polite'}
           data-testid="selection-status" title={feedback?.message ?? (first ? 'Tap the same starting square again to deselect.' : undefined)} aria-label={feedback?.message}>
           {!won && (run.kind !== 'guide' || feedback) && <>{feedback ? <Icon name="warning" size={18}/> : <span className="status-step">{first ? '2' : '1'}</span>}
             <span>{feedback ? selectionLabels[feedback.code] : status}</span></>}
+          {CRAFT_PREVIEW && !won && run.kind === 'guide' && !feedback && <span>
+            {guideFeedback?.blockedToward ? 'The road is still broken.' : 'One road. Every home.'}
+          </span>}
           {POSTCARD_PREVIEW && won && run.kind === 'daily' && <button className="text-button postcard-results-button"
             onClick={() => setResultDismissed(false)}><Icon name="trophy" size={16}/>Results</button>}
         </div>
@@ -879,45 +1079,59 @@ export default function App() {
             onClick={() => setPreferences((current) => current.flat ? current : { ...current, flat: true })}><Icon name="grid" size={14}/><span>Flat</span></button>
         </div>
         </div>
-        {completionOpen && <Modal title={standingsOpen ? 'Daily standings.' : run.kind === 'daily' ? 'Your daily result.' : run.kind === 'guide' ? 'You found the way.' : 'Practice complete.'}
-          kind="guide" className="completion-dialog" emblem={<Icon name="trophy" size={25}/>} onClose={() => { setResultDismissed(true); setStandingsOpen(false); }}>
+        {completionOpen && <Modal title={CRAFT_PREVIEW ? "Everyone's home." : standingsOpen ? 'Daily Top 10.' : run.kind === 'daily' ? 'Your daily result.' : run.kind === 'guide' ? 'You found the way.' : 'Practice complete.'}
+          kind="guide" className="completion-dialog" eyebrow={CRAFT_PREVIEW ? 'A GOOD LITTLE JOURNEY' : 'FIELD GUIDE'} emblem={<Icon name="trophy" size={25}/>} headerControl={soundToggle} onClose={() => { setResultDismissed(true); setStandingsOpen(false); }}>
         <div ref={resultCard} className={`result-card ${run.puzzle.minimum === moves.length ? 'perfect-result' : ''} ${reducedMotion ? '' : 'celebrate-completion'} ${standingsOpen ? 'standings-view' : ''}`} data-testid="result-card">
           <div className="completion-confetti" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <i key={index}
             style={{ left: `${(index * 37) % 100}%`, animationDelay: `${index * 38}ms` }}/>)}</div>
           <CompletionSeal perfect={run.puzzle.minimum === moves.length}/>
           <div className="result-copy">
-            <span className="result-label"><Icon name="check" size={13}/>ROAD RESTORED</span>
+            {CRAFT_PREVIEW && <CraftFinishCourier/>}
+            <span className="result-label"><Icon name="check" size={13}/>{CRAFT_PREVIEW ? 'HOME, SWEET HOME.' : 'ROAD RESTORED'}</span>
             {earnedRank ? <div className="rank-reveal" data-testid="rank-popup" role="status">
               <span>{earnedRank.source === 'local' ? 'Local rank' : replayStatus ? 'Your recorded rank' : 'Your rank'} {rankLabel}</span>
               <strong>#{earnedRank.rank}</strong>
               {earnedRank.topPercent !== null && <p>Top {earnedRank.topPercent < 1 ? '<1' : Math.ceil(earnedRank.topPercent)}% {rankLabel}</p>}
-              <span>Among {earnedRank.participants} saved {earnedRank.participants === 1 ? 'finisher' : 'finishers'} in this community. Rank when saved.</span>
-              {firstResultOnly && earnedRank.solveMs !== null && <span className="ranked-first-metrics">Ranked result: {earnedRank.swaps} moves · {formatSolveTime(earnedRank.solveMs, true)}.</span>}
-            </div> : <h2>{run.kind === 'guide' ? 'Three little repairs. Everyone is home!' : run.puzzle.minimum === moves.length ? 'Perfect detour!' : 'Everyone is home!'}</h2>}
-            <div className="result-metrics">
+              <span className="rank-context">{CRAFT_PREVIEW ?
+                `Of ${earnedRank.participants} ${earnedRank.participants === 1 ? 'finisher' : 'finishers'}. Rank when saved.` :
+                `Among ${earnedRank.participants} saved ${earnedRank.participants === 1 ? 'finisher' : 'finishers'} in this community. Rank when saved.`}</span>
+              {firstResultOnly && earnedRank.solveMs !== null && <span className="ranked-first-metrics">{standingsOpen ? 'Ranked:' : 'Ranked result:'} {earnedRank.swaps} moves · {formatSolveTime(earnedRank.solveMs, true)}.</span>}
+            </div> : <h2>{run.kind === 'guide' ? nextGuideLesson ? 'Lesson complete.' : 'You know the little rules.' :
+              CRAFT_PREVIEW ? run.puzzle.minimum === moves.length ? 'A perfect little detour.' : 'You found the way.' :
+                run.puzzle.minimum === moves.length ? 'Perfect detour!' : 'Everyone is home!'}</h2>}
+            <div className={`result-metrics ${firstResultOnly && earnedRank && !replayStatus ? 'ranked-metrics-repeat' : ''}`}>
               {replayStatus && <span>This replay:</span>}
               <span><Icon name="swap" size={15}/>{moves.length} {moves.length === 1 ? 'exchange' : 'exchanges'}</span>
               <span><Icon name={timed ? 'clock' : 'grid'} size={15}/>{timed ? formatSolveTime(elapsedMs, true) : `${footprint} tiles moved`}</span>
             </div>
+            {guideLesson && <p className="completion-next" data-testid="lesson-takeaway">
+              {guideLesson.takeaway}{nextGuideLesson && <> Next: {nextGuideLesson.name}.</>}
+            </p>}
             {run.kind === 'studio' && <div className="practice-star-result" data-testid="practice-star-result">
               <StarRating stars={practiceAward} label={`${practiceAward} of 3 stars for this solution`}/>
               <strong>{practiceAward === 3 ? 'The smallest detour.' : practiceAward > practiceBefore.stars ? 'A brighter little journey.' : 'Another road home.'}</strong>
-              <p>{run.puzzle.minimum !== undefined ? practiceAward < 3 ?
-                `For ${practiceAward === 1 ? '2' : '3'} stars: finish in ${run.puzzle.minimum + (practiceAward === 1 ? 2 : 0)} ${run.puzzle.minimum + (practiceAward === 1 ? 2 : 0) === 1 ? 'move' : 'moves'} or fewer.` :
-                `You matched the ${run.puzzle.minimum}-move minimum.` : 'One completion star kept.'}</p>
+              <p>{CRAFT_PREVIEW ? practiceAward === 3 ? 'Three stars. Beautifully done.' : 'Fewer swaps. More stars.' :
+                practiceAward === 3 ? 'Three stars earned for your route.' : 'Keep exploring: a more efficient route can earn more stars.'}</p>
               <small>Best kept: {bestPracticeStars} / 3 stars{practiceBefore.best !== null && practiceBefore.best < moves.length ?
                 `, in ${practiceBefore.best} moves` : ''}. Time does not affect Practice stars.</small>
+              {currentAchievement?.credited && !run.puzzle.archived && <small className="legacy-credit-note">Earlier stars are kept. This new route has its own move record.</small>}
               {practiceProgress.unlockedWorlds > practiceBefore.worlds && <p className="practice-world-open" role="status">
                 <Icon name="map" size={16}/>New island open: {worlds[practiceProgress.unlockedWorlds - 1]?.title}.
               </p>}
+              <p className={progressSync.phase === 'error' ? 'inline-error' : 'practice-save-note'} role={progressSync.phase === 'error' ? 'alert' : 'status'}>
+                {progressSync.phase === 'error' ? progressSync.message : progressSync.phase === 'loading' || progressSync.phase === 'saving' ?
+                  'Saving your Practice progress...' : progressSync.phase === 'saved' ? 'Stops and stars saved to your account.' :
+                    'Guest progress is saved on this device.'}
+                {progressSync.phase === 'error' && <button className="text-button" onClick={progressSync.retry}>Retry sync</button>}
+              </p>
             </div>}
             {run.kind === 'studio' && currentCampaignIndex >= 0 && <p className="completion-next">
-              {replayForStars ? `Replay stop ${nextCampaignIndex + 1} for more stars.` :
+              {replayForStars ? `${starRepairLabel === 'Replay for stars' ? 'Replay' : 'Play'} stop ${nextCampaignIndex + 1} for more stars.` :
                 nextCampaignIndex === currentCampaignIndex + 1 ? `Next: stop ${nextCampaignIndex + 1}.` :
                 nextCampaign ? 'Your next stop is ready.' : `All ${campaign.length} stops complete.`}
             </p>}
             {gateWorld && <p className="completion-next" data-testid="practice-star-gate">
-              {worldStars(gateWorld, campaign, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title}.
+              {worldStars(gateWorld, catalog, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title}.
               {' '}Replay earlier stops to open the next island.
             </p>}
             {run.kind === 'daily' && nextCampaign && <p className="completion-next">Continue in unranked Practice: stop {nextCampaignIndex + 1}.</p>}
@@ -939,15 +1153,20 @@ export default function App() {
             {standingsOpen && run.edition && <div id="daily-top-ten"><DailyStandings state={standings} edition={run.edition} onRetry={() => { void loadStandings(); }}/></div>}
           </section>}
         </div>
-          <div className="result-actions completion-actions">
-            {run.kind === 'guide' ? <button className="primary-button" onClick={() => setDialog('tour-places')}>Choose your next road <Icon name="arrow" size={17}/></button> :
+          <div className={`result-actions completion-actions ${run.kind === 'studio' ? 'practice-completion-actions' : ''}`}>
+            {run.kind === 'guide' ? <button className="primary-button" onClick={() => nextGuideLesson ?
+              begin({ puzzle: nextGuideLesson.puzzle, kind: 'guide', edition: null, number: null }) :
+              CRAFT_PREVIEW ? finishWalkthrough(false) : setDialog('tour-places')}>
+              {nextGuideLesson ? 'Next lesson' : CRAFT_PREVIEW ? bootstrap.edition && homeDaily.state.status === 'ready' ? "Play today's island" : 'Back home' : 'Choose your next road'} <Icon name="arrow" size={17}/></button> :
               <>{run.kind === 'daily' && saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}
                 {run.kind === 'daily' && replayRankError && <button className="secondary-button" onClick={() => setReplayRankRetry((current) => current + 1)}
                   aria-label="Retry loading recorded rank"><Icon name="reset" size={17}/>Retry rank</button>}
                 {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
-                  onClick={() => { if (nextCampaign) openPractice(nextCampaign.id); }} aria-label={replayForStars ? 'Replay for stars' : 'Continue your journey'}>
-                  {replayForStars ? 'Replay for stars' : 'Continue your journey'} <Icon name="arrow" size={17}/>
+                  onClick={() => { if (nextCampaign) openPractice(nextCampaign.id); }} aria-label={replayForStars ? starRepairLabel : 'Continue your journey'}>
+                  {replayForStars ? starRepairLabel : CRAFT_PREVIEW ? 'Next stop' : 'Continue your journey'} <Icon name="arrow" size={17}/>
                 </button>}
+                {run.kind === 'studio' && <button className="secondary-button" disabled={practiceLoading !== null}
+                  onClick={() => openPractice(run.puzzle.id)} aria-label="Replay this Practice stop"><Icon name="reset" size={17}/>Replay</button>}
                 {POSTCARD_PREVIEW && run.kind === 'daily' ? <button className={`${nextCampaign ? 'secondary-button' : 'primary-button'} standings-toggle`}
                   aria-label={standingsOpen ? 'Back to result' : 'View Daily Top 10'} aria-expanded={standingsOpen} aria-controls="daily-top-ten"
                   onClick={() => { if (standingsOpen) setStandingsOpen(false); else void loadStandings(); }}>
@@ -961,15 +1180,10 @@ export default function App() {
 
     </main>}
 
-    {run?.kind === 'guide' && <TutorialCoach target={guideBounds} frame={guideStage === 'frame'} second={guideStage === 'second'}
-      step={Math.min(moves.length + 1, TUTORIAL_MOVES.length)} total={TUTORIAL_MOVES.length}
-      instruction={guideInstruction} pointing={!busy && !roadReady && dialog === null && boardReady}
-      onSkip={() => finishWalkthrough(true)}/>}
-
     {notice && <div className={`toast ${notice.error ? 'toast-error' : ''}`} role={notice.error ? 'alert' : 'status'}><Icon name={notice.error ? 'warning' : 'check'} size={18}/><span>{notice.message}</span><button aria-label="Dismiss message" onClick={() => setNotice(null)}><Icon name="close" size={15}/></button></div>}
 
-    {dialog === 'welcome' && <Modal title="Move a little world." kind="guide" className="walkthrough-dialog" onClose={() => finishWalkthrough(true)}>
-      <p className="tour-eyebrow">1 / 3 · THE GOAL</p>
+    {dialog === 'welcome' && <Modal title={CRAFT_PREVIEW ? 'A little way home.' : 'Move a little world.'} kind="guide" eyebrow={CRAFT_PREVIEW ? 'ONE SMALL DETOUR' : 'FIELD GUIDE'} className="walkthrough-dialog" emblem={<GuideCourier portrait/>} headerControl={soundToggle} onClose={visitToday}>
+      {CRAFT_PREVIEW ? <CraftScene/> : <p className="tour-eyebrow">1 / 3 · THE GOAL</p>}
       <div className="tutorial-goal" data-testid="tutorial-goal">
         <GuideIllustration step={3}/>
         <ol className="tutorial-goal-route" aria-label="Example route: A, then B, then C">
@@ -979,16 +1193,16 @@ export default function App() {
           </li>)}
         </ol>
       </div>
-      <p className="dialog-intro tutorial-goal-copy"><strong>Give everyone a way home.</strong>
-        Make one continuous road from A, through B, to C. C is the final home in this example.
-        The courier waits at A until the whole road is ready, then follows it through every home in order.
-        No gaps, diagonals or revisiting a square.</p>
-      <p className="tour-reassurance"><Icon name="clock" size={18}/>This example has no timer and cannot affect your rank.</p>
-      <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
-        <button className="primary-button" onClick={() => setDialog('tour-tools')}>See the moves <Icon name="arrow" size={17}/></button></div>
+      <p className="dialog-intro tutorial-goal-copy"><strong>{CRAFT_PREVIEW ? 'Get everyone home.' : 'Give everyone a way home.'}</strong>
+        {CRAFT_PREVIEW ? 'Swap two matching patches.' : <>Connect A, then B, then C with one unbroken road. C is the final home here.
+        The courier waits at A until the whole road is ready, then visits every home in order.
+        No gaps, diagonals or revisiting a square.</>}</p>
+      <p className="tour-reassurance"><Icon name="clock" size={18}/>{CRAFT_PREVIEW ? 'Three little lessons. No clock. No rank.' : 'Three guided lessons, with no timer and no effect on your rank.'}</p>
+      <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
+        <button className="primary-button" onClick={() => setDialog(CRAFT_PREVIEW ? null : 'tour-tools')}>{CRAFT_PREVIEW ? 'Try a little swap' : 'See the moves'} <Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
-    {dialog === 'tour-tools' && <Modal title="Your little toolkit." kind="guide" className="walkthrough-dialog tutorial-tools" wide onClose={() => finishWalkthrough(true)}>
+    {dialog === 'tour-tools' && <Modal title="Your little toolkit." kind="guide" className="walkthrough-dialog tutorial-tools" headerControl={soundToggle} wide onClose={visitToday}>
       <div className="tutorial-step-nav"><p className="tour-eyebrow">2 / 3 · YOUR MOVES</p>
         <button className="text-button tutorial-back" onClick={() => setDialog('welcome')} aria-label="Back" title="Back to the goal"><Icon name="undo" size={16}/>Back</button>
       </div>
@@ -1003,28 +1217,28 @@ export default function App() {
             onClick={() => setPreferences((current) => ({ ...current, flat: true }))}><Icon name="grid" size={18}/>Try Flat</button>
         </div>
       </div>
-      <p className="tutorial-next">Next: 3 / 3. Try three exchanges with my tap markers.</p>
-      <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
+      <p className="tutorial-next">Next: three hands-on lessons on patches, water and fixed tiles, then bridges.</p>
+      <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => setDialog(null)}>Show me <Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
     {dialog === 'tour-places' && <Modal
       title="A new way, every day."
-      kind="guide" className="walkthrough-dialog" emblem={<GuideCourier portrait/>} wide onClose={() => finishWalkthrough(true)}>
+      kind="guide" className="walkthrough-dialog" emblem={<GuideCourier portrait/>} headerControl={soundToggle} wide onClose={visitToday}>
       <p className="tour-eyebrow">YOU'RE READY · CHOOSE YOUR ROAD</p>
       <WalkthroughFeatures section="places" places={campaign.length}/>
-      <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)} aria-label="Skip walkthrough and play today">Skip</button>
+      <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => finishWalkthrough(false)}>
           {bootstrap?.edition ? 'Play today' : 'Explore'}<Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
-    {dialog === 'tiles' && <Modal title="A little new terrain." kind="guide" className="walkthrough-dialog terrain-intro" wide onClose={acceptTileGuide}>
+    {dialog === 'tiles' && <Modal title="A little new terrain." kind="guide" className="walkthrough-dialog terrain-intro" headerControl={soundToggle} wide onClose={visitToday}>
       <p className="tour-reassurance"><Icon name="clock" size={18}/>The next countdown has not started.</p>
       <TileGuide only={pendingTopics}/>
       <div className="dialog-actions"><button className="primary-button" onClick={acceptTileGuide}>Start island <Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
-    {dialog === 'guide' && <Modal title="How to find a way." kind="guide" onClose={() => setDialog(null)} wide>
+    {dialog === 'guide' && <Modal title="How to find a way." kind="guide" headerControl={soundToggle} onClose={() => setDialog(null)} wide>
       <div className="dialog-welcome">
         <LandscapeIllustration theme={run?.puzzle.theme ?? 'meadow'}/>
         <p className="dialog-intro"><strong>The whole road comes first.</strong> Connect A, then B, then C, in the shown order.
@@ -1032,7 +1246,7 @@ export default function App() {
       </div>
       <div className="guide-steps">
         {[['Choose a frame', 'Each island uses one frame family. Later Practice teaches three-square strips, four-square gardens and L patches. Choose its pictured orientation; terrain never rotates.'],
-          ['Tap two places', 'Tap your first patch, then the matching patch. Tap the same starting square again to deselect. A valid second patch swaps immediately; Undo is free.'],
+          ['Tap two places', 'Wide patches start at the left tile; tall patches at the top tile. Square and L patches start at the top-left. Tap the same start again to deselect. A valid second patch swaps immediately. In the guide, either square inside a marked patch works.'],
           ['Finish the road', 'Keep one continuous trail through every home, in order. No diagonals, skipped homes or revisiting a square. Then the traveler walks and celebrates.']].map(([title, text], index) =>
           <div className="guide-step" key={title}><GuideIllustration step={index + 1}/><span className="guide-step-number">0{index + 1}</span><h3>{title}</h3><p>{text}</p></div>)}
       </div>
@@ -1042,24 +1256,45 @@ export default function App() {
         The clock starts after 3, 2, 1 and stops on the winning exchange.</p></div>
         <button className="primary-button" onClick={startWalkthrough}><Icon name="play" size={17}/>Replay walkthrough</button></div>
       <div className="guide-footnotes">
-        <p><Icon name="trophy" size={18}/><span>Practice stars: 3 for minimum moves, 2 within two extra moves, 1 for finishing.
-          Keep your highest stars. Finish an island's stops and collect 30 of its 60 stars to open the next one. Daily ranking is separate.</span></p>
-        <p><Icon name="undo" size={18}/><span>Undo is free and keeps the clock running. It cancels the walk and returns the traveler to A.</span></p>
+        <p><Icon name="trophy" size={18}/><span>Practice stars reward efficient routes. Keep your highest stars, and discover better roads by replaying.
+          Finish an island's stops and collect 30 of its 60 stars to open the next one. Daily ranking is separate.</span></p>
+        <p><Icon name="check" size={18}/><span>Every completed exchange counts. There is no Undo in Daily or Practice.</span></p>
         <p><Icon name="grid" size={18}/><span>Keyboard: arrows choose a square; Space selects it; Escape clears a cut. Flat map has individual labeled buttons.</span></p>
         <p><Icon name="lock" size={18}/><span>Saved scores are yours to control. <button className="text-button data-management-link"
           onClick={() => { setDialogError(null); setDialog('erase'); }}>Manage saved data</button></span></p>
+        <p><Icon name="map" size={18}/><span>Practice stops and stars sync to your signed-in account in this community.
+          <button className="text-button data-management-link" onClick={() => { setDialogError(null); setDialog('erase-practice'); }}>Manage Practice progress</button></span></p>
       </div>
     </Modal>}
 
-    {dialog === 'atlas' && <Modal title="Practice map." kind="map" className="adventure-dialog" onClose={() => {
+    {dialog === 'atlas' && <Modal title="Practice map." kind="map" className="adventure-dialog" headerControl={soundToggle} onClose={() => {
       practiceRequest.current++; setPracticeLoading(null); setDialog(null);
     }} wide>
       <AdventureMap places={bootstrap?.catalog ?? []} completed={preferences.completed} progress={practiceProgress} currentId={run?.puzzle.id ?? ''}
-        reduced={reducedMotion}
-        loading={practiceLoading} error={dialogError} onSelect={openPractice} onToday={visitToday}/>
+        reduced={reducedMotion} dark={dark}
+        loading={practiceLoading} error={dialogError} onSelect={openPractice} onToday={visitToday} sync={progressSync}/>
     </Modal>}
 
-    {dialog === 'erase' && <Modal title="Remove saved scores?" kind="erase" onClose={() => setDialog(null)}>
+    {dialog === 'erase-practice' && <Modal title="Remove Practice progress?" kind="erase" headerControl={soundToggle} onClose={() => setDialog(null)}>
+      <p className="dialog-intro">Remove your completed Practice stops, stars and opened islands from this device and your account in this community.
+        Daily scores and view/sound choices stay unchanged. This cannot be undone.</p>
+      {dialogError && <p className="inline-error" role="alert">{dialogError}</p>}
+      <div className="dialog-actions"><button className="secondary-button" disabled={publishing} onClick={() => setDialog(null)}>Keep my progress</button>
+        <button className="primary-button danger-button" disabled={publishing} onClick={() => {
+          setPublishing(true); setDialogError(null);
+          const action = bootstrap?.playerName !== null && bootstrap !== null ? progressSync.clear() : Promise.resolve().then(() => {
+            const ids = new Set(bootstrap?.catalog.map((place) => place.id) ?? []);
+            setPreferences((current) => ({ ...current, completed: current.completed.filter((id) => !ids.has(id)),
+              practice: { bests: {}, unlockedWorlds: 1 } }));
+          });
+          void action.then(() => { setDialog(null); notify('Your Practice progress was removed. Daily scores were kept.'); })
+            .catch((error: unknown) => { console.error('Practice progress could not be removed:', error); setDialogError(messageOf(error)); })
+            .finally(() => setPublishing(false));
+        }}><Icon name="trash" size={17}/>{publishing ? 'Removing...' : 'Remove Practice progress'}</button>
+      </div>
+    </Modal>}
+
+    {dialog === 'erase' && <Modal title="Remove saved scores?" kind="erase" headerControl={soundToggle} onClose={() => setDialog(null)}>
       <p className="dialog-intro">Remove your rankings, active timers and synced guide choices from this game community. This cannot be undone.
         Removing a Daily result does not give another ranked turn for that edition.</p>
       <div className="data-choice-grid">
@@ -1069,6 +1304,8 @@ export default function App() {
       {dialogError && <p className="inline-error" role="alert"><Icon name="warning" size={18}/>{dialogError}</p>}
       <div className="dialog-actions"><button className="secondary-button" disabled={publishing} onClick={() => setDialog(null)}>Keep my records</button>
       <button className="primary-button danger-button" disabled={publishing} onClick={() => {
+        const erasedLanding = recordedDaily;
+        const erasedRevision = currentRevision.current;
         setPublishing(true);
         void Promise.all([...guideWrites.current]).then(() => gameApi.erase()).then(() => {
           saveRequest.current++;
@@ -1079,11 +1316,13 @@ export default function App() {
           setMyRank(null);
           setPreferences((current) => ({ ...current, seenGuides: [] }));
           setDialog(null);
+          if (erasedLanding && erasedRevision === currentRevision.current) visitToday();
+          else if (screen === 'home') homeDaily.refresh();
           notify('Your leaderboard records were removed.');
         })
           .catch((error: unknown) => { console.error('Could not erase leaderboard data:', error); setDialogError(messageOf(error)); })
           .finally(() => setPublishing(false));
       }}><Icon name="trash" size={17}/>{publishing ? 'Removing...' : 'Remove my records'}</button></div>
     </Modal>}
-  </div>;
+  </div></CraftArtContext.Provider></GardenArtContext.Provider>;
 }

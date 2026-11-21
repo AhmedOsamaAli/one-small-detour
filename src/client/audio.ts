@@ -11,37 +11,58 @@ export class IslandAudio {
   private musicTimer: number | null = null;
   private beat = 0;
   private requested = false;
+  private automaticRequested = false;
   private enableRevision = 0;
+  private enabling: Promise<void> | null = null;
   private melodyTimers: number[] = [];
   private readonly onError: (message: string) => void;
+  private readonly onPlaying: (playing: boolean) => void;
 
-  constructor(onError: (message: string) => void) {
+  constructor(onError: (message: string) => void, onPlaying: (playing: boolean) => void) {
     this.onError = onError;
+    this.onPlaying = onPlaying;
     document.addEventListener('visibilitychange', this.visibility);
   }
 
   get enabled(): boolean {
-    return this.requested;
+    return this.requested && this.context?.state === 'running';
+  }
+
+  tryAutoplay(): boolean {
+    if (this.requested || this.enabling) return this.enabled;
+    this.automaticRequested = true;
+    try {
+      const context = this.context ?? this.create();
+      if (context.state === 'running' && !document.hidden) this.play(context);
+      return this.enabled;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') return false;
+      this.automaticRequested = false;
+      throw error;
+    }
   }
 
   async enable(): Promise<void> {
+    if (this.enabled) return;
+    if (this.enabling) return this.enabling;
     const revision = ++this.enableRevision;
-    if (!window.AudioContext) throw new Error('This browser does not support the island soundscape.');
-    if (!this.context) this.create();
-    const context = this.context;
-    if (!context) throw new Error('The island soundscape could not start.');
-    await context.resume();
-    if (revision !== this.enableRevision) return;
-    this.requested = true;
-    this.master?.gain.setTargetAtTime(0.52, context.currentTime, 0.18);
-    this.startMusic();
-    this.note(12, 0.06, 0.7);
-    this.note(19, 0.04, 0.8, 0.12);
+    this.automaticRequested = false;
+    const context = this.context ?? this.create();
+    const activation = context.resume().then(() => {
+      if (revision !== this.enableRevision) return;
+      if (context.state !== 'running') throw new Error('The browser paused the soundscape. Tap sound to try again.');
+      this.play(context);
+    }).finally(() => { if (this.enabling === activation) this.enabling = null; });
+    this.enabling = activation;
+    return activation;
   }
 
   disable(): void {
     this.enableRevision++;
+    this.enabling = null;
+    this.automaticRequested = false;
     this.requested = false;
+    this.onPlaying(false);
     this.stopMusic();
     this.melodyTimers.forEach((timer) => window.clearTimeout(timer));
     this.melodyTimers = [];
@@ -99,9 +120,21 @@ export class IslandAudio {
     }, Math.min(route.length, 14) * 130 + 100));
   }
 
-  private create(): void {
+  private play(context: AudioContext): void {
+    this.automaticRequested = false;
+    this.requested = true;
+    this.master?.gain.setTargetAtTime(0.52, context.currentTime, 0.18);
+    this.startMusic();
+    this.note(12, 0.06, 0.7);
+    this.note(19, 0.04, 0.8, 0.12);
+    this.onPlaying(true);
+  }
+
+  private create(): AudioContext {
+    if (!window.AudioContext) throw new Error('This browser does not support the island soundscape.');
     const context = new AudioContext();
     this.context = context;
+    context.addEventListener('statechange', this.stateChanged);
     const master = context.createGain();
     master.gain.value = 0;
     const compressor = context.createDynamicsCompressor();
@@ -136,6 +169,7 @@ export class IslandAudio {
     air.connect(airFilter).connect(airGain).connect(master);
     air.start();
     this.ambient = air;
+    return context;
   }
 
   private noiseBuffer(seconds: number): AudioBuffer {
@@ -181,7 +215,7 @@ export class IslandAudio {
   }
 
   private startMusic(): void {
-    if (this.musicTimer !== null) return;
+    if (this.musicTimer !== null || !this.requested || document.hidden) return;
     const phrase = [0, 7, 4, 9, 2, 7, 4, 2, 0, 9, 7, 4, 2, 4, 7, 2];
     this.musicTimer = window.setInterval(() => {
       if (!this.requested || document.hidden) return;
@@ -207,7 +241,18 @@ export class IslandAudio {
     }
   };
 
+  private stateChanged = (): void => {
+    const context = this.context;
+    if (context && this.automaticRequested && context.state === 'running' && !document.hidden) {
+      this.play(context);
+    } else this.onPlaying(this.enabled);
+  };
+
   private fail(error: unknown): void {
+    if (error instanceof DOMException && error.name === 'NotAllowedError') {
+      this.onPlaying(false);
+      return;
+    }
     console.error('Island soundscape failed:', error);
     this.disable();
     this.onError('The soundscape paused. Tap sound to try again.');
@@ -215,6 +260,7 @@ export class IslandAudio {
 
   dispose(): void {
     document.removeEventListener('visibilitychange', this.visibility);
+    this.context?.removeEventListener('statechange', this.stateChanged);
     this.disable();
     this.ambient?.stop();
     if (this.context) void this.context.close().catch((error: unknown) => console.error('Could not close audio:', error));

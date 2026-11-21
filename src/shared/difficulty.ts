@@ -1,7 +1,8 @@
 import { applySwap, assertBoard, checkPuzzle, checkRoutes, legalSwaps, locate, rulesFor, validateRepair, walkable } from './rules.ts';
 import type { Anchor, AuthoredPuzzle, Board, Goal, Puzzle, Swap } from './types.ts';
 
-export function difficultyLabel(minimum: number | undefined): string {
+export function difficultyLabel(minimum: number | undefined, tier?: 1 | 2 | 3 | 4): string {
+  if (tier !== undefined) return tier === 1 ? 'Warm-up' : tier === 2 ? 'Plan ahead' : tier === 3 ? 'Interwoven' : 'Intricate';
   if (!minimum || minimum <= 1) return 'Warm-up';
   if (minimum === 2) return 'Thoughtful';
   if (minimum === 3) return 'Tricky';

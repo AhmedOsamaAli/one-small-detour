@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=22.18.0"
   },
@@ -15,6 +15,7 @@
     "check": "npm run typecheck && npm test && npm run build",
     "verify:daily": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/verify-daily.ts",
     "generate:campaign": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/generate-campaign.ts",
+    "generate:pair-preview": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/generate-pair-preview.ts",
     "check:release": "npm run check && npm run verify:daily",
     "devvit:login": "devvit login",
     "devvit:playtest": "devvit playtest"

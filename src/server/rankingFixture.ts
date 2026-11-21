@@ -17,6 +17,7 @@ export class RankingFixture implements RankRedis {
   readonly versions = new Map<string, number>();
   readonly ordered = new Map<string, { members: Member[]; positions: Map<string, number> }>();
   beforeExec: (() => void) | null = null;
+  rejectNilTransactions = false;
   now = Date.parse('2026-11-15T12:00:00Z');
 
   count(name: string): void { this.calls[name] = (this.calls[name] ?? 0) + 1; }
@@ -75,6 +76,7 @@ export class RankingFixture implements RankRedis {
   async set(key: string, value: string, options?: Options): Promise<string> { this.count('set'); return this.rawSet(key, value, options); }
   async zAdd(key: string, ...members: Member[]): Promise<number> { this.count('zAdd'); return this.rawAdd(key, members); }
   async zCard(key: string): Promise<number> { this.count('zCard'); return this.sets.get(key)?.size ?? 0; }
+  async zScore(key: string, member: string): Promise<number | undefined> { this.count('zScore'); return this.sets.get(key)?.get(member); }
   async zRange(key: string, start: number, stop: number, options: Range): Promise<Member[]> { this.count('zRange'); return this.rawRange(key, start, stop, options); }
   async expire(key: string, seconds: number): Promise<void> { this.count('expire'); this.expirations.set(key, this.now + seconds * 1000); }
   async hScan(key: string, cursor: number): Promise<{ cursor: number; fieldValues: { field: string; value: string }[] }> {
@@ -94,7 +96,13 @@ export class RankingFixture implements RankRedis {
       exec: async () => {
         this.count('exec'); this.beforeExec?.();
         if (keys.some((key, index) => (this.versions.get(key) ?? 0) !== versions[index])) return null;
-        return commands.map((command) => command());
+        return commands.map((command, index) => {
+          const value = command();
+          if (this.rejectNilTransactions && value === null) {
+            throw new Error(`unable to transform result of command ${index + 1} of ${commands.length} in transaction: valkey nil message`);
+          }
+          return value;
+        });
       },
       set: (key, value, options) => queue('set', () => this.rawSet(key, value, options)),
       del: (...keys) => queue('del', () => this.rawDel(keys)),

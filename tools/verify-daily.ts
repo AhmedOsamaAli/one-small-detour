@@ -4,6 +4,8 @@ import { performance } from 'node:perf_hooks';
 import { certifyMinimum } from '../src/shared/difficulty.ts';
 import { dailyMinimum, dailyPuzzleForDate, editionForDate, getPuzzles, nextReset, puzzleDate, STARTER_DAILY_START } from '../src/shared/puzzles.ts';
 import { MAX_EXCHANGES, roadFingerprint, RULE_VERSION, validateRepair } from '../src/shared/rules.ts';
+import { BIOME_ORDER } from '../src/shared/biomes.ts';
+import { REASONING_REFINEMENTS } from '../src/shared/reasoningRefinements.generated.ts';
 
 if (process.argv.length > 3) throw new Error('Usage: npm run verify:daily -- [YYYY-MM-DD]');
 const start = process.argv[2] ?? new Date().toISOString().slice(0, 10);
@@ -13,8 +15,13 @@ const days = 365;
 const dayMs = 86_400_000;
 const terrain = new Map<string, string>();
 const roads = new Map<string, string>();
-const campaignRoads = new Set(getPuzzles().map((puzzle) => roadFingerprint(puzzle.board)));
-assert.equal(campaignRoads.size, 212, 'The campaign must contain 212 distinct road decisions.');
+const practice = getPuzzles(2);
+const activePractice = practice.filter((puzzle) => !puzzle.archived);
+const archivedPractice = practice.filter((puzzle) => puzzle.archived);
+const campaignRoads = new Set(practice.map((puzzle) => roadFingerprint(puzzle.board)));
+assert.equal(activePractice.length, 1000, 'The revised campaign must contain 1,000 active stops.');
+assert.equal(archivedPractice.length, 203 + REASONING_REFINEMENTS.length, 'Every replaced original and revised route must remain replayable.');
+assert.equal(campaignRoads.size, practice.length, 'Active and archived Practice routes must have distinct road decisions.');
 const paving = new Set<string>();
 const repaired = new Set<string>();
 const fingerprints: string[] = [];
@@ -73,14 +80,16 @@ for (let offset = 0; offset < days; offset++) {
   const fingerprint = createHash('sha256').update(JSON.stringify(puzzle)).digest('hex');
   assert.equal(fingerprint, fingerprints[offset], `${date.toISOString()}: regeneration changed the daily puzzle.`);
 }
-assert.equal(themes.size, 3, 'The year did not cover all three landscape themes.');
+assert.deepEqual([...themes].sort(), [...BIOME_ORDER].sort(), 'The year did not cover exactly the approved landscape themes.');
 console.log(JSON.stringify({
   from: start,
   through: new Date(startDate.getTime() + (days - 1) * dayMs).toISOString().slice(0, 10),
   editions: days,
   distinctTerrain: terrain.size,
   distinctRoadAndStopLayouts: roads.size,
-  campaignPlaces: campaignRoads.size,
+  campaignPlaces: activePractice.length,
+  archivedPracticePlaces: archivedPractice.length,
+  distinctPlayablePracticeLayouts: campaignRoads.size,
   dailyCampaignRepeats: 0,
   distinctPavingMasks: paving.size,
   distinctRepairedRoadPatterns: repaired.size,

@@ -5,12 +5,13 @@ import { dailyMinimum, dailyPuzzleForDate, findPuzzle, getCatalog, getExpedition
 import { certifyMinimum } from './difficulty.ts';
 import { roadFingerprint } from './rules.ts';
 import { isCatalogEntry, isPuzzle } from './validation.ts';
+import { campaignPlaces } from './progression.ts';
 
-test('212 distinct campaign places preserve the original 45 and cover certified minimums 1-15', () => {
+test('218 distinct campaign places preserve the original 45 and cover certified minimums 1-15', () => {
   const campaign = getPuzzles();
-  assert.equal(campaign.length, 212);
+  assert.equal(campaign.length, 218);
   assert.deepEqual(campaign.slice(0, 45), [...CHALLENGES, ...getExpeditions()]);
-  assert.equal(new Set(campaign.map((puzzle) => roadFingerprint(puzzle.board))).size, 212);
+  assert.equal(new Set(campaign.map((puzzle) => roadFingerprint(puzzle.board))).size, 218);
   assert.deepEqual([...new Set(campaign.map((puzzle) => puzzle.minimum))].sort((a, b) => (a ?? 0) - (b ?? 0)),
     Array.from({ length: 15 }, (_, index) => index + 1));
   for (const puzzle of campaign) {
@@ -20,7 +21,7 @@ test('212 distinct campaign places preserve the original 45 and cover certified 
     assert.equal(JSON.stringify(publicPuzzle).includes('witness'), false);
   }
   const catalog = getCatalog();
-  assert.equal(catalog.length, 212);
+  assert.equal(catalog.length, 218);
   assert.ok(catalog.every(isCatalogEntry));
   assert.equal(JSON.stringify(catalog).includes('witness'), false);
 });
@@ -36,6 +37,21 @@ test('daily generation is separate from the campaign and continues beyond 200 ed
     daily.add(roadFingerprint(puzzle.board));
   }
   assert.equal(daily.size, 7);
+});
+
+test('the first Practice title stays consistent across catalogs and details without changing the saved route', () => {
+  const original = CHALLENGES[0];
+  assert.ok(original);
+  for (const revision of [1, 2] as const) {
+    const first = campaignPlaces(getCatalog(revision))[0];
+    assert.ok(first);
+    assert.equal(first.title, 'My sunrise');
+    assert.equal(first.id, original.id);
+    const puzzle = findPuzzle(first.id, revision);
+    assert.ok(puzzle);
+    assert.equal(puzzle.title, first.title);
+    assert.deepEqual(puzzle.board, original.board);
+  }
 });
 
 test('future shared Dailies vary gradually without changing the existing frame rules', () => {

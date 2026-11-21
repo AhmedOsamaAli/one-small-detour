@@ -1,0 +1,42 @@
+One Small Detour - detailed miniature art kit
+
+Source 3D models and material maps from Poly Haven, licensed CC0-1.0.
+License: https://polyhaven.com/license
+CC0: https://creativecommons.org/publicdomain/zero/1.0/
+
+Tree Small 02 - Rico Cilliers
+https://polyhaven.com/a/tree_small_02
+
+Pine Sapling Small - Rob Tuytel (photography), Rico Cilliers (modeling)
+https://polyhaven.com/a/pine_sapling_small
+
+Grass Ground
+https://polyhaven.com/a/grass_ground
+
+Cobblestone Floor 001
+https://polyhaven.com/a/cobblestone_floor_001
+
+Boulder 01 - Rico Cilliers
+https://polyhaven.com/a/boulder_01
+
+Brown Mud 02 - Rob Tuytel
+https://polyhaven.com/a/brown_mud_02
+
+Grey Roof Tiles - Rob Tuytel
+https://polyhaven.com/a/grey_roof_tiles
+
+Painted Plaster Wall - Amal Kumar
+https://polyhaven.com/a/painted_plaster_wall
+
+Kiara 1 Dawn (environment lighting)
+https://polyhaven.com/a/kiara_1_dawn
+
+The cottage and articulated courier models, layered rose geometry, material
+processing, atlas compositions and resulting renders were created for this
+project. They are not Poly Haven preview images or an endorsed Poly Haven product.
+Seasonal foliage is an artistic treatment of the licensed tree models; it is
+not represented as a botanical scan of a different species.
+
+Raw source meshes and high-resolution textures are offline baking inputs.
+They are not loaded by the shipped game. Only the small baked atlases and
+processed material maps in this folder are delivered.

@@ -1,0 +1,397 @@
+.app-shell.craft-preview {
+  --craft-rim: color-mix(in srgb, var(--green) 55%, var(--line));
+  --craft-depth: color-mix(in srgb, var(--primary) 75%, #172e28);
+  --craft-gold: var(--accent-border);
+  --text-caption: 14px;
+  font-weight: 500;
+}
+.craft-preview :is(h1, h2, h3, .wordmark > span) {
+  font-variation-settings: 'SOFT' 100, 'WONK' 1, 'opsz' 30;
+}
+.app-shell.craft-preview :is(.primary-button, .secondary-button) {
+  min-height: 48px;
+  border-radius: 15px 15px 18px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.app-shell.craft-preview .primary-button {
+  border: 1px solid var(--craft-depth);
+  background: linear-gradient(170deg, var(--primary-light), var(--primary));
+  box-shadow: inset 0 1px 0 #fff8df55, inset 0 -2px 0 #132c272e, 0 4px 0 var(--craft-depth), 0 7px 12px var(--art-shadow);
+}
+.app-shell.craft-preview .secondary-button {
+  border-color: var(--craft-rim);
+  box-shadow: inset 0 2px 0 var(--edge-light), 0 3px 0 var(--art-shadow);
+}
+.craft-preview :is(.primary-button, .secondary-button):active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: inset 0 1px 0 var(--edge-light), 0 1px 0 var(--art-shadow);
+}
+.craft-preview :is(.icon-button, .text-button, .view-option) {
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 14px;
+}
+.craft-preview.viewport-fit .site-header {
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: color-mix(in srgb, var(--line) 60%, transparent);
+}
+.craft-preview .garden-backdrop::after {
+  content: '';
+  position: absolute;
+  width: 82%;
+  height: 24%;
+  left: -20%;
+  bottom: -19%;
+  border-radius: 50%;
+  background: var(--hill-far);
+  box-shadow: 65vw -2vh 0 var(--hill-far);
+  opacity: .20;
+}
+.craft-preview.viewport-fit .header-nav > .icon-button {
+  border-radius: 15px;
+  box-shadow: inset 0 2px 0 var(--edge-light), 0 3px 0 var(--art-shadow);
+}
+.craft-preview.viewport-fit .story-panel {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.craft-preview.viewport-fit .board-first .story-panel h1 {
+  letter-spacing: -.7px;
+  font-weight: 600;
+}
+.craft-preview .edition-label { font-size: 14px; letter-spacing: 1px; }
+.craft-preview .challenge-facts { font-size: 14px; }
+.craft-preview.viewport-fit .play-toolbar {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
+}
+.craft-preview .frame-option {
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+.craft-preview .frame-option > span { font-size: 14px; }
+.craft-preview .view-selector .view-option { font-size: 14px; }
+.craft-preview :is(.practice-note, .daily-policy, .my-rank-line) { font-size: 14px; }
+.craft-preview .frame-option.chosen {
+  border-color: var(--craft-gold);
+  box-shadow: inset 0 0 0 1px var(--craft-gold), 0 3px 0 color-mix(in srgb, var(--craft-gold) 55%, var(--surface));
+}
+.craft-preview .compact-moves { font-size: 14px; }
+.craft-preview .compact-moves strong { font-family: var(--serif); font-size: 28px; }
+.craft-preview .compact-time { font-size: 16px; }
+.craft-preview.viewport-fit .board-footer {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.craft-preview.viewport-fit .island-status {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.craft-preview .view-selector { border-radius: 14px; }
+.craft-preview .view-option { border-radius: 11px; }
+.craft-preview .run-metrics {
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
+}
+.craft-preview.viewport-fit .world-stage {
+  background: radial-gradient(ellipse at 50% 62%, color-mix(in srgb, var(--world-sea) 35%, transparent), transparent 73%);
+}
+.craft-preview.viewport-fit .flat-map-scroll .flat-map {
+  gap: 1px;
+  padding: 5px;
+  border: 1px solid var(--world-soil-edge);
+  border-radius: 20px;
+  background: var(--world-grass-deep);
+  box-shadow: inset 0 2px 0 var(--world-blade), 0 4px 0 var(--world-soil-edge), 0 10px 0 var(--world-soil), 0 12px 0 var(--world-soil-edge), 0 19px 24px var(--art-shadow);
+}
+.craft-preview .flat-cell {
+  border-radius: 8px 7px 9px 6px;
+  box-shadow: inset 0 1px 0 #f7f5cb26, inset 0 -2px 0 #173c2729;
+}
+.craft-preview .flat-cell:not(.terrain-water):not(.terrain-bridge) {
+  background-image: radial-gradient(ellipse at 37% 27%, var(--world-grass-alt) 15%, var(--world-grass) 76%);
+  background-blend-mode: normal;
+}
+.craft-preview .flat-stone {
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, transparent 46%, var(--world-road-shade) 47% 50%, transparent 51%) center top / 100% 33% no-repeat,
+    linear-gradient(90deg, transparent 55%, var(--world-road-shade) 56% 59%, transparent 60%) center center / 100% 34% no-repeat,
+    linear-gradient(90deg, transparent 44%, var(--world-road-shade) 45% 48%, transparent 49%) center bottom / 100% 33% no-repeat,
+    linear-gradient(0deg, transparent 31%, var(--world-road-shade) 32% 34%, transparent 35% 64%, var(--world-road-shade) 65% 67%, transparent 68%),
+    linear-gradient(145deg, var(--world-road-light), var(--world-road));
+  background-blend-mode: normal;
+}
+.craft-preview .flat-rock { background: linear-gradient(135deg, var(--world-rock-light), var(--world-rock), var(--world-rock-shade)); }
+.craft-preview .flat-rock.craft-rock { inset: 9%; width: 82%; height: 82%; background: none; clip-path: none; }
+.craft-preview .flat-stone.craft-paving {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+.craft-preview .flat-road-link { border-radius: 3px; box-shadow: 0 1px 0 var(--world-road-shade); }
+.craft-preview .flat-bridge {
+  inset: 23% 0;
+  border-width: 3px;
+  border-radius: 4px;
+  border-color: var(--world-wood-shade);
+  background-image: linear-gradient(90deg, transparent 72%, var(--world-wood-shade) 73% 80%, transparent 81%), linear-gradient(var(--world-wood-light), var(--world-wood));
+  background-size: 12.5% 100%, 100% 100%;
+  background-blend-mode: normal;
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--world-water) 65%, var(--world-wood-shade)), inset 0 2px 0 var(--world-wood-light);
+}
+.craft-preview :is(.terrain-water, .terrain-bridge) {
+  background: radial-gradient(ellipse at 35% 20%, var(--world-water-light), var(--world-water) 74%);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--world-water) 60%, #203e3e);
+}
+.craft-shore { position: absolute; z-index: 1; width: 100%; height: 12%; left: 0; top: 0; background: linear-gradient(var(--world-soil-edge), color-mix(in srgb, var(--world-soil-edge) 70%, var(--world-water-light)) 40%, transparent); pointer-events: none; }
+.craft-shore.shore-south { top: auto; bottom: 0; transform: rotate(180deg); }
+.craft-shore.shore-east { left: auto; right: 0; width: 12%; height: 100%; background: linear-gradient(270deg, var(--world-soil-edge), transparent); }
+.craft-shore.shore-west { width: 12%; height: 100%; background: linear-gradient(90deg, var(--world-soil-edge), transparent); }
+.craft-ground-position { position: absolute; z-index: 1; width: 28%; height: 28%; transform: translate(-50%, -50%); pointer-events: none; }
+.craft-ground-detail { display: block; width: 100%; height: 100%; opacity: .9; }
+.craft-preview .theme-winter .flat-cell:not(.terrain-water):not(.terrain-bridge) { background-image: radial-gradient(ellipse at 32% 24%, color-mix(in srgb, var(--world-grass) 75%, #e6eeee), var(--world-grass) 77%); }
+.craft-preview .theme-lavender .flat-grass { border-color: #b4a1c6; opacity: .55; }
+.craft-preview .craft-courier { overflow: hidden; }
+.craft-courier-sheet { animation: craft-blink 5.3s step-end infinite; transform-origin: 0 0; }
+.flat-traveler[data-motion="walking"] .craft-courier-sheet { animation: craft-step .56s step-end infinite; }
+.flat-traveler[data-motion="greeting"] .craft-courier-sheet,
+.craft-finish-courier .craft-courier-sheet { transform: translateX(-768px); animation: craft-wave .8s step-end 3 both; }
+.craft-courier-acting { transform-origin: 128px 220px; }
+.flat-traveler[data-motion="walking"] .craft-courier-acting { animation: craft-footfall .56s ease-in-out infinite; }
+.flat-traveler[data-motion="greeting"] .craft-courier-acting { animation: craft-arrival .65s ease-out both; }
+.flat-traveler[data-facing="west"] .craft-courier-direction { transform: translateX(256px) scaleX(-1); }
+.world-stage:is([data-flat-swap="running"],[data-flat-swap="paused"]) .craft-courier-acting { animation: craft-curious .68s ease-in-out both; }
+.craft-preview .postcard-home-life > * { animation-delay: inherit; }
+.craft-preview .flat-season-tree { transform-origin: 50% 95%; animation: craft-tree-breeze 6.7s ease-in-out infinite; }
+.craft-preview .craft-scene > img { animation: craft-world-float 6s ease-in-out infinite; }
+.craft-preview[data-page-visible="false"] * { animation-play-state: paused !important; }
+.craft-preview .adventure-stop.is-next .garden-cottage { animation: craft-next-home 4s ease-in-out infinite; }
+.craft-preview .world-map-title { font-size: 20px; font-weight: 650; }
+.craft-preview .heading-narrow .world-map-title { font-size: 18px; }
+.craft-preview .world-map-subtitle { font-size: 14px; letter-spacing: 0; }
+.craft-preview .world-star-total,
+.craft-preview .progress-sync,
+.craft-preview .preview-eyebrow,
+.craft-preview .preview-state,
+.craft-preview .campaign-legend,
+.craft-preview .preview-facts,
+.craft-preview .preview-message { font-size: 14px; line-height: 1.35; }
+.craft-preview .campaign-preview .preview-copy h3 { font-weight: 600; }
+.craft-preview .campaign-preview .campaign-play { font-size: 16px; }
+.legacy-credit-note { display: block; color: var(--green); font-size: 14px; line-height: 1.35; }
+.original-route-preview { grid-column: 1 / -1; justify-self: start; font-size: 14px; }
+.practice-note .original-route-toggle { min-height: 44px; margin-left: auto; padding: 4px 8px; font-size: 14px; white-space: nowrap; flex-shrink: 0; }
+.craft-preview .tutorial-tools .tour-feature p,
+.craft-preview .welcome-view-choice p,
+.craft-preview .tile-guide-item p,
+.craft-preview .guide-step p { font-size: 16px; line-height: 1.4; }
+.craft-preview .tutorial-next,
+.craft-preview .welcome-view-choice button > span { font-size: 14px; }
+@keyframes craft-blink {
+  0%, 96%, 100% { transform: translateX(0); }
+  97%, 99% { transform: translateX(-1024px); }
+}
+@keyframes craft-step {
+  0%, 49% { transform: translateX(-256px); }
+  50%, 100% { transform: translateX(-512px); }
+}
+@keyframes craft-wave {
+  0%, 49% { transform: translateX(-768px); }
+  50%, 100% { transform: translateX(-1280px); }
+}
+@keyframes craft-tree-breeze {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+@keyframes craft-world-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes craft-next-home {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@keyframes craft-footfall {
+  0%, 50%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-2px) rotate(-1.5deg); }
+  75% { transform: translateY(-2px) rotate(1.5deg); }
+}
+@keyframes craft-arrival {
+  0%, 100% { transform: rotate(0); }
+  35% { transform: rotate(5deg) translateY(1px); }
+  65% { transform: rotate(-2deg) translateY(-2px); }
+}
+@keyframes craft-curious {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(-4deg) scaleY(.97); }
+}
+.craft-preview .dialog {
+  border: 1px solid var(--craft-rim);
+  border-radius: 24px;
+  background: var(--surface-raised);
+  box-shadow: inset 0 2px 0 var(--edge-light), 0 6px 0 var(--art-shadow), 0 22px 65px #122e293b;
+}
+.craft-preview .walkthrough-dialog {
+  --dialog-pad: 18px;
+  width: min(510px, calc(100vw - 24px));
+  padding: var(--dialog-pad);
+}
+.craft-preview .dialog-heading {
+  border-color: var(--line);
+  background: linear-gradient(120deg, var(--surface-raised), var(--surface));
+  box-shadow: inset 0 2px 0 var(--edge-light), 0 7px 12px -9px var(--ink);
+  margin-bottom: 12px;
+}
+.craft-preview .dialog-heading h2 {
+  font-size: clamp(24px, 5.7vw, 32px);
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -.7px;
+}
+.craft-preview .dialog-heading .eyebrow { font-size: 14px; letter-spacing: 1px; }
+.craft-preview .dialog-heading .dialog-emblem { border-radius: 15px; }
+.craft-scene {
+  display: block;
+  height: clamp(120px, 25vh, 180px);
+  min-height: 0;
+  overflow: hidden;
+  margin: -4px -6px 8px;
+  background: radial-gradient(ellipse at 50% 70%, color-mix(in srgb, var(--surface-selected) 80%, transparent), transparent 70%);
+}
+.craft-scene > img { display: block; width: 100%; height: 100%; min-height: 0; max-height: 100%; object-fit: contain; }
+.craft-preview .walkthrough-dialog .tutorial-goal {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  border-radius: 15px;
+  padding: 8px;
+  margin-bottom: 14px;
+}
+.craft-preview .tutorial-goal > .guide-picture { display: none; }
+.craft-preview .tutorial-goal-route > li > span { width: 33px; height: 38px; }
+.craft-preview .tutorial-goal-route,
+.craft-preview .tutorial-goal-route > li { gap: 12px; }
+.craft-preview .tutorial-goal-copy {
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+.craft-preview .tutorial-goal-copy > strong {
+  font: 600 clamp(26px, 6.5vw, 32px)/1.15 var(--serif);
+  margin-bottom: 7px;
+  letter-spacing: -.7px;
+}
+.craft-preview .tour-reassurance {
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 3px 0;
+  margin-block: 10px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+:root[data-compact-height] .craft-preview .walkthrough-dialog .tour-reassurance { padding: 3px 0; margin-block: 6px 10px; }
+:root[data-compact-height] .craft-preview .walkthrough-dialog .dialog-heading { padding-block: 6px; margin-bottom: 8px; }
+.craft-preview .walkthrough-dialog .dialog-actions {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr);
+  gap: 12px;
+  padding-bottom: 4px;
+}
+.craft-preview .walkthrough-dialog .dialog-actions > button:only-child { grid-column: 1 / -1; }
+.craft-preview .courier-words > strong { font-size: 17px; line-height: 1.3; }
+.craft-preview .courier-words > span,
+.craft-preview .coach-deselect-hint { font-size: 14px; letter-spacing: 0; }
+.craft-preview .completion-dialog .completion-seal { display: none; }
+.craft-preview .completion-dialog .result-copy {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px;
+  gap: 6px 8px;
+  align-items: start;
+}
+.craft-preview .completion-dialog .result-copy > * { grid-column: 1 / -1; }
+.craft-preview .completion-dialog .result-copy > :is(.result-label, h2, .rank-reveal) { grid-column: 1; }
+.craft-preview .completion-dialog .result-copy > h2 { margin: 0; }
+.craft-finish-courier {
+  width: 80px;
+  height: 80px;
+  margin: 0;
+  object-fit: contain;
+  pointer-events: none;
+}
+.craft-preview .completion-dialog .result-copy > .craft-finish-courier { grid-column: 2; grid-row: 1 / 4; align-self: center; }
+.craft-preview .completion-dialog .result-label { font-size: 14px; letter-spacing: .8px; }
+.craft-preview .completion-dialog .rank-reveal > strong { font-size: 44px; font-weight: 600; }
+.craft-preview .completion-dialog .rank-reveal > span,
+.craft-preview .completion-dialog .score-save-status,
+.craft-preview .practice-star-result :is(p, small) { font-size: 14px; line-height: 1.4; }
+.craft-preview .result-metrics { font-size: 16px; }
+.craft-preview .postcard-community-results .community-count { display: none; }
+.craft-preview .flat-landmark > .home-letter {
+  color: var(--home-roof);
+  border-radius: 4px;
+  background: var(--world-home-badge);
+  box-shadow: inset 0 0 0 1px var(--home-roof), 0 2px 0 var(--art-shadow);
+}
+.craft-preview .completion-next { font-size: 14px; }
+.craft-preview .daily-standings table { font-size: 14px; }
+.craft-preview .daily-standings :is(p, thead th, .standing-you small) { font-size: 14px; line-height: 1.4; }
+.craft-preview .daily-standings .standing-rank { width: 44px; }
+.craft-preview .daily-standings .standing-moves { width: 54px; }
+.craft-preview .daily-standings .standing-time { width: 76px; }
+.craft-preview .daily-standings tbody th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.craft-preview .daily-standings h3 { font-weight: 600; }
+.craft-preview .saved-daily-heading > .eyebrow { font-size: 14px; letter-spacing: .6px; }
+.craft-preview .saved-daily-heading > p:last-child { font-size: 16px; }
+.craft-preview .saved-daily-summary :is(p, span) { font-size: 14px; line-height: 1.4; }
+.craft-preview .saved-daily-rank { font-weight: 600; }
+.craft-preview .saved-daily-summary {
+  border-color: var(--craft-rim);
+  box-shadow: inset 0 2px 0 var(--edge-light), 0 3px 0 var(--art-shadow);
+}
+@media (min-width: 560px) and (max-height: 500px) {
+  .craft-preview .completion-dialog .standings-view > .result-copy { grid-template-columns: minmax(0, 1fr) 56px; }
+  .craft-preview .completion-dialog .standings-view > .result-copy > .craft-finish-courier { grid-row: 1; width: 56px; height: 72px; align-self: start; }
+  .craft-preview .completion-dialog .standings-view .rank-reveal > strong { font-size: 32px; }
+}
+@media (max-width: 600px) and (min-height: 501px) {
+  .craft-preview .saved-daily-summary .secondary-button { font-size: 0; }
+}
+@media (max-width: 360px) {
+  .craft-preview .walkthrough-dialog { --dialog-pad: 14px; }
+  .craft-preview .dialog-heading h2 { font-size: 24px; }
+  .craft-preview .walkthrough-dialog .dialog-actions { gap: 9px; }
+  .craft-preview .walkthrough-dialog .dialog-actions > button { padding-inline: 8px; }
+}
+@media (max-height: 600px) {
+  .craft-scene { height: 106px; }
+  .craft-preview .walkthrough-dialog .tutorial-goal { margin-bottom: 10px; padding: 6px; }
+  .craft-preview .tutorial-goal-copy { margin-bottom: 8px; }
+  .craft-preview .tour-reassurance { margin-block: 6px 10px; }
+}
+@media (max-height: 460px) {
+  .craft-preview .walkthrough-dialog:has(.craft-scene) .craft-scene { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .craft-preview :is(.primary-button, .secondary-button):active:not(:disabled) { transform: none; }
+  .craft-preview :is(.craft-courier-sheet, .craft-courier-acting, .craft-courier-direction, .flat-season-tree, .craft-scene > img, .adventure-stop.is-next .garden-cottage) { animation: none; transform: none; }
+}

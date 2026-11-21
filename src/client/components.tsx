@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import type { Anchor, FrameAxes, GuideTopic, Shape, Theme, Tile } from '../shared/types.ts';
 import { isAnchor, patchCells } from '../shared/rules.ts';
 import { HOME_GLYPHS, HOME_PLAQUE_PATH, HOME_SPROUT_PATH } from './homeLetter.ts';
+import { GardenCottage, GardenPlant, useGardenArt } from './GardenArt.tsx';
+import { GARDEN_ASSETS } from './gardenAssets.ts';
+import { CraftCourier, useCraftArt } from './CraftArt.tsx';
 
 type IconName = 'sound' | 'mute' | 'undo' | 'reset' | 'book' | 'help' | 'close' | 'arrow' | 'sun' | 'moon' | 'leaf' | 'trophy' | 'map' | 'swap' | 'check' | 'chevron' | 'lock' | 'clock' | 'warning' | 'bridge' | 'play' | 'grid' | 'trash' | 'cube';
 
@@ -45,12 +48,32 @@ export function HomeLetter({ anchor, plaque = false, compact = false }: { anchor
   </svg>;
 }
 
-export function StarRating({ stars, label }: { stars: number; label?: string }) {
-  return <span className="practice-stars" role="img" aria-label={label ?? `${stars} of 3 stars`}>
-    {[1, 2, 3].map((number) => <svg key={number} className={number <= stars ? 'star-earned' : 'star-empty'} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m12 2.5 2.9 5.9 6.5 1-4.7 4.5 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.5 6.5-1Z" strokeWidth="1.5" strokeLinejoin="round"/>
-    </svg>)}
+export function JourneyCottage({ anchor }: { anchor: Anchor }) {
+  return <span className="journey-cottage" aria-hidden="true">
+    <svg className="journey-cottage-art" viewBox="0 0 44 52" fill="none" focusable="false">
+      <ellipse cx="22" cy="49" rx="20" ry="2" fill="#233f3426"/>
+      <path d="M30 4h6v12l-6-4Z" fill="#e5d6b7" stroke="#766954" strokeWidth="1"/>
+      <path d="m31 22 9-2v25l-9 4Z" fill="#cdbd97" stroke="#766954" strokeWidth="1"/>
+      <path d="m5 24 13-13 14 13v25H5Z" fill="#fff1d2" stroke="#766954" strokeWidth="1"/>
+      <path className="journey-cottage-roof" d="M1 23 17 6h12l14 16-11 4-14-14L6 26Z" fill="var(--home-color)"/>
+      <path d="M17 6h12l14 16-11 4-14-14Z" fill="color-mix(in srgb, var(--home-color) 76%, #203e32)"/>
+      <path d="m23 10 12 13m-8-13 11 12M6 22l12-12" stroke="#fff8e6" strokeOpacity=".3" strokeWidth="1"/>
+      <rect x="34" y="29" width="4" height="6" rx=".7" fill="#f3d48f" stroke="#766954" strokeWidth=".8"/>
+      <rect className="journey-cottage-plaque" x="6.5" y="21" width="25.5" height="27.5" rx="3"
+        fill="var(--home-color)" stroke="var(--world-home-badge)" strokeWidth="1.2"/>
+      <path className="journey-cottage-outline" d="M30 4h6v10l7 8-11 4v23H5V26l-4-3L17 6h12l1 1Z"
+        stroke="color-mix(in srgb, var(--home-color) 72%, #203e32)" strokeWidth="1.2" strokeLinejoin="round"/>
+    </svg>
+    <HomeLetter anchor={anchor} compact/>
   </span>;
+}
+
+export function StarRating({ stars, label }: { stars: number; label?: string }) {
+  return <svg className="practice-stars" viewBox="0 0 78 24" role="img" aria-label={label ?? `${stars} of 3 stars`} focusable="false">
+    {[1, 2, 3].map((number) => <path key={number} className={number <= stars ? 'star-earned' : 'star-empty'}
+      transform={`translate(${(number - 1) * 27} 0)`}
+      d="m12 2.5 2.9 5.9 6.5 1-4.7 4.5 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5-4.7-4.5 6.5-1Z" strokeWidth="1.5" strokeLinejoin="round"/>)}
+  </svg>;
 }
 
 export function BrandMark() {
@@ -63,8 +86,15 @@ export function BrandMark() {
   </svg>;
 }
 
-export function GuideCourier({ portrait = false }: { portrait?: boolean }) {
+export function GuideCourier({ portrait = false, onBoard = false }: { portrait?: boolean; onBoard?: boolean }) {
   const id = useId();
+  const garden = useGardenArt();
+  const crafted = useCraftArt();
+  if (garden && crafted) return <CraftCourier portrait={portrait} onBoard={onBoard}/>;
+  if (garden) return <svg className={`guide-courier detailed-courier ${portrait ? 'courier-portrait' : ''}`} width="64" height="84"
+    viewBox={portrait ? '35 0 186 166' : onBoard ? '48 0 160 256' : '0 0 256 256'} aria-hidden="true" focusable="false">
+    <image href={GARDEN_ASSETS.courier} width="256" height="256"/>
+  </svg>;
   return <svg className={`guide-courier ${portrait ? 'courier-portrait' : ''}`} width="64" height="84"
     viewBox={portrait ? '12 0 74 68' : '0 0 96 128'} fill="none" aria-hidden="true">
     <defs>
@@ -134,6 +164,8 @@ export function BotanicalFrame() {
 
 export function ScenicBackdrop() {
   const id = useId();
+  const garden = useGardenArt();
+  if (garden) return <div className="world-backdrop garden-backdrop" aria-hidden="true"/>;
   return <div className="world-backdrop" aria-hidden="true">
     <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" fill="none">
       <defs>
@@ -165,6 +197,11 @@ export function LandscapeIllustration({ theme = 'meadow' }: { theme?: Theme }) {
   const orchard = theme === 'orchard';
   const coast = theme === 'coast';
   const id = useId();
+  const garden = useGardenArt();
+  if (garden) return <div className={`landscape-illustration garden-vignette art-${theme}`} aria-hidden="true">
+    <GardenPlant theme={theme}/><GardenCottage variant={theme === 'blossom' ? 4 : theme === 'winter' ? 2 : 0} winter={theme === 'winter'}/>
+    <GardenPlant theme={theme} flowers className="vignette-flowers"/><GuideCourier/>
+  </div>;
   return <svg className={`landscape-illustration art-${theme}`} width="180" height="112" viewBox="0 0 240 150" fill="none" aria-hidden="true">
     <defs>
       <linearGradient id={`${id}-land`} x2=".8" y2="1">
@@ -207,8 +244,8 @@ export function LandscapeIllustration({ theme = 'meadow' }: { theme?: Theme }) {
     {[{ x: 34, y: 58, s: 0.8 }, { x: 98, y: 45, s: 0.9 }, { x: 203, y: 101, s: 0.8 }].map(({ x, y, s }) =>
       <g key={x} transform={`translate(${x} ${y}) scale(${s})`}>
         <ellipse cy="17" rx="15" ry="5" fill="#17382e25"/><path d="M0 17V-9" stroke="#8e6e45" strokeWidth="4"/>
-        <path d="M-14-1q-6-16 8-23 9-11 18 0 15 5 6 23-14 12-32 0Z" fill="var(--leaf)"/>
-        <path d="M-6-22Q9-35 16-17q6 11-2 15-14-2-20-20Z" fill="var(--leaf-light)"/>
+        <path d="M-14-1q-6-16 8-23 9-11 18 0 15 5 6 23-14 12-32 0Z" fill="var(--world-foliage-mid, var(--leaf))"/>
+        <path d="M-6-22Q9-35 16-17q6 11-2 15-14-2-20-20Z" fill="var(--world-foliage-light, var(--leaf-light))"/>
         {orchard && <><circle cx="-8" cy="-4" r="3" fill="#d4874d"/><circle cx="9" cy="-10" r="3" fill="#dba45e"/></>}
       </g>)}
     <g transform="translate(116 75) scale(.24)"><GuideCourier/></g>
@@ -263,9 +300,9 @@ function TileGlyph({ tile }: { tile: Tile }) {
 export function TileGuide({ only }: { only?: readonly GuideTopic[] }) {
   const entries: { tiles: Tile[]; name: string; label: string; description: string }[] = [
     { tiles: ['o'], name: 'Paving', label: 'Moves', description: 'Walkable stone road. Connects on all four sides.' },
-    { tiles: ['.', '~'], name: 'Grass & water', label: 'Moves', description: 'Not walkable. Exchange them to place road here.' },
+    { tiles: ['.', '~'], name: 'Grass & water', label: 'Moves', description: 'Not walkable, but both move with their patch. Water is exchanged, not erased.' },
     { tiles: ['x', 'A'], name: 'Boulders & homes', label: 'Fixed', description: 'Cannot move. Neither selected patch may include them.' },
-    { tiles: ['h', 'v'], name: 'Wooden bridges', label: 'Straight only', description: 'Move with the patch. Cross along the arrows; bridges do not rotate.' },
+    { tiles: ['h', 'v'], name: 'Wooden bridges', label: 'Straight only', description: 'Ends connect to roads or homes, in both directions. Cross along the planks, never sideways. Bridges move but do not rotate.' },
   ];
   return <section className="tile-guide" aria-label="Tile rules">
     <h3>Read the landscape.</h3>
@@ -273,7 +310,7 @@ export function TileGuide({ only }: { only?: readonly GuideTopic[] }) {
       (only.includes('rocks') && entry.tiles.includes('x')) ||
       (only.includes('bridges') && entry.tiles.includes('h'))).map((entry) => <div className="tile-guide-item" key={entry.name}>
       <div className="tile-guide-pictures">{entry.tiles.map((tile) => <TileGlyph key={tile} tile={tile}/>)}</div>
-      <div><h4>{entry.name}<span className={`tile-guide-tag ${entry.label === 'Fixed' ? 'fixed-tag' : ''}`}>{entry.label}</span></h4>
+      <div><h4>{entry.name} <span className={`tile-guide-tag ${entry.label === 'Fixed' ? 'fixed-tag' : ''}`}>{entry.label}</span></h4>
         <p>{entry.description}</p></div>
     </div>)}</div>
   </section>;
@@ -281,9 +318,9 @@ export function TileGuide({ only }: { only?: readonly GuideTopic[] }) {
 
 export function WalkthroughFeatures({ section, places }: { section: 'tools' | 'places'; places: number }) {
   const entries: { icon: IconName; title: string; text: string }[] = section === 'tools' ? [
-    { icon: 'grid', title: '1. Choose a frame', text: 'Tall or wide: the frame picks a patch. Pieces do not rotate.' },
-    { icon: 'swap', title: '2. Tap two patches', text: 'Tap a starting square, then another matching patch. Both patches exchange places.' },
-    { icon: 'undo', title: 'Change your mind', text: 'Undo reverses an exchange. Tap the same starting square again to clear a selection.' },
+    { icon: 'grid', title: '1. Choose a frame', text: 'Wide: start at the left tile. Tall: start at the top tile. Pieces do not rotate.' },
+    { icon: 'swap', title: '2. Tap two patches', text: 'The outline shows the whole patch. Tap its starting square, then another matching patch. Both exchange places.' },
+    { icon: 'check', title: 'Check before exchanging', text: 'Tap the same starting square again to clear a selection. Every completed exchange counts; there is no Undo.' },
   ] : [
     { icon: 'sun', title: 'One daily island', text: 'One shared UTC puzzle. Its countdown starts after this practice.' },
     { icon: 'trophy', title: 'Earn your comparison', text: 'Your first saved Daily finish counts. Fewest moves, then fastest time. Replays are unranked.' },
@@ -329,8 +366,8 @@ const dialogIdentity: Record<DialogKind, { icon: IconName; label: string }> = {
   erase: { icon: 'lock', label: 'YOUR DATA' },
 };
 
-export function Modal({ title, children, onClose, wide = false, className = '', kind = 'guide', emblem }: {
-  title: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string; kind?: DialogKind; emblem?: ReactNode;
+export function Modal({ title, children, onClose, wide = false, className = '', kind = 'guide', emblem, headerControl, eyebrow }: {
+  title: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string; kind?: DialogKind; emblem?: ReactNode; headerControl?: ReactNode; eyebrow?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -340,14 +377,21 @@ export function Modal({ title, children, onClose, wide = false, className = '', 
     dialog.showModal();
     return () => dialog.close();
   }, []);
-  useEffect(() => { ref.current?.scrollTo(0, 0); }, [title]);
+  useEffect(() => {
+    const dialog = ref.current;
+    dialog?.scrollTo(0, 0);
+    if (dialog?.classList.contains('walkthrough-dialog')) {
+      dialog.querySelector<HTMLButtonElement>('.dialog-actions .primary-button')?.focus({ preventScroll: true });
+    }
+  }, [title]);
   const identity = dialogIdentity[kind];
   return <dialog ref={ref} className={`dialog dialog-${kind} ${wide ? 'dialog-wide' : ''} ${className}`} aria-labelledby={id}
     onCancel={(event) => { event.preventDefault(); onClose(); }}>
     <BotanicalFrame/>
-    <div className="dialog-heading">
+    <div className={`dialog-heading ${headerControl ? 'has-control' : ''}`}>
       <span className="dialog-emblem">{emblem ?? <Icon name={identity.icon} size={25}/>}</span>
-      <div className="dialog-title"><p className="eyebrow">{identity.label}</p><h2 id={id}>{title}</h2></div>
+      <div className="dialog-title"><p className="eyebrow">{eyebrow ?? identity.label}</p><h2 id={id}>{title}</h2></div>
+      {headerControl}
       <button className="icon-button" onClick={onClose} aria-label="Close dialog"><Icon name="close"/></button>
     </div>
     {children}

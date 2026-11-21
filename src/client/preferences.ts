@@ -13,6 +13,7 @@ export interface Preferences {
   seenGuides: GuideTopic[];
   appearance: AppearancePreference;
   practice?: PracticeProgress;
+  practiceAccount?: { owner: string; generation: number };
 }
 
 export const PREF_KEY = 'detour:preferences:1';
@@ -23,7 +24,7 @@ export function resolveAppearance(preference: AppearancePreference | 'system'): 
 
 export function loadPreferences(storage?: Pick<Storage, 'getItem'>): { value: Preferences; warning: string | null } {
   const defaults: Preferences = {
-    flat: false, completed: [], soundWanted: false, seenGuides: [], appearance: 'light',
+    flat: false, completed: [], soundWanted: true, seenGuides: [], appearance: 'light',
   };
   try {
     const text = (storage ?? localStorage).getItem(PREF_KEY);
@@ -65,9 +66,20 @@ export function loadPreferences(storage?: Pick<Storage, 'getItem'>): { value: Pr
         warnings.push('Practice stars could not be read. Completed stops are safe; world access will be restored from your discoveries.');
       }
     }
+    let practiceAccount: Preferences['practiceAccount'];
+      if (value['practiceAccount'] !== undefined) {
+        const saved = value['practiceAccount'];
+        if (isRecord(saved) && typeof saved['owner'] === 'string' && /^[a-f0-9]{64}$/.test(saved['owner']) &&
+            typeof saved['generation'] === 'number' && Number.isSafeInteger(saved['generation']) && saved['generation'] >= 0) {
+          practiceAccount = { owner: saved['owner'], generation: saved['generation'] };
+        } else {
+          console.warn('The saved Practice account could not be read.');
+          warnings.push('The saved Practice account could not be read. Sign in again before syncing; your local stops are safe.');
+        }
+      }
     return {
       value: { flat: value['flat'], completed: value['completed'], soundWanted: value['soundWanted'], seenGuides, appearance,
-        ...(practice ? { practice } : {}) },
+        ...(practice ? { practice } : {}), ...(practiceAccount ? { practiceAccount } : {}) },
       warning: warnings.length ? warnings.join(' ') : null,
     };
   } catch (error) {

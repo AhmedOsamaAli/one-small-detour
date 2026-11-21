@@ -15,6 +15,15 @@ test('new and existing preferences default to light without losing discoveries, 
   assert.equal(loadPreferences({ getItem: () => null }).value.appearance, 'light');
 });
 
+test('new players request sound by default while saved mute and sound choices are preserved', () => {
+  assert.equal(loadPreferences({ getItem: () => null }).value.soundWanted, true);
+  for (const soundWanted of [false, true]) {
+    assert.deepEqual(loadPreferences(saved({ ...existing, soundWanted })), {
+      value: { ...existing, soundWanted, appearance: 'light' }, warning: null,
+    });
+  }
+});
+
 test('explicit light and dark choices remain unchanged', () => {
   for (const appearance of ['light', 'dark'] as const) {
     assert.equal(resolveAppearance(appearance), appearance);

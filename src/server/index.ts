@@ -14,6 +14,7 @@ import { GUIDE_TOPICS, isGuideTopic } from '../shared/guidance.ts';
 import { GUIDE_PREFERENCE_TTL_SECONDS } from './guides.ts';
 import type { GuideStore } from './guides.ts';
 import { IndexedDailyRanking } from './indexedRanking.ts';
+import { RedisPracticeStore } from './practiceProgress.ts';
 
 function isRedditId(id: string): id is `t2_${string}` {
   return /^t2_[a-z0-9]+$/i.test(id);
@@ -161,11 +162,12 @@ const guides: GuideStore = {
   },
 };
 
+const practice = new RedisPracticeStore(redis);
 const dailyRanking = new IndexedDailyRanking(redis, {
   remember: rememberScoreKey,
   keys: async (id) => Object.keys(await redis.hGetAll(`detour:player-records:${id}`)),
   accountExists: async (id) => isRedditId(id) && Boolean(await reddit.getUserById(id)),
-  eraseOtherData: async (id) => { await attempts.erase(id); await store.erase(id); await guides.erase(id); },
+  eraseOtherData: async (id) => { await attempts.erase(id); await store.erase(id); await guides.erase(id); await practice.erase(id); },
 });
 
 const app = createGameApi({
@@ -173,6 +175,7 @@ const app = createGameApi({
   attempts,
   guides,
   dailyRanking,
+  practice,
   source: 'reddit',
   community: () => context.subredditName ? `r/${context.subredditName}` : 'This little community',
   player: async () => {

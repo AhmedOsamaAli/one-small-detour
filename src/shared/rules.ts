@@ -334,7 +334,10 @@ export function checkRoutes(board: Board, goals: readonly Goal[]): RouteCheck {
   return { solved: missing.length === 0, routes, missing };
 }
 
-export function planJourney(board: Board, anchors: readonly Anchor[]): JourneyPlan {
+export interface JourneySearchDiagnostics { explored: number }
+
+export function planJourney(board: Board, anchors: readonly Anchor[], diagnostics?: JourneySearchDiagnostics): JourneyPlan {
+  if (diagnostics) diagnostics.explored = 0;
   if (anchors.length < 2 || new Set(anchors).size !== anchors.length) {
     throw new RuleError('A journey needs distinct stops in a clear order.', 'journey');
   }
@@ -372,6 +375,7 @@ export function planJourney(board: Board, anchors: readonly Anchor[]): JourneyPl
     const visit = (current: number, next: number, visited: bigint): boolean => {
       if (next === target) return true;
       if (++explored > 200_000) {
+        if (diagnostics) diagnostics.explored = explored;
         throw new RuleError('This trail is too complex to verify. Undo a cut and try a simpler arrangement.', 'journey_complexity');
       }
       if (!canReachNext(current, next, visited)) return false;
@@ -399,18 +403,23 @@ export function planJourney(board: Board, anchors: readonly Anchor[]): JourneyPl
   for (let target = anchors.length; target >= 2; target--) {
     const route = search(target);
     if (!route) continue;
+    if (diagnostics) diagnostics.explored = explored;
     return {
       path: route.map((index) => cellOf(index, size)),
       stops: anchors.slice(0, target).map((anchor, index) => ({ anchor, pathIndex: route.indexOf(stops[index] ?? -1) })),
       solved: target === anchors.length,
     };
   }
+  if (diagnostics) diagnostics.explored = explored;
   return { path: [cellOf(start, size)], stops: [{ anchor: anchors[0] ?? 'A', pathIndex: 0 }], solved: false };
 }
 
-export function checkPuzzle(board: Board, puzzle: Puzzle): RouteCheck {
-  if (!puzzle.journey) return checkRoutes(board, puzzle.goals);
-  const journey = planJourney(board, puzzle.journey);
+export function checkPuzzle(board: Board, puzzle: Puzzle, diagnostics?: JourneySearchDiagnostics): RouteCheck {
+  if (!puzzle.journey) {
+    if (diagnostics) diagnostics.explored = 0;
+    return checkRoutes(board, puzzle.goals);
+  }
+  const journey = planJourney(board, puzzle.journey, diagnostics);
   const next = puzzle.journey[journey.stops.length];
   return {
     solved: journey.solved,

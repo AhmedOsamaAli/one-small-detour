@@ -1,6 +1,13 @@
 import { isAttemptStart, isBootstrap, isLeaderboard, isMyRank, isPuzzle, isRecord, isSavedRepair } from '../shared/validation.ts';
 import type { AttemptStart, Bootstrap, GuideTopic, Leaderboard, MyRank, Puzzle, RankedScore, SavedRepair, SubmitRepair } from '../shared/types.ts';
 import { isGuideTopics } from '../shared/guidance.ts';
+import { isPracticeAccount } from '../shared/practiceProgress.ts';
+import type { PracticeAccount, PracticeState } from '../shared/practiceProgress.ts';
+
+export class GameApiError extends Error {
+  readonly code: string | null;
+  constructor(message: string, code: string | null) { super(message); this.code = code; }
+}
 
 const ID_KEY = 'detour:local-player';
 type TimedResult = RankedScore & { solveMs: number };
@@ -46,15 +53,42 @@ async function request<T>(url: string, guard: (data: unknown) => data is T, opti
   });
   const data: unknown = await response.json();
   if (!response.ok) {
-    throw new Error(isRecord(data) && typeof data['error'] === 'string' ? data['error'] : 'The village board could not be reached.');
+    throw new GameApiError(isRecord(data) && typeof data['error'] === 'string' ? data['error'] : 'The village board could not be reached.',
+      isRecord(data) && typeof data['code'] === 'string' ? data['code'] : null);
   }
   if (!guard(data)) throw new Error('The village sent an unreadable response. Please refresh and try again.');
   return data;
 }
 
+async function progressRequest(method: 'GET' | 'POST' | 'DELETE', body?: object): Promise<PracticeAccount> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
+  try {
+    return await request('/api/me/progress?campaign=2', isPracticeAccount, {
+      method, signal: controller.signal, ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Practice sync took too long. Your local stops are safe; retry when your connection is ready.');
+    throw error;
+  } finally { window.clearTimeout(timeout); }
+}
+
 export const gameApi = {
-  bootstrap: (): Promise<Bootstrap> => request('/api/bootstrap', isBootstrap),
-  place: (id: string): Promise<Puzzle> => request(`/api/places/${encodeURIComponent(id)}`, isPuzzle),
+  bootstrap: (): Promise<Bootstrap> => request('/api/bootstrap?campaign=2',
+    (data): data is Bootstrap => isBootstrap(data) && data.campaignRevision === 2),
+  place: async (id: string): Promise<Puzzle> => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    try {
+      return await request(`/api/places/${encodeURIComponent(id)}?campaign=2`, isPuzzle, { signal: controller.signal });
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error('Opening this stop took too long. Your progress is safe; please try again.');
+      throw error;
+    } finally { window.clearTimeout(timeout); }
+  },
+  practiceProgress: (): Promise<PracticeAccount> => progressRequest('GET'),
+  savePracticeProgress: (generation: number, state: PracticeState): Promise<PracticeAccount> => progressRequest('POST', { generation, ...state }),
+  clearPracticeProgress: (): Promise<PracticeAccount> => progressRequest('DELETE'),
   startAttempt: (edition: string, signal?: AbortSignal): Promise<AttemptStart> =>
     request('/api/attempts', isAttemptStart, {
       method: 'POST', body: JSON.stringify({ edition }), ...(signal ? { signal } : {}),

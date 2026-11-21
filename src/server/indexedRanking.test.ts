@@ -121,6 +121,62 @@ test('transaction conflicts retry but Redis failures never become fake rank-zero
   await assert.rejects(() => ranking.read(key, 'owner'), /Redis outage/);
 });
 
+test('new and erased players can read Daily status when the native Redis transaction adapter rejects nil scores', async () => {
+  const fixture = new RankingFixture(), ranking = fixture.create();
+  fixture.rejectNilTransactions = true;
+  fixture.seed(key, []);
+  const fresh = await ranking.read(key, 'new-player');
+  assert.equal(fresh.players, 0);
+  assert.equal(fresh.yourBest, null);
+  await ranking.put(key, record('peer', 3, 1000));
+  const withLeaders = await ranking.read(key, 'new-player', true);
+  assert.equal(withLeaders.players, 1);
+  assert.equal(withLeaders.yourBest, null);
+  assert.equal(withLeaders.topPercent, null);
+  assert.deepEqual(withLeaders.entries.map(entry => entry.userId), ['peer']);
+  assert.equal((await ranking.read(key, null, true)).players, 1);
+  await ranking.put(key, record('owner', 4, 2000));
+  await ranking.erase('owner');
+  assert.equal((await ranking.read(key, 'owner')).yourBest, null);
+  fixture.rawAdd(`${key}:rank-index:1`, [{ member: 'orphan', score: dailyRankScore(record('orphan', 4, 3000)) }]);
+  await assert.rejects(ranking.read(key, 'orphan'), /missing their personal-best record/);
+});
+
+test('the real own-rank endpoint returns an unplayed Daily instead of a service error under native nil semantics', async () => {
+  const fixture = new RankingFixture(), dailyRanking = fixture.create();
+  fixture.rejectNilTransactions = true;
+  const edition = '2026-11-19', key = scoreKey(edition, 'daily');
+  fixture.now = Date.parse(`${edition}T12:00:00Z`);
+  const app = createGameApi({
+    source: 'reddit', community: () => 'Native nil regression', now: () => new Date(fixture.now),
+    player: async () => ({ id: 'new-player', name: 'New player' }),
+    guides: new MemoryGuideStore(), attempts: new MemoryAttemptStore(() => fixture.now), dailyRanking,
+    store: { list: async () => [], put: async () => undefined, erase: async () => undefined },
+  });
+  const response = await app.request(`/api/my-rank?edition=${edition}`);
+  assert.equal(response.status, 200);
+  const rank: unknown = await response.json();
+  assert.ok(isMyRank(rank));
+  assert.equal(rank.rank, null);
+  assert.equal(rank.participants, 0);
+  assert.equal(await dailyRanking.firstStatus(key, 'new-player'), 'eligible');
+});
+
+test('a concurrent first save retries the watched no-record lookup instead of returning a stale unplayed result', async () => {
+  const fixture = new RankingFixture(), ranking = fixture.create(), first = record('new-player', 3, 1000);
+  fixture.rejectNilTransactions = true;
+  fixture.seed(key, []);
+  fixture.beforeExec = () => {
+    fixture.beforeExec = null;
+    fixture.rawSet(`${key}:rank-index:1:best:new-player`, JSON.stringify(first));
+    fixture.rawAdd(`${key}:rank-index:1`, [{ member: first.userId, score: dailyRankScore(first) }]);
+  };
+  const result = await ranking.read(key, first.userId);
+  assert.equal(result.players, 1);
+  assert.equal(result.yourBest?.rank, 1);
+  assert.equal(result.yourBest?.solveMs, first.solveMs);
+});
+
 test('real API score verification and personal-rank responses use the index without loading legacy results', async () => {
   const fixture = new RankingFixture(), dailyRanking = fixture.create();
   const app = createGameApi({

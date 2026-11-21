@@ -31,6 +31,7 @@ export interface RankRedis {
   watch(...keys: string[]): Promise<RankTransaction>;
   zAdd(key: string, ...members: Member[]): Promise<unknown>;
   zCard(key: string): Promise<number>;
+  zScore(key: string, member: string): Promise<number | undefined>;
   zRange(key: string, start: number, stop: number, options: RangeOptions): Promise<Member[]>;
   expire(key: string, seconds: number): Promise<unknown>;
   hScan(key: string, cursor: number, pattern?: string, count?: number): Promise<{
@@ -285,6 +286,8 @@ export class IndexedDailyRanking implements DailyRankingStore {
         const record = text === undefined ? null : recordFrom(text);
         if (record && record.userId !== userId) throw new Error('The Daily ranking returned another player\'s record.');
         const score = record ? dailyRankScore(record) : null;
+        // The direct SDK read handles missing members; native EXEC rejects nil.
+        const missingRecordScore = !record && userId ? await this.redis.zScore(indexKey(key), userId) : undefined;
         const boundary = { by: 'score' as const, limit: { offset: 0, count: 1 } };
         const [first, last] = score === null ? [[], []] : await Promise.all([
           this.redis.zRange(indexKey(key), score, score, boundary),
@@ -299,7 +302,7 @@ export class IndexedDailyRanking implements DailyRankingStore {
           await tx.zScore(indexKey(key), userId);
           await tx.zRange(indexKey(key), score, score, boundary);
           await tx.zRange(indexKey(key), score, score, { ...boundary, reverse: true });
-        } else if (userId) await tx.zScore(indexKey(key), userId);
+        }
         if (includeLeaders) await tx.zRange(indexKey(key), 0, 19, { by: 'rank' });
         closed = true;
         const result = await tx.exec();
@@ -308,7 +311,7 @@ export class IndexedDailyRanking implements DailyRankingStore {
         if (typeof players !== 'number' || !Number.isInteger(players) || players < 0) throw new Error('The Daily finisher count is invalid.');
         const entries = includeLeaders ? await this.leaders(key, result?.at(-1), userId) : [];
         if (!record) {
-          if (userId && result?.[1] !== null && result?.[1] !== undefined) throw new Error('An indexed player is missing their personal-best record.');
+          if (missingRecordScore !== undefined) throw new Error('An indexed player is missing their personal-best record.');
           return { entries, players, yourBest: null, topPercent: null, source: 'reddit', mode: 'daily' };
         }
         const rank = result?.[1], end = result?.[2], currentScore = result?.[3];

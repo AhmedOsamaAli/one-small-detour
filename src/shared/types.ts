@@ -2,7 +2,7 @@ export type Anchor = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 export type Tile = '.' | 'o' | '~' | 'x' | 'h' | 'v' | Anchor;
 export type Board = readonly string[];
 export type Mode = 'daily' | 'gentle';
-export type Theme = 'meadow' | 'coast' | 'orchard';
+export type Theme = 'meadow' | 'coast' | 'orchard' | 'winter' | 'blossom' | 'maple' | 'ginkgo' | 'lavender';
 export type GuideTopic = 'basics' | 'rocks' | 'bridges';
 export type PatchFamily = 'strip' | 'square' | 'ell';
 
@@ -88,6 +88,11 @@ export interface Puzzle {
   journey?: readonly Anchor[];
   frame?: PatchFamily;
   practiceAfter?: number;
+  campaignSlot?: number;
+  originalSlot?: number;
+  legacyId?: string;
+  archived?: boolean;
+  challengeTier?: 1 | 2 | 3 | 4;
 }
 
 export interface AuthoredPuzzle extends Puzzle {
@@ -113,6 +118,11 @@ export interface CatalogEntry {
   minimum?: number;
   frame?: PatchFamily;
   practiceAfter?: number;
+  campaignSlot?: number;
+  originalSlot?: number;
+  legacyId?: string;
+  archived?: boolean;
+  challengeTier?: 1 | 2 | 3 | 4;
 }
 
 export interface RouteCheck {
@@ -173,6 +183,7 @@ export interface SavedRepair extends Leaderboard {
 }
 
 export interface Bootstrap {
+  campaignRevision?: 1 | 2;
   edition: Edition | null;
   catalog: CatalogEntry[];
   source: 'local' | 'reddit';

@@ -23,7 +23,7 @@ export function seedOf(value: string): number {
   return seed >>> 0;
 }
 
-function randomSource(seed: number): () => number {
+export function randomSource(seed: number): () => number {
   let state = seed >>> 0;
   return () => ((state = (Math.imul(state, 1664525) + 1013904223) >>> 0) / 4294967296);
 }

@@ -13,7 +13,7 @@ interface TimerState {
   attempt: AttemptStart | null;
 }
 
-export function useSolveTimer(generation: number, edition: string | null, enabled: boolean, ready: boolean) {
+export function useSolveTimer(generation: number, edition: string | null, enabled: boolean, ready: boolean, displayed: boolean) {
   const [state, setState] = useState<TimerState>({
     generation, phase: enabled ? 'preparing' : 'running', countdown: null, elapsedMs: 0, error: null, attempt: null,
   });
@@ -53,7 +53,7 @@ export function useSolveTimer(generation: number, edition: string | null, enable
   }, [generation, edition, enabled, ready]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !displayed || state.phase === 'solved' || state.phase === 'error') return;
     const tick = (): void => {
       const timer = current.current;
       if (!timer || timer.generation !== generation) return;
@@ -63,13 +63,22 @@ export function useSolveTimer(generation: number, edition: string | null, enable
         if (snapshot.elapsedMs > MAX_ATTEMPT_MS) {
           return { ...previous, phase: 'error', error: 'This timed attempt expired. Restart to begin a new countdown.' };
         }
+        if (previous.phase === snapshot.phase && previous.countdown === snapshot.countdown &&
+            Math.floor(previous.elapsedMs / 1000) === Math.floor(snapshot.elapsedMs / 1000) &&
+            (previous.elapsedMs < 400) === (snapshot.elapsedMs < 400)) return previous;
         return { generation, ...snapshot, error: null, attempt: timer.attempt };
       });
     };
-    const interval = window.setInterval(tick, 100);
-    document.addEventListener('visibilitychange', tick);
-    return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', tick); };
-  }, [generation, enabled]);
+    let interval: number | null = null;
+    const visibility = (): void => {
+      if (interval !== null) window.clearInterval(interval);
+      interval = null;
+      if (!document.hidden) { tick(); interval = window.setInterval(tick, 100); }
+    };
+    visibility();
+    document.addEventListener('visibilitychange', visibility);
+    return () => { if (interval !== null) window.clearInterval(interval); document.removeEventListener('visibilitychange', visibility); };
+  }, [generation, enabled, displayed, state.phase]);
 
   const stop = useCallback((at = performance.now()): void => {
     if (!enabled) return;

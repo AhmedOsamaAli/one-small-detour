@@ -5,6 +5,8 @@ import '@fontsource-variable/dm-sans';
 import '@fontsource-variable/fraunces/full.css';
 import './styles.css';
 import './art.css';
+import './craft.css';
+import './home.css';
 import App from './App.tsx';
 import { trackViewport } from './viewport.ts';
 

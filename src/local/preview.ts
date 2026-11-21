@@ -5,6 +5,7 @@ import { createGameApi } from '../server/service.ts';
 import { LocalScoreStore } from './store.ts';
 import { MemoryAttemptStore } from '../server/attempts.ts';
 import { MemoryGuideStore } from '../server/guides.ts';
+import { LocalPracticeStore } from './practiceProgress.ts';
 
 export function localPreview(): Plugin {
   const app = createGameApi({
@@ -13,6 +14,7 @@ export function localPreview(): Plugin {
     store: new LocalScoreStore(resolve(process.cwd(), '.local', 'scores.json')),
     attempts: new MemoryAttemptStore(),
     guides: new MemoryGuideStore(),
+    practice: new LocalPracticeStore(resolve(process.cwd(), '.local', 'practice.json')),
     player: async (request) => {
       const id = request.headers.get('x-detour-player');
       if (!id || !/^[a-f0-9-]{36}$/i.test(id)) return null;

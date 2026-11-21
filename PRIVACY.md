@@ -16,16 +16,45 @@ Practice worlds additionally keep the lowest move count for
 each completed Practice stop and the number of opened campaign islands in that
 same browser record. Stars are derived from those move counts, not time.
 Earlier completion-only discoveries keep a completion star without inventing
-move history. These unranked records are not sent to Reddit or the leaderboard.
-This browser-only Practice record is included in the v0.1.10 test build.
+move history. This browser-only record is included in the v0.1.10 and v0.1.11
+test builds. From the v0.1.12 test build, the game additionally syncs
+it for signed-in players; it is never part of a Daily leaderboard.
 
 Campaign unlocking is based on those browser-local discoveries. It is not a
-competitive or server-authoritative entitlement. Undo history and unfinished
+competitive or server-authoritative entitlement. Unfinished
 attempts remain in page memory; refreshing starts a fresh attempt. The traveler
 waits for the complete road; no partial-delivery history is stored.
 
 The app does not load external analytics, advertising, runtime AI or remote
 fonts. Nature geometry, sound and fonts are bundled or created locally.
+
+The next-Daily countdown uses the server-provided shared UTC reset time.
+The browser formats its opening time with the player's local timezone.
+That timezone is not saved, transmitted or used to split leaderboards.
+The display updates only while Home is visible; it adds no per-second requests.
+
+## Account Practice sync
+
+The game saves signed-in Practice progress to a per-player
+record in this community: known completed Practice stop IDs, the player's
+lowest move counts, opened-island count, revision and reset generation.
+Reddit's authenticated context determines identity; submitted player IDs are
+not trusted. It stores no Practice moves, unfinished boards, freeform text,
+device identifiers or private messages. A same-community account token in
+browser preferences prevents mixing records when switching Reddit accounts.
+Guest progress stays on the device.
+
+Practice records have no automatic 30-day expiry: they persist until the
+player uses Guide -> Manage Practice progress -> Remove Practice progress.
+This operation removes the stop/move records and keeps a minimal reset
+generation so older devices cannot immediately re-upload cleared progress.
+Daily records and view/sound choices are not removed. The separate existing
+score-removal control continues to preserve Practice progress.
+
+Sync occurs at load, after local progress changes and when returning to the
+page. Failed sync is shown with a retry action; local progress remains.
+The local server uses ignored `.local/practice.json` for rehearsal persistence.
+Native storage uses per-player Redis records, isolated to this community's installation.
 
 ## Remembered walkthrough choices
 

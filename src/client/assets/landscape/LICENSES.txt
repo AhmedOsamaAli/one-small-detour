@@ -1,0 +1,13 @@
+One Small Detour - seasonal journey landscape art
+
+The terrain, ponds, crop/lavender rows, windmill, lighthouse, snow treatment,
+composition and resulting atlas renders were created for this project.
+Ground and material detail reuse Poly Haven CC0-1.0 sources listed in:
+  ../garden/LICENSES.txt
+
+Source asset licence: https://polyhaven.com/license
+CC0 licence: https://creativecommons.org/publicdomain/zero/1.0/
+
+Only the small baked atlases are used by the game. Raw scanned meshes and
+high-resolution source textures are offline baking inputs, not runtime assets.
+These are original compositions, not copied library preview renders.

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { communityCrowd, parcelMotion, postcardGarden, villageProgress } from './postcard.ts';
+import { communityCrowd, parcelMotion, postcardGarden, postcardGardens, villageProgress } from './postcard.ts';
 import { CelebrationHold } from '../shared/playback.ts';
+import { getPuzzles } from '../shared/puzzles.ts';
+import { validateRepair } from '../shared/rules.ts';
 
 test('garden parcels lift before trading places and land at the exact destination', () => {
   for (const side of [-1, 1]) {
@@ -29,6 +31,35 @@ test('completion gardens grow beside roads and homes, never on a path, water or 
   }
 });
 
+test('isolated garden patches still bloom when a solved road has no bordering grass', () => {
+  const board = ['AooooB', 'xxxxxx', '..x...', 'xxxxxx', '~~~~~~', 'xxxxxx'];
+  assert.deepEqual(postcardGardens(board), [
+    { row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 3 }, { row: 2, col: 4 }, { row: 2, col: 5 },
+  ]);
+  const roadside = ['AooooB', '.xxxxx', '..x...', 'xxxxxx', '~~~~~~', 'xxxxxx'];
+  assert.deepEqual(postcardGardens(roadside), [{ row: 1, col: 0 }]);
+  assert.deepEqual(postcardGardens(['AooooB', 'xxxxxx', '~~~~~~', 'xxxxxx', '~~~~~~', 'xxxxxx']), []);
+});
+
+test('every released Practice finish has real grass locations for its celebration flowers', () => {
+  for (const puzzle of getPuzzles()) {
+    const board = validateRepair(puzzle, 'daily', puzzle.witness).board;
+    const gardens = postcardGardens(board);
+    assert.ok(gardens.length > 0, puzzle.id);
+    assert.ok(gardens.every((cell) => board[cell.row]?.[cell.col] === '.'), puzzle.id);
+  }
+});
+
+test('fallback flowers are bounded and spread through a large isolated garden', () => {
+  const board = ['AooooooB', 'xxxxxxxx', '........', '........', '........', '........', '........', '........'];
+  const gardens = postcardGardens(board);
+  assert.ok(gardens.length > 0 && gardens.length <= 12);
+  assert.ok(gardens.some((cell) => cell.row === 2));
+  assert.ok(gardens.some((cell) => cell.row === 7));
+  assert.ok(gardens.every((cell) => board[cell.row]?.[cell.col] === '.'));
+  assert.deepEqual(postcardGardens(board), gardens);
+});
+
 test('village opening is staggered, bounded and fully settled before the existing result hold ends', () => {
   assert.equal(villageProgress(0), 0);
   assert.equal(villageProgress(90, 2), 0);
@@ -54,4 +85,14 @@ test('representative crowds use the real count, cap at two people per home and n
   assert.equal(crowd.length, 6);
   for (const anchor of homes) assert.deepEqual(crowd.filter((person) => person.anchor === anchor).map((person) => person.side), [-1, 1]);
   assert.throws(() => communityCrowd(homes, -1), /invalid/);
+});
+
+test('finish crowds leave the courier destination clear without losing the other home greetings', () => {
+  const homes = ['A', 'B', 'C'] as const;
+  const crowd = communityCrowd(homes, 100000, 'B');
+  assert.equal(crowd.length, 4);
+  assert.ok(crowd.every(person => person.anchor !== 'B'));
+  for (const anchor of ['A', 'C']) assert.deepEqual(crowd.filter(person => person.anchor === anchor).map(person => person.side), [-1, 1]);
+  assert.deepEqual(communityCrowd(['A'], 1, 'A'), []);
+  assert.equal(communityCrowd(homes, 1, 'C').length, 1);
 });

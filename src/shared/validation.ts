@@ -2,6 +2,7 @@ import { BOARD_SIZES, isAnchor, MAX_BOARD_SIZE, MAX_EXCHANGES, RuleError } from 
 import type { AttemptStart, Bootstrap, CatalogEntry, Edition, Goal, Leaderboard, MyRank, Puzzle, RankedScore, SavedRepair, ScoreRecord, SubmitRepair, Swap } from './types.ts';
 import { MAX_ATTEMPT_MS } from './timing.ts';
 import { isGuideTopics } from './guidance.ts';
+import { BIOMES } from './biomes.ts';
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -34,9 +35,14 @@ function isPuzzleMetadata(value: unknown): value is Record<string, unknown> {
     (value['frame'] === undefined || (value['frame'] === 'strip' && value['area'] === 3) ||
       ((value['frame'] === 'square' || value['frame'] === 'ell') && value['area'] === 4)) &&
     (value['practiceAfter'] === undefined || integer(value['practiceAfter'], 1, 10_000)) &&
+    (value['campaignSlot'] === undefined || integer(value['campaignSlot'], 0, 9_999)) &&
+    (value['originalSlot'] === undefined || integer(value['originalSlot'], 0, 9_999)) &&
+    (value['legacyId'] === undefined || typeof value['legacyId'] === 'string') &&
+    (value['archived'] === undefined || typeof value['archived'] === 'boolean') &&
+    (value['challengeTier'] === undefined || integer(value['challengeTier'], 1, 4)) &&
     integer(value['budget'], 1, MAX_EXCHANGES) &&
     (value['minimum'] === undefined || integer(value['minimum'], 1, Number(value['budget']))) &&
-    (value['theme'] === 'meadow' || value['theme'] === 'coast' || value['theme'] === 'orchard');
+    typeof value['theme'] === 'string' && Object.hasOwn(BIOMES, value['theme']);
 }
 
 export function isCatalogEntry(value: unknown): value is CatalogEntry {
@@ -63,6 +69,7 @@ export function isEdition(value: unknown): value is Edition {
 
 export function isBootstrap(value: unknown): value is Bootstrap {
   return isRecord(value) && (value['edition'] === null || isEdition(value['edition'])) &&
+    (value['campaignRevision'] === undefined || value['campaignRevision'] === 1 || value['campaignRevision'] === 2) &&
     Array.isArray(value['catalog']) && value['catalog'].every(isCatalogEntry) &&
     (value['source'] === 'local' || value['source'] === 'reddit') &&
     typeof value['community'] === 'string' &&

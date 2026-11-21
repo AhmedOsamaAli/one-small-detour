@@ -1,6 +1,6 @@
 import type { Cell, JourneyPlan, JourneyStop } from './types.ts';
 
-export const WALK_STEP_MS = 200;
+export const WALK_STEP_MS = 280;
 export const ARRIVAL_PAUSE_MS = 650;
 export const COMPLETION_CELEBRATION_MS = 1500;
 

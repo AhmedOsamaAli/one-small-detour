@@ -1,0 +1,14 @@
+One Small Detour - craft world and miniature atlases
+
+The cottage, articulated courier, terrain geometry, bridge geometry, model
+processing, seasonal treatment and final atlas compositions were created for
+this project.
+
+Licensed material/foliage/rock inputs from Poly Haven use CC0-1.0.
+Source credits and URLs: ../garden/LICENSES.txt
+Related landscape compositions: ../landscape/LICENSES.txt
+Poly Haven licence: https://polyhaven.com/license
+CC0 licence: https://creativecommons.org/publicdomain/zero/1.0/
+
+The game ships processed geometry and small atlases, not library preview
+images. Poly Haven does not endorse this project.

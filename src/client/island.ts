@@ -4,13 +4,28 @@ import { canTraverse, connects, isAnchor, locate, patchCells, patchOutline, tile
 import type { Anchor, Board, Celebration, Cell, FrameAxes, GuideBounds, Shape, Swap, Theme } from '../shared/types.ts';
 import type { PlaybackFrame } from '../shared/playback.ts';
 import { COMPLETION_CELEBRATION_MS } from '../shared/playback.ts';
-import { COURIER_SCALE, FLOWER_COLORS, GRASS_COLORS, HOME_BADGE_BG, HOME_COLORS, worldPalette } from './worldTheme.ts';
+import { FLOWER_COLORS, GRASS_COLORS, HOME_BADGE_BG, HOME_COLORS, craftLighting, craftedWorldPalette, isPaleGarden, worldPalette } from './worldTheme.ts';
+import { courierWorldScale } from './courierSizing.ts';
 import type { WorldColor, WorldPalette } from './worldTheme.ts';
 import { sceneryOrigins, tileScenery, waterBanks } from './scenery.ts';
 import type { Flower } from './scenery.ts';
 import { HOME_GLYPHS, HOME_PLAQUE_PATH, HOME_SPROUT_PATH } from './homeLetter.ts';
-import { communityCrowd, parcelMotion, postcardGarden, villageProgress } from './postcard.ts';
+import { communityCrowd, parcelMotion, postcardGardens, villageProgress } from './postcard.ts';
 import { carvedEarth, postcardFlowers, postcardResident } from './postcardArt.ts';
+import { miniatureContactMap, miniatureFoliage, miniatureSurfaceMaps } from './miniatureArt.ts';
+import type { MiniatureSurface } from './miniatureArt.ts';
+import { BIOMES } from '../shared/biomes.ts';
+import { makeCourier } from './courierArt.ts';
+import { roseBloom } from './botanicalArt.ts';
+import { GardenResources } from './gardenResources.ts';
+import type { GardenImages } from './gardenAssets.ts';
+import { cloneCraftGeometry, makeCraftCourier } from './craftWorld.ts';
+import type { CraftWorld } from './craftWorld.ts';
+import { groundDetail } from './craftSurface.ts';
+import type { GroundMotif } from './craftSurface.ts';
+import { groundSculpture, sculptedBank, sculptedBridge, sculptedPaving, sculptedRoadLink, softTerrain } from './craftTerrain.ts';
+import { courierPose, turnToward } from './craftMotion.ts';
+import { CraftCelebration } from './craftEffects.ts';
 
 interface Callbacks {
   onCell: (cell: Cell) => void;
@@ -28,6 +43,7 @@ interface TileObject {
   bounds: THREE.Box3;
   batchParts: BatchedPart[];
   sprout: THREE.Mesh | null;
+  banks: { mesh: THREE.Mesh; row: number; col: number }[];
 }
 
 interface BatchedPart {
@@ -150,9 +166,9 @@ function granite(): THREE.BufferGeometry {
 
 function bridgeDirection(): THREE.ShapeGeometry {
   const shape = new THREE.Shape();
-  shape.moveTo(-0.045, -0.045);
-  shape.lineTo(0.045, 0);
-  shape.lineTo(-0.045, 0.045);
+  shape.moveTo(-0.065, -0.065);
+  shape.lineTo(0.065, 0);
+  shape.lineTo(-0.065, 0.065);
   shape.closePath();
   return new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2);
 }
@@ -182,6 +198,10 @@ export class LivingIsland {
   private tiles: TileObject[] = [];
   private materials = new Map<string, THREE.MeshStandardMaterial>();
   private terrainMaterials = new Map<string, { material: THREE.MeshStandardMaterial; role: WorldColor }>();
+  private surfaceTextures = new Map<MiniatureSurface, ReturnType<typeof miniatureSurfaceMaps>>();
+  private contactMaterial: THREE.MeshStandardMaterial | null = null;
+  private contactGeometry: THREE.BufferGeometry | null = null;
+  private foliageGeometry: THREE.BufferGeometry | null = null;
   private geometries: THREE.BufferGeometry[] = [];
   private extraMaterials: THREE.Material[] = [];
   private textures: THREE.Texture[] = [];
@@ -197,6 +217,7 @@ export class LivingIsland {
   private houseWindows = new Map<Anchor, THREE.MeshStandardMaterial>();
   private postcardHomes = new Map<Anchor, PostcardHome>();
   private postcardStarted: number | null = null;
+  private postcardCourierHome: Anchor | null = null;
   private postcardSettled = false;
   private postcardSoil: THREE.BufferGeometry | null = null;
   private postcardFlowerGeometries: THREE.BufferGeometry[] = [];
@@ -228,6 +249,7 @@ export class LivingIsland {
   private liftPoint = new THREE.Vector3();
   private shadowsDirty = true;
   private highlightKey = '';
+  private invalidSelection: { group: THREE.Group; began: number } | null = null;
   private highlightMaterials = new Map<string, THREE.MeshBasicMaterial>();
   private highlightBar = this.track(new THREE.BoxGeometry(1, 1, 1));
   private highlightFill = this.track(new THREE.PlaneGeometry(1, 1));
@@ -250,7 +272,7 @@ export class LivingIsland {
   private bridgePier = this.track(roundedPrism(0.14, 0.54, 0.12, 0.02));
   private bridgeRail = this.track(new THREE.BoxGeometry(0.94, 0.03, 0.025));
   private bridgeArrow = this.track(bridgeDirection());
-  private bridgeArrowShaft = this.track(new THREE.BoxGeometry(0.40, 0.008, 0.027));
+  private bridgeArrowShaft = this.track(new THREE.BoxGeometry(0.44, 0.008, 0.045));
   private roofGeometry = this.track(cottageRoof());
   private flowerStem = this.track(new THREE.CylinderGeometry(0.008, 0.009, 0.12, 4));
   private flowerPetal = this.track(new THREE.SphereGeometry(0.027, 5, 4));
@@ -260,26 +282,83 @@ export class LivingIsland {
   private rockSeams = new THREE.LineBasicMaterial({ color: '#415663', transparent: true, opacity: 0.28 });
   private smallStone = this.track(roundedPrism(0.27, 0.12, 0.012, 0.04));
   private waterGeometry = this.track(new THREE.PlaneGeometry(1, 1, 8, 8));
-  private grassGeometry = this.makeBlade();
+  private grassGeometry: THREE.BufferGeometry;
   private grassMaterial: THREE.MeshStandardMaterial;
   private waterSurround: THREE.Mesh;
-  private footLeft = new THREE.Group();
-  private footRight = new THREE.Group();
-  private courierBody = new THREE.Group();
-  private armLeft = new THREE.Group();
-  private armRight = new THREE.Group();
+  private footLeft: THREE.Object3D = new THREE.Group();
+  private footRight: THREE.Object3D = new THREE.Group();
+  private courierBody: THREE.Object3D = new THREE.Group();
+  private armLeft: THREE.Object3D = new THREE.Group();
+  private armRight: THREE.Object3D = new THREE.Group();
+  private courierEyes: THREE.Object3D | null = null;
   private travelerWalking = false;
   private greetingUntil = 0;
   private readonly container: HTMLElement;
   private readonly callbacks: Callbacks;
   private readonly postcard: boolean;
+  private readonly miniature: boolean;
+  private readonly garden: GardenResources | null;
+  private readonly detailed: boolean;
+  private readonly gardenFlowerMaterial: THREE.MeshStandardMaterial | null;
+  private gardenBlooms = new Map<string, THREE.BufferGeometry>();
+  private readonly craftCottage: THREE.BufferGeometry | null;
+  private readonly craftMaterial: THREE.MeshStandardMaterial | null;
+  private readonly craftWorld: CraftWorld | null;
+  private readonly craftFoliage: THREE.MeshStandardMaterial | null;
+  private readonly craftTrees = new Map<Theme, THREE.BufferGeometry>();
+  private readonly craftRoofs = new Map<Anchor, THREE.BufferGeometry>();
+  private readonly craftGround = new Map<GroundMotif, THREE.BufferGeometry>();
+  private readonly houseBoxes = new Map<string, THREE.BoxGeometry>();
+  private readonly craftEffects: CraftCelebration | null;
+  private readonly homeGreetings = new Map<Anchor, number>();
+  private travelerTargetYaw = 0;
+  private readonly craftedTerrain: {
+    soil: THREE.BufferGeometry; cap: THREE.BufferGeometry; paving: THREE.BufferGeometry[];
+    link: THREE.BufferGeometry; bridge: THREE.BufferGeometry; bank: THREE.BufferGeometry;
+  } | null;
 
-  constructor(container: HTMLElement, callbacks: Callbacks, postcard = false) {
+  constructor(container: HTMLElement, callbacks: Callbacks, postcard = false, miniature = false, gardenImages?: GardenImages, craft?: CraftWorld) {
     this.container = container;
     this.callbacks = callbacks;
     this.postcard = postcard;
+    this.miniature = miniature;
+    this.garden = gardenImages ? new GardenResources(gardenImages) : null;
+    this.detailed = gardenImages !== undefined || craft !== undefined;
+    this.craftWorld = craft ?? null;
+    this.craftEffects = craft ? new CraftCelebration() : null;
+    if (this.craftEffects) this.scene.add(this.craftEffects.root);
+    this.craftedTerrain = craft ? {
+      soil: this.track(softTerrain(.985, .985, .23, .025)),
+      cap: this.track(softTerrain(.985, .985, .048, .012)),
+      paving: [0, 1, 2].map(variant => this.track(sculptedPaving(variant))),
+      link: this.track(sculptedRoadLink()), bridge: this.track(sculptedBridge()), bank: this.track(sculptedBank()),
+    } : null;
+    this.craftCottage = craft ? this.track(cloneCraftGeometry(craft.cottage)) : null;
+    this.craftMaterial = craft ? new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: .9 }) : null;
+    if (this.craftMaterial) this.extraMaterials.push(this.craftMaterial);
+    this.craftFoliage = craft ? new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 1 }) : null;
+    if (this.craftFoliage) {
+      this.extraMaterials.push(this.craftFoliage);
+      this.addBreeze(this.craftFoliage, .025, .20);
+    }
+    if (craft) this.rockGeometry = this.track(cloneCraftGeometry(craft.rock));
+    this.gardenFlowerMaterial = this.detailed ? new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true,
+      roughness: .88, side: craft ? THREE.FrontSide : THREE.DoubleSide }) : null;
+    if (this.gardenFlowerMaterial) this.extraMaterials.push(this.gardenFlowerMaterial);
+    this.grassGeometry = this.makeBlade();
+    if (miniature) {
+      const contact = miniatureContactMap();
+      this.textures.push(contact);
+      this.contactGeometry = this.track(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2));
+      this.contactMaterial = new THREE.MeshStandardMaterial({
+        color: '#243d2b', alphaMap: contact, transparent: true, opacity: .3,
+        depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1,
+      });
+      this.extraMaterials.push(this.contactMaterial);
+      if (!craft) this.foliageGeometry = this.track(miniatureFoliage());
+    }
     if (postcard) {
-      this.postcardSoil = this.track(carvedEarth(this.soilGeometry.clone()));
+      if (!craft) this.postcardSoil = this.track(carvedEarth(this.soilGeometry.clone()));
       this.postcardMaterial = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.9 });
       this.extraMaterials.push(this.postcardMaterial);
       const neighbor = postcardResident('#507e78');
@@ -304,7 +383,10 @@ export class LivingIsland {
     this.canvas = this.renderer.domElement;
     this.raycaster.layers.set(INPUT_LAYER);
     this.canvas.className = 'island-canvas';
+    this.canvas.dataset['craft'] = craft ? 'blender' : 'off';
     this.canvas.dataset['postcard'] = postcard ? 'puzzle' : 'off';
+    this.canvas.dataset['miniature'] = miniature ? 'on' : 'off';
+    this.canvas.dataset['art'] = this.detailed ? 'realistic' : 'classic';
     this.canvas.setAttribute('aria-hidden', 'true');
     this.renderer.debug.onShaderError = (gl, program, vertex, fragment) => {
       console.error('The terrain shader could not compile:', gl.getProgramInfoLog(program), gl.getShaderInfoLog(vertex), gl.getShaderInfoLog(fragment));
@@ -322,7 +404,7 @@ export class LivingIsland {
     sun.shadow.camera.right = 9;
     sun.shadow.camera.top = 9;
     sun.shadow.camera.bottom = -9;
-    sun.shadow.normalBias = 0.018;
+    sun.shadow.normalBias = miniature ? 0.012 : 0.018;
     sun.shadow.bias = -0.0001;
     sun.shadow.radius = 3;
     this.scene.add(sun);
@@ -384,7 +466,7 @@ export class LivingIsland {
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
     this.resize();
-    document.addEventListener('visibilitychange', this.resetTickTime);
+    document.addEventListener('visibilitychange', this.syncFrameLoop);
     this.frame = requestAnimationFrame(this.tick);
   }
 
@@ -407,19 +489,110 @@ export class LivingIsland {
     return material;
   }
 
-  private terrainMaterial(role: WorldColor, vertexColors = false, flatShading = false): THREE.MeshStandardMaterial {
-    const key = `${role}:${vertexColors}:${flatShading}`;
+  private houseBox(width: number, height: number, depth: number): THREE.BoxGeometry {
+    const key = `${width}:${height}:${depth}`;
+    const cached = this.houseBoxes.get(key);
+    if (cached) return cached;
+    const geometry = this.track(new THREE.BoxGeometry(width, height, depth));
+    this.houseBoxes.set(key, geometry);
+    return geometry;
+  }
+
+  private addBreeze(material: THREE.MeshStandardMaterial, strength: number, base: number): void {
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms['uDetourTime'] = this.time;
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float uDetourTime;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          vec4 detourWorld=vec4(position,1.0);
+          #ifdef USE_INSTANCING
+          detourWorld=instanceMatrix*detourWorld;
+          #endif
+          detourWorld=modelMatrix*detourWorld;
+          float detourBreeze=sin(uDetourTime*1.1+detourWorld.x*1.7+detourWorld.z*.8);
+          float detourWeight=max(0.0,position.y-${base.toFixed(2)});
+          transformed.x+=detourBreeze*${strength.toFixed(3)}*detourWeight;
+          transformed.z+=cos(uDetourTime*.8+detourWorld.z)*${(strength * .4).toFixed(3)}*detourWeight;`);
+    };
+    material.customProgramCacheKey = () => `detour-breeze-${strength}-${base}`;
+  }
+
+  private craftRoof(anchor: Anchor): THREE.BufferGeometry {
+    const cached = this.craftRoofs.get(anchor);
+    if (cached) return cached;
+    if (!this.craftCottage) throw new Error('The handmade cottage is missing.');
+    const geometry = this.track(this.craftCottage.clone());
+    const colors = geometry.getAttribute('color'), roof = geometry.getAttribute('_roof');
+    if (!colors || !roof) throw new Error('The handmade cottage is missing its roof paint.');
+    const original = new THREE.Color('#4d7b6c'), paint = new THREE.Color(HOME_COLORS[anchor]).lerp(new THREE.Color('#d7d0b4'), .12);
+    for (let index = 0; index < colors.count; index++) {
+      if (roof.getX(index) < .5) continue;
+      const shade = (colors.getX(index) + colors.getY(index) + colors.getZ(index)) / (original.r + original.g + original.b);
+      colors.setXYZ(index, Math.min(1, paint.r * shade), Math.min(1, paint.g * shade), Math.min(1, paint.b * shade));
+    }
+    this.craftRoofs.set(anchor, geometry);
+    return geometry;
+  }
+
+  private refineMaterial(material: THREE.MeshStandardMaterial, surface: MiniatureSurface, role?: WorldColor): void {
+    if (this.craftWorld) return;
+    let textures = this.surfaceTextures.get(surface);
+    if (!textures) {
+      textures = miniatureSurfaceMaps(surface);
+      this.surfaceTextures.set(surface, textures);
+      this.textures.push(textures.map, textures.relief);
+    }
+    material.map = textures.map;
+    material.bumpMap = surface === 'stone' || surface === 'timber' ? textures.relief : null;
+    material.roughnessMap = surface === 'stone' || surface === 'timber' || surface === 'roof' ? textures.relief : null;
+    material.bumpScale = surface === 'stone' ? .004 : .003;
+    const natural = this.garden?.surface(role?.startsWith('rock') ? 'granite' : surface);
+    if (natural) material.map = natural;
+  }
+
+  private surfaceMaterial(color: string, surface: MiniatureSurface): THREE.MeshStandardMaterial {
+    if (!this.miniature) return this.material(color);
+    const key = `${surface}:${color}`;
+    const previous = this.materials.get(key);
+    if (previous) return previous;
+    const material = new THREE.MeshStandardMaterial({ color, roughness: surface === 'roof' ? .83 : .94 });
+    this.refineMaterial(material, surface);
+    this.materials.set(key, material);
+    return material;
+  }
+
+  private terrainColor(role: WorldColor): THREE.Color {
+    const color = new THREE.Color(this.palette[role]);
+    if (this.miniature && !this.craftWorld && this.theme !== 'winter' && this.theme !== 'blossom' && GRASS_COLORS.some((name) => name === role)) {
+      color.lerp(new THREE.Color(this.darkMode ? '#4e6050' : '#62704f'), .04).multiplyScalar(.92);
+    }
+    if (this.miniature && !this.craftWorld && this.theme !== 'winter' && this.theme !== 'blossom' && (role === 'road' || role === 'roadLight')) color.multiplyScalar(1.1);
+    if (this.garden && !this.craftWorld && this.theme === 'winter' && this.darkMode && GRASS_COLORS.some((name) => name === role)) {
+      color.lerp(new THREE.Color('#d8e0de'), .24);
+    }
+    if (this.garden && !this.craftWorld && this.theme === 'blossom' && GRASS_COLORS.some((name) => name === role)) {
+      color.lerp(new THREE.Color('#f4dce9'), this.darkMode ? .32 : .08);
+    }
+    return color;
+  }
+
+  private terrainMaterial(role: WorldColor, vertexColors = false, flatShading = false, side: THREE.Side = THREE.FrontSide): THREE.MeshStandardMaterial {
+    const key = `${role}:${vertexColors}:${flatShading}:${side}`;
     const existing = this.terrainMaterials.get(key);
     if (existing) return existing.material;
     const material = new THREE.MeshStandardMaterial({
-      color: this.palette[role], roughness: 0.94, vertexColors, flatShading,
+      color: this.terrainColor(role), roughness: 0.94, vertexColors, flatShading, side,
     });
+    if (this.miniature) {
+      const surface: MiniatureSurface = role.startsWith('wood') ? 'timber' : role.startsWith('soil') ? 'earth' :
+        role.startsWith('road') || role.startsWith('rock') || role === 'mortar' ? 'stone' : 'grass';
+      if (role !== 'water' && role !== 'waterLight' && role !== 'foam' && role !== 'blade') this.refineMaterial(material, surface, role);
+    }
     this.terrainMaterials.set(key, { material, role });
     this.extraMaterials.push(material);
     return material;
   }
 
-  private mesh(geometry: THREE.BufferGeometry, color: string | THREE.MeshStandardMaterial, position: THREE.Vector3, parent: THREE.Group): THREE.Mesh {
+  private mesh(geometry: THREE.BufferGeometry, color: string | THREE.MeshStandardMaterial, position: THREE.Vector3, parent: THREE.Object3D): THREE.Mesh {
     const mesh = new THREE.Mesh(geometry, typeof color === 'string' ? this.material(color) : color);
     mesh.position.copy(position);
     mesh.castShadow = true;
@@ -431,6 +604,14 @@ export class LivingIsland {
 
   private makeBlade(): THREE.BufferGeometry {
     const geometry = new THREE.BufferGeometry();
+    if (this.miniature) {
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+        -.016, 0, 0, .016, 0, 0, .010, .08, .01, -.012, .08, .01, .012, .17, .04,
+      ], 3));
+      geometry.setIndex([0, 1, 2, 0, 2, 3, 3, 2, 4]);
+      geometry.computeVertexNormals();
+      return this.track(geometry);
+    }
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([
       -0.020, 0, 0, 0.020, 0, 0, 0.012, 0.13, 0, -0.012, 0.13, 0, 0.023, 0.23, 0,
     ], 3));
@@ -440,17 +621,22 @@ export class LivingIsland {
   }
 
   private addGrass(group: THREE.Group, random: () => number, count: number): void {
+    if (this.craftWorld) count = Math.max(6, Math.round(count * .55));
+    if (this.detailed && this.theme === 'winter') count = Math.max(4, Math.round(count * .25));
     const grass = new THREE.InstancedMesh(this.grassGeometry, this.grassMaterial, count);
     const dummy = new THREE.Object3D();
     for (let i = 0; i < count; i++) {
-      dummy.position.set((random() - 0.5) * 0.9, 0.255, (random() - 0.5) * 0.9);
+      const x = random() - .5, z = random() - .5;
+      const cluster = i % 3 * Math.PI * 2 / 3;
+      dummy.position.set(this.miniature ? Math.cos(cluster) * .22 + x * .29 : x * .9,
+        .255, this.miniature ? Math.sin(cluster) * .22 + z * .29 : z * .9);
       dummy.rotation.y = random() * Math.PI * 2;
       const scale = 0.55 + random() * 0.7;
       dummy.scale.set(scale, scale * (0.7 + random() * 0.7), scale);
       dummy.updateMatrix();
       grass.setMatrixAt(i, dummy.matrix);
       const light = 0.78 + random() * 0.32;
-      grass.setColorAt(i, new THREE.Color().setRGB(light, light, light));
+      grass.setColorAt(i, this.miniature ? new THREE.Color().setRGB(light * .96, light, light * .85) : new THREE.Color().setRGB(light, light, light));
     }
     grass.instanceMatrix.needsUpdate = true;
     if (grass.instanceColor) grass.instanceColor.needsUpdate = true;
@@ -458,6 +644,20 @@ export class LivingIsland {
   }
 
   private addFlowers(group: THREE.Group, flowers: readonly Flower[], theme: Theme): void {
+    if (this.detailed && theme === 'winter') return;
+    if (this.gardenFlowerMaterial) {
+      for (const bloom of flowers) {
+        const color = FLOWER_COLORS[theme][bloom.color];
+        let geometry = this.gardenBlooms.get(color);
+        if (!geometry) { geometry = this.track(roseBloom(color, this.craftWorld !== null));this.gardenBlooms.set(color, geometry); }
+        const flower = new THREE.Mesh(geometry, this.gardenFlowerMaterial);
+        flower.position.set(bloom.x, .255, bloom.z);
+        flower.rotation.y = bloom.rotation;flower.scale.setScalar(bloom.scale * .9);
+        flower.receiveShadow = true;flower.userData['gardenScenery'] = true;
+        group.add(flower);
+      }
+      return;
+    }
     for (const bloom of flowers) {
       const flower = new THREE.Group();
       flower.position.set(bloom.x, 0.25, bloom.z);
@@ -479,26 +679,71 @@ export class LivingIsland {
   }
 
   private addTree(group: THREE.Group, random: () => number, theme: Theme): void {
-    const tree = new THREE.Group();
-    tree.position.set((random() - 0.5) * 0.35, 0.25, (random() - 0.5) * 0.35);
-    this.mesh(this.boardTrack(new THREE.CylinderGeometry(0.028, 0.045, 0.25, 6)), '#92714f', new THREE.Vector3(0, 0.12, 0), tree);
-    if (theme === 'coast') {
-      this.mesh(this.boardTrack(new THREE.ConeGeometry(0.22, 0.32, 9)), this.terrainMaterial('grassDeep'), new THREE.Vector3(0, 0.36, 0), tree);
-      this.mesh(this.boardTrack(new THREE.ConeGeometry(0.16, 0.26, 9)), this.terrainMaterial('blade'), new THREE.Vector3(0, 0.54, -0.025), tree);
+    if (this.craftWorld && this.craftFoliage) {
+      let geometry = this.craftTrees.get(theme);
+      if (!geometry) {
+        const source = this.craftWorld.trees.get(theme);
+        if (!source) throw new Error(`The miniature world is missing its ${theme} tree.`);
+        geometry = this.track(cloneCraftGeometry(source));
+        this.craftTrees.set(theme, geometry);
+      }
+      const tree = this.mesh(geometry, this.craftFoliage,
+        new THREE.Vector3((random() - .5) * .14, .255, (random() - .5) * .14), group);
+      tree.name = 'blender-tree';
+      tree.scale.setScalar(.78 + random() * .08);
+      tree.rotation.y = random() * Math.PI * 2;
+      tree.layers.disable(INPUT_LAYER);
+      this.addContact(group, tree.position.x, tree.position.z, .54, .52);
+      return;
+    }
+    if (this.garden) {
+      const tree = this.garden.tree(theme);
+      tree.position.x = (random() - .5) * .16;tree.position.z = (random() - .5) * .16;
+      tree.quaternion.copy(this.camera.quaternion);tree.userData['gardenTree'] = true;
+      this.addContact(group, tree.position.x, tree.position.z, .54, .52);
       group.add(tree);
       return;
     }
-    const foliage = this.boardTrack(new THREE.IcosahedronGeometry(0.19, 1));
-    this.mesh(foliage, this.terrainMaterial('grassDeep'), new THREE.Vector3(-0.09, 0.37, 0.03), tree);
-    this.mesh(foliage, this.terrainMaterial('grassAlt'), new THREE.Vector3(0.09, 0.4, -0.025), tree);
-    this.mesh(foliage, this.terrainMaterial('blade'), new THREE.Vector3(0, 0.54, 0), tree);
+    const tree = new THREE.Group();
+    tree.position.set((random() - 0.5) * 0.35, 0.25, (random() - 0.5) * 0.35);
+    this.mesh(this.boardTrack(new THREE.CylinderGeometry(0.028, 0.045, 0.25, 6)),
+      this.surfaceMaterial('#92714f', 'timber'), new THREE.Vector3(0, 0.12, 0), tree);
+    this.addContact(group, tree.position.x, tree.position.z, .62, .62);
+    if (theme === 'coast' || theme === 'winter') {
+      this.mesh(this.boardTrack(new THREE.ConeGeometry(0.22, 0.32, 9)),
+        theme === 'winter' ? this.material(BIOMES.winter.foliage[0]) : this.terrainMaterial('grassDeep'), new THREE.Vector3(0, 0.36, 0), tree);
+      this.mesh(this.boardTrack(new THREE.ConeGeometry(0.16, 0.26, 9)),
+        theme === 'winter' ? this.material(BIOMES.winter.foliage[1]) : this.terrainMaterial('blade'), new THREE.Vector3(0, 0.54, -0.025), tree);
+      if (theme === 'winter') {
+        this.mesh(this.boardTrack(new THREE.ConeGeometry(.18, .19, 9)), this.material('#dfebed'), new THREE.Vector3(0, .435, 0), tree);
+        this.mesh(this.boardTrack(new THREE.ConeGeometry(.125, .17, 9)), this.material('#eaf2ef'), new THREE.Vector3(0, .605, -.025), tree);
+      }
+      if (this.miniature || theme === 'winter') tree.traverse((part) => part.layers.disable(INPUT_LAYER));
+      group.add(tree);
+      return;
+    }
+    const foliage = this.foliageGeometry ?? this.boardTrack(new THREE.IcosahedronGeometry(0.19, 1));
+    const seasonal = theme !== 'meadow' && theme !== 'orchard';
+    this.mesh(foliage, seasonal ? this.material(BIOMES[theme].foliage[0]) : this.terrainMaterial('grassDeep', this.miniature, this.miniature), new THREE.Vector3(-0.09, 0.37, 0.03), tree);
+    this.mesh(foliage, seasonal ? this.material(BIOMES[theme].foliage[1]) : this.terrainMaterial('grassAlt', this.miniature, this.miniature), new THREE.Vector3(0.09, 0.4, -0.025), tree);
+    this.mesh(foliage, seasonal ? this.material(BIOMES[theme].foliage[2]) : this.terrainMaterial('blade', this.miniature, this.miniature), new THREE.Vector3(0, 0.54, 0), tree);
     if (theme === 'orchard') {
       const fruit = this.boardTrack(new THREE.SphereGeometry(0.033, 6, 5));
       for (const [x, y, z] of [[-0.14, 0.37, 0.13], [0.12, 0.43, 0.13], [-0.01, 0.56, 0.14]] as const) {
         this.mesh(fruit, '#c98256', new THREE.Vector3(x, y, z), tree);
       }
     }
+    if (this.miniature || seasonal) tree.traverse((part) => part.layers.disable(INPUT_LAYER));
     group.add(tree);
+  }
+
+  private addContact(group: THREE.Group, x: number, z: number, width: number, depth: number, y = .277): void {
+    if (!this.contactMaterial || !this.contactGeometry) return;
+    const contact = new THREE.Mesh(this.contactGeometry, this.contactMaterial);
+    contact.position.set(x, y, z);
+    contact.scale.set(width, 1, depth);
+    contact.userData['miniatureContact'] = true;
+    group.add(contact);
   }
 
   private label(text: string, color: string, persistent = false): THREE.Sprite {
@@ -506,7 +751,18 @@ export class LivingIsland {
     canvas.width = canvas.height = 128;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Map labels could not be drawn.');
-    if (isAnchor(text) && !persistent) {
+    if (isAnchor(text) && !persistent && this.detailed) {
+      context.fillStyle = '#b9a170';context.beginPath();context.roundRect(10, 12, 108, 104, [13, 13, 22, 22]);context.fill();
+      const glaze = context.createLinearGradient(10, 15, 110, 110);
+      glaze.addColorStop(0, color);glaze.addColorStop(1, new THREE.Color(color).multiplyScalar(.65).getStyle());
+      context.fillStyle = glaze;context.beginPath();context.roundRect(15, 17, 98, 94, [9, 9, 17, 17]);context.fill();
+      context.strokeStyle = '#fff2cd88';context.lineWidth = 2;context.stroke();
+      for (const x of [22, 106]) {
+        context.fillStyle = '#dfc58e';context.beginPath();context.arc(x, 65, 2.4, 0, Math.PI * 2);context.fill();
+      }
+      context.save();context.translate(27, 21);context.scale(2.3, 2.3);
+      context.fillStyle = HOME_BADGE_BG;context.fill(new Path2D(HOME_GLYPHS[text]), 'evenodd');context.restore();
+    } else if (isAnchor(text) && !persistent) {
       context.save();
       context.translate(16, 10);
       context.scale(3, 3);
@@ -544,7 +800,8 @@ export class LivingIsland {
     else this.boardMaterials.push(material);
     const sprite = new THREE.Sprite(material);
     sprite.scale.set(this.labelScale, this.labelScale, 1);
-    sprite.position.y = 1.03;
+    if (this.craftCottage && !persistent) sprite.position.set(.46, .66, .28);
+    else sprite.position.y = 1.03;
     sprite.renderOrder = 20;
     sprite.layers.enable(INPUT_LAYER);
     if (!persistent) this.landmarkSprites.push(sprite);
@@ -555,48 +812,84 @@ export class LivingIsland {
     const roofColor = HOME_COLORS[anchor];
     const house = new THREE.Group();
     house.position.set(-0.04, 0, -0.17);
-    group.add(house);
-    const wall = this.boardTrack(roundedPrism(0.47, 0.42, 0.37, 0.03));
-    this.mesh(wall, '#f0dfb8', new THREE.Vector3(0, 0.255, 0), house);
-    this.mesh(this.boardTrack(roundedPrism(0.52, 0.46, 0.035, 0.025)), this.terrainMaterial('roadShade'),
-      new THREE.Vector3(0, 0.255, 0), house);
-    this.mesh(this.roofGeometry, roofColor, new THREE.Vector3(0, 0.61, 0), house);
-    const roofSeams = new THREE.InstancedMesh(this.boardTrack(new THREE.BoxGeometry(0.376, 0.012, 0.012)),
-      this.material(new THREE.Color(roofColor).multiplyScalar(0.65).getStyle()), 10);
-    const seam = new THREE.Object3D();
-    for (let index = 0; index < 10; index++) {
-      const side = index < 5 ? -1 : 1;
-      seam.position.set(side * 0.145, 0.735, (index % 5 - 2) * 0.10);
-      seam.rotation.z = -side * Math.atan2(0.24, 0.29);
-      seam.updateMatrix();
-      roofSeams.setMatrixAt(index, seam.matrix);
+    if (this.detailed) {
+      const variant = (anchor.charCodeAt(0) - 65) % 3;
+      house.scale.set(variant === 1 ? 1.08 : .98, variant === 1 ? .92 : 1, variant === 2 ? 1.06 : 1);
+      house.userData['gardenHouse'] = anchor;
     }
-    roofSeams.instanceMatrix.needsUpdate = true;
-    house.add(roofSeams);
-    this.mesh(this.boardTrack(new THREE.BoxGeometry(0.028, 0.028, 0.54)),
-      new THREE.Color(roofColor).multiplyScalar(0.75).getStyle(), new THREE.Vector3(0, 0.86, 0), house);
+    group.add(house);
+    const handmade = this.craftCottage !== null && this.craftMaterial !== null;
+    if (handmade && this.craftCottage && this.craftMaterial) {
+      const shell = this.mesh(this.craftRoof(anchor), this.craftMaterial, new THREE.Vector3(0, .255, 0), house);
+      shell.name = 'blender-cottage';
+    } else {
+      const wall = this.boardTrack(roundedPrism(0.47, 0.42, 0.37, 0.03));
+      this.mesh(wall, this.surfaceMaterial('#f0dfb8', 'plaster'), new THREE.Vector3(0, 0.255, 0), house);
+      this.mesh(this.boardTrack(roundedPrism(0.52, 0.46, 0.035, 0.025)), this.terrainMaterial('roadShade'),
+        new THREE.Vector3(0, 0.255, 0), house);
+      this.mesh(this.roofGeometry, this.surfaceMaterial(roofColor, 'roof'), new THREE.Vector3(0, 0.61, 0), house);
+    }
+    if (this.theme === 'winter') {
+      const snow = this.mesh(this.roofGeometry, this.material('#e7eff0'), new THREE.Vector3(0, .624, 0), house);
+      snow.scale.set(.94, 1, .95);
+      snow.layers.disable(INPUT_LAYER);
+    }
+    this.addContact(group, -.04, -.17, .85, .62, .336);
+    if (!handmade) {
+      const roofSeams = new THREE.InstancedMesh(this.boardTrack(new THREE.BoxGeometry(0.376, 0.012, 0.012)),
+        this.material(new THREE.Color(roofColor).multiplyScalar(0.65).getStyle()), 10);
+      const seam = new THREE.Object3D();
+      for (let index = 0; index < 10; index++) {
+        const side = index < 5 ? -1 : 1;
+        seam.position.set(side * 0.145, 0.735, (index % 5 - 2) * 0.10);
+        seam.rotation.z = -side * Math.atan2(0.24, 0.29);
+        seam.updateMatrix();
+        roofSeams.setMatrixAt(index, seam.matrix);
+      }
+      roofSeams.instanceMatrix.needsUpdate = true;
+      house.add(roofSeams);
+      this.mesh(this.boardTrack(new THREE.BoxGeometry(0.028, 0.028, 0.54)),
+        new THREE.Color(roofColor).multiplyScalar(0.75).getStyle(), new THREE.Vector3(0, 0.86, 0), house);
+    }
     if (this.postcard) this.addPostcardHome(house, anchor);
     else {
-      this.mesh(this.boardTrack(new THREE.BoxGeometry(0.10, 0.19, 0.025)), '#704c33', new THREE.Vector3(0, 0.36, 0.221), house);
+      this.mesh(this.boardTrack(new THREE.BoxGeometry(0.10, 0.19, 0.025)), this.surfaceMaterial('#704c33', 'timber'), new THREE.Vector3(0, 0.36, 0.221), house);
       this.mesh(this.boardTrack(new THREE.SphereGeometry(0.009, 5, 4)), '#e3b960', new THREE.Vector3(0.027, 0.355, 0.239), house);
     }
-    const doorPost = this.boardTrack(new THREE.BoxGeometry(0.018, 0.205, 0.035));
+    const doorPost = this.houseBox(0.018, 0.205, 0.035);
     for (const x of [-0.06, 0.06]) this.mesh(doorPost, '#c29c65', new THREE.Vector3(x, 0.36, 0.225), house);
-    const windowGeometry = this.boardTrack(new THREE.BoxGeometry(0.075, 0.075, 0.022));
-    const windows = new THREE.MeshStandardMaterial({ color: '#ffe6ad', emissive: '#edb252', emissiveIntensity: 0.12, roughness: 0.45 });
+    const windowGeometry = this.houseBox(0.075, 0.075, 0.022);
+    const windows =     new THREE.MeshStandardMaterial({ color: '#ffe6ad', emissive: '#edb252', emissiveIntensity: 0.12, roughness: 0.45 });
     this.boardMaterials.push(windows);
     this.houseWindows.set(anchor, windows);
     this.mesh(windowGeometry, windows, new THREE.Vector3(-0.14, 0.48, 0.223), house);
     this.mesh(windowGeometry, windows, new THREE.Vector3(0.14, 0.48, 0.223), house);
-    const sill = this.boardTrack(new THREE.BoxGeometry(0.11, 0.02, 0.05));
-    this.mesh(sill, '#c7ae83', new THREE.Vector3(-0.14, 0.435, 0.24), house);
-    this.mesh(sill, '#c7ae83', new THREE.Vector3(0.14, 0.435, 0.24), house);
-    const windowGarden = this.boardTrack(new THREE.BoxGeometry(0.09, 0.027, 0.035));
+    const sill = this.houseBox(0.11, 0.02, 0.05);
+    this.mesh(sill, this.surfaceMaterial('#c7ae83', 'timber'), new THREE.Vector3(-0.14, 0.435, 0.24), house);
+    this.mesh(sill, this.surfaceMaterial('#c7ae83', 'timber'), new THREE.Vector3(0.14, 0.435, 0.24), house);
+    const windowGarden = this.houseBox(0.09, 0.027, 0.035);
     for (const x of [-0.14, 0.14]) this.mesh(windowGarden, this.terrainMaterial('blade'), new THREE.Vector3(x, 0.446, 0.255), house);
-    this.mesh(this.boardTrack(new THREE.BoxGeometry(0.075, 0.20, 0.075)), '#b89b7b', new THREE.Vector3(-0.14, 0.77, -0.08), house);
+    if (!handmade) this.mesh(this.boardTrack(new THREE.BoxGeometry(0.075, 0.20, 0.075)), '#b89b7b', new THREE.Vector3(-0.14, 0.77, -0.08), house);
     this.mesh(this.boardTrack(roundedPrism(0.20, 0.16, 0.035, 0.03)), '#e3d6b8', new THREE.Vector3(0, 0.27, 0.27), house);
+    if (this.detailed) {
+      const frame = this.houseBox(.012, .075, .029);
+      for (const x of [-.14, .14]) {
+        this.mesh(frame, '#efe9d4', new THREE.Vector3(x, .48, .24), house);
+        const cross = this.mesh(frame, '#efe9d4', new THREE.Vector3(x, .48, .241), house);
+        cross.rotation.z = Math.PI / 2;
+        for (const side of [-1, 1]) this.mesh(this.houseBox(.021, .091, .022),
+          this.surfaceMaterial(roofColor, 'roof'), new THREE.Vector3(x + side * .054, .48, .23), house);
+      }
+      const canopy = this.mesh(this.houseBox(.20, .018, .15),
+        this.surfaceMaterial(roofColor, 'roof'), new THREE.Vector3(0, .52, .294), house);
+      canopy.rotation.x = .18;
+      for (const x of [-.086, .086]) this.mesh(this.boardTrack(new THREE.CylinderGeometry(.006, .007, .24, 6)),
+        this.surfaceMaterial('#a38360', 'timber'), new THREE.Vector3(x, .39, .35), house);
+    }
     this.mesh(this.boardTrack(new THREE.CylinderGeometry(0.012, 0.015, 0.20, 5)), '#92714f', new THREE.Vector3(0.31, 0.35, 0.18), house);
     this.mesh(this.boardTrack(roundedPrism(0.11, 0.11, 0.07, 0.025)), roofColor, new THREE.Vector3(0.31, 0.44, 0.18), house);
+    if (handmade) this.mesh(this.boardTrack(new THREE.CylinderGeometry(.012, .014, .30, 6)),
+      this.terrainMaterial('woodShade'), new THREE.Vector3(.46, .44, .28), group);
     group.add(this.label(anchor, roofColor));
   }
 
@@ -608,7 +901,7 @@ export class LivingIsland {
     this.mesh(this.boardTrack(new THREE.BoxGeometry(0.102, 0.19, 0.007)), '#293d37', new THREE.Vector3(0, 0.36, 0.222), house);
     const door = new THREE.Group();
     door.position.set(-0.05, 0.36, 0.238);
-    this.mesh(this.boardTrack(new THREE.BoxGeometry(0.10, 0.19, 0.018)), '#785238', new THREE.Vector3(0.05, 0, 0), door);
+    this.mesh(this.boardTrack(new THREE.BoxGeometry(0.10, 0.19, 0.018)), this.surfaceMaterial('#785238', 'timber'), new THREE.Vector3(0.05, 0, 0), door);
     this.mesh(this.boardTrack(new THREE.SphereGeometry(0.009, 5, 4)), '#e3b960', new THREE.Vector3(0.079, -0.005, 0.017), door);
     house.add(door);
     const garden = new THREE.Group();
@@ -659,6 +952,7 @@ export class LivingIsland {
         uCorners: { value: new THREE.Vector4() },
         uOffset: { value: new THREE.Vector2(col, row) },
         uFish: { value: new THREE.Vector2(fish ? 1 : 0, variant) },
+        uMiniature: { value: this.miniature ? 1 : 0 },
         uDeep: { value: new THREE.Color(this.palette.water) },
         uLight: { value: new THREE.Color(this.palette.waterLight) },
         uFoam: { value: new THREE.Color(this.palette.foam) },
@@ -666,7 +960,7 @@ export class LivingIsland {
       vertexShader: `varying vec2 vUv; varying vec3 vWorld;
         void main(){vUv=uv; vWorld=(modelMatrix*vec4(position,1.)).xyz;
         gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader: `uniform float uTime; uniform vec4 uShore; uniform vec4 uCorners; uniform vec2 uOffset; uniform vec2 uFish;
+      fragmentShader: `uniform float uTime; uniform float uMiniature; uniform vec4 uShore; uniform vec4 uCorners; uniform vec2 uOffset; uniform vec2 uFish;
         uniform vec3 uDeep; uniform vec3 uLight; uniform vec3 uFoam; varying vec2 vUv; varying vec3 vWorld;
         void main(){
           vec2 uv=vWorld.xz;
@@ -698,11 +992,17 @@ export class LivingIsland {
             water=mix(water,mix(uDeep,uFoam,.45),max(body,tail)*.48);
           }
           float reflection=pow(max(0.,sin(a*.55+b*.2+sin(c)*.15)),10.);
-          water=mix(water,mix(uLight,uFoam,.35),reflection*.17+fresnel*.26);
+          water=mix(water,mix(uLight,uFoam,.35),reflection*mix(.17,.10,uMiniature)+fresnel*.26);
           float shore=1.-smoothstep(.012,.065+sin(a-b)*.008,bank);
           float ripple=(1.-smoothstep(.008,.025,abs(bank-(.075+sin(uTime*.65)*.012))))*(1.-smoothstep(.10,.18,bank));
-          water=mix(water,uFoam,shore*.45+ripple*.13);
-          water+=uFoam*glint*.20;
+          water=mix(water,uFoam,shore*mix(.45,.24,uMiniature)+ripple*mix(.13,.075,uMiniature));
+          if(uMiniature>.5){
+            float silt=sin(uv.x*19.+sin(uv.y*8.))*sin(uv.y*17.-uv.x*3.);
+            float caustic=pow(max(0.,sin(a*1.6+sin(b)*.6)*sin(b*1.3+uTime*.12)),6.);
+            water=mix(water,uLight,(silt*.025+caustic*.065)*(1.-depth*.7));
+            water=mix(water,uDeep,(1.-smoothstep(.0,.032,bank))*.16);
+          }
+          water+=uFoam*glint*mix(.20,.10,uMiniature);
           gl_FragColor=vec4(water,1.);
           #include <colorspace_fragment>
         }`,
@@ -720,14 +1020,23 @@ export class LivingIsland {
     this.currentHover = null;
     this.shadowsDirty = true;
     this.size = board.length;
+    if (this.miniature) {
+      const span = this.size * .78 + .8;
+      this.sun.shadow.camera.left = this.sun.shadow.camera.bottom = -span;
+      this.sun.shadow.camera.right = this.sun.shadow.camera.top = span;
+      this.sun.shadow.camera.near = .1;
+      this.sun.shadow.camera.far = 30;
+      this.sun.shadow.camera.updateProjectionMatrix();
+    }
     const center = (this.size - 1) / 2;
     this.pickPlane.scale.set(this.size / 6, this.size / 6, 1);
     this.waterSurround.scale.setScalar(this.size / 6);
     this.theme = theme;
     this.setAppearance(this.darkMode);
-    if (this.postcard) this.postcardFlowerGeometries = FLOWER_COLORS[theme].map((color) => this.boardTrack(postcardFlowers(color)));
-    const islandBase = roundedPrism(this.size + 0.02, this.size + 0.02, this.postcard ? 0.14 : 0.055, 0.16);
-    this.mesh(this.boardTrack(this.postcard ? carvedEarth(islandBase, 0.14) : islandBase),
+    if (this.postcard) this.postcardFlowerGeometries = FLOWER_COLORS[theme].map((color) => this.boardTrack(this.detailed ? roseBloom(color, this.craftWorld !== null) : postcardFlowers(color)));
+    const islandBase = this.craftWorld ? softTerrain(this.size + .06, this.size + .06, .16, .035) :
+      roundedPrism(this.size + 0.02, this.size + 0.02, this.postcard ? 0.14 : 0.055, 0.16);
+    this.mesh(this.boardTrack(this.postcard && !this.craftWorld ? carvedEarth(islandBase, 0.14) : islandBase),
       this.terrainMaterial(this.postcard ? 'soil' : 'soilEdge', this.postcard), new THREE.Vector3(0, this.postcard ? -0.15 : -0.08, 0), this.boardGroup);
     for (let row = 0; row < this.size; row++) {
       for (let col = 0; col < this.size; col++) {
@@ -738,14 +1047,17 @@ export class LivingIsland {
         const random = randomSeed(seed + Math.floor(origin / this.size) * 731 + origin % this.size * 1591);
         const group = new THREE.Group();
         group.position.set(col - center, 0, row - center);
-        const earth = !hasWater(tile) && this.postcardSoil ? this.postcardSoil : hasWater(tile) ? this.waterBedGeometry : this.soilGeometry;
+        const earth = !hasWater(tile) && this.craftedTerrain ? this.craftedTerrain.soil :
+          !hasWater(tile) && this.postcardSoil ? this.postcardSoil : hasWater(tile) ? this.waterBedGeometry : this.soilGeometry;
         const soil = this.mesh(earth, this.terrainMaterial('soil', this.postcard && !hasWater(tile)), new THREE.Vector3(0, -0.015, 0), group);
         soil.receiveShadow = true;
         const grassColor = GRASS_COLORS[Math.floor(random() * GRASS_COLORS.length)] ?? 'grass';
-        if (!hasWater(tile)) this.mesh(this.topGeometry, this.terrainMaterial(grassColor), new THREE.Vector3(0, 0.22, 0), group);
+        if (!hasWater(tile)) this.mesh(this.craftedTerrain?.cap ?? this.topGeometry,
+          this.terrainMaterial(grassColor, this.craftWorld !== null), new THREE.Vector3(0, 0.22, 0), group);
         let water: THREE.ShaderMaterial | null = null;
         let sprout: THREE.Mesh | null = null;
         const links: TileObject['links'] = [];
+        const banks: TileObject['banks'] = [];
         if (hasWater(tile)) {
           const depth = this.mesh(this.waterDepthGeometry, this.terrainMaterial('water'), new THREE.Vector3(0, 0.125, 0), group);
           depth.layers.disable(INPUT_LAYER);
@@ -755,11 +1067,22 @@ export class LivingIsland {
           plane.position.y = 0.205;
           plane.layers.enable(INPUT_LAYER);
           group.add(plane);
+          if (this.craftedTerrain) for (const direction of [{ row: -1, col: 0 }, { row: 1, col: 0 }, { row: 0, col: -1 }, { row: 0, col: 1 }]) {
+            const edge = this.mesh(this.craftedTerrain.bank, this.terrainMaterial('soilEdge', true),
+              new THREE.Vector3(direction.col * .45, .232, direction.row * .45), group);
+            edge.rotation.y = Math.atan2(direction.col, direction.row);
+            edge.castShadow = false;edge.layers.disable(INPUT_LAYER);edge.name = 'sculpted-shore';
+            banks.push({ mesh: edge, ...direction });
+          }
         }
         if (walkable(tile)) {
           if (tile === 'h' || tile === 'v') {
             const bridge = new THREE.Group();
             if (tile === 'v') bridge.rotation.y = Math.PI / 2;
+            if (this.craftedTerrain) {
+              const crossing = this.mesh(this.craftedTerrain.bridge, this.terrainMaterial('woodLight', true), new THREE.Vector3(0, .29, 0), bridge);
+              crossing.name = 'sculpted-bridge';
+            } else {
             this.mesh(this.bridgeDeck, this.terrainMaterial('woodShade'), new THREE.Vector3(0, 0.27, 0), bridge);
             const planks = new THREE.InstancedMesh(this.bridgePlank, this.terrainMaterial('woodLight'), 8);
             const matrix = new THREE.Matrix4();
@@ -778,20 +1101,23 @@ export class LivingIsland {
               this.mesh(this.bridgePier, this.terrainMaterial('rock'), new THREE.Vector3(x, 0.22, 0), bridge);
               for (const z of [-0.23, 0.23]) this.mesh(this.bridgePost, this.terrainMaterial('woodShade'), new THREE.Vector3(x, 0.455, z), bridge);
             }
-            this.mesh(this.bridgeArrowShaft, '#40372e', new THREE.Vector3(0, 0.418, 0), bridge);
+            }
+            this.mesh(this.bridgeArrowShaft, '#24333b', new THREE.Vector3(0, 0.418, 0), bridge);
             for (const side of [-1, 1]) {
-              const arrow = this.mesh(this.bridgeArrow, '#40372e', new THREE.Vector3(side * 0.25, 0.402, 0), bridge);
+              const arrow = this.mesh(this.bridgeArrow, '#24333b', new THREE.Vector3(side * 0.25, 0.402, 0), bridge);
               arrow.rotation.y = side > 0 ? 0 : Math.PI;
             }
             group.add(bridge);
           } else {
             this.mesh(this.roadBedGeometry, this.terrainMaterial('mortar'), new THREE.Vector3(0, 0.275, 0), group);
-            this.mesh(this.stoneGeometry, this.terrainMaterial('road', true), new THREE.Vector3(0, 0.295, 0), group);
+            const paving = this.mesh(this.craftedTerrain?.paving[scenery.variant % 3] ?? this.stoneGeometry,
+              this.terrainMaterial('road', true), new THREE.Vector3(0, 0.295, 0), group);
+            if (this.craftWorld) paving.name = 'sculpted-paving';
           }
           for (const direction of [{ row: -1, col: 0 }, { row: 1, col: 0 }, { row: 0, col: -1 }, { row: 0, col: 1 }]) {
             if (!connects(tile, direction.row, direction.col)) continue;
             const bridge = tile === 'h' || tile === 'v';
-            const link = this.mesh(bridge ? this.bridgeLinkGeometry : this.roadLinkGeometry,
+            const link = this.mesh(bridge ? this.bridgeLinkGeometry : this.craftedTerrain?.link ?? this.roadLinkGeometry,
               this.terrainMaterial(bridge ? 'woodLight' : 'road', !bridge),
               new THREE.Vector3(direction.col * 0.425, 0.295, direction.row * 0.425), group);
             if (direction.col) link.rotation.y = Math.PI / 2;
@@ -799,11 +1125,23 @@ export class LivingIsland {
           }
           if (isAnchor(tile)) this.addHouse(group, tile);
         } else if (tile === 'x') {
+          this.addContact(group, -.02, .03, .91, .78);
           const boulder = this.mesh(this.rockGeometry, this.terrainMaterial('rockLight', true, true),
             new THREE.Vector3(-0.04, 0.49, -0.025), group);
           boulder.rotation.y = random() * Math.PI;
-          const seams = new THREE.LineSegments(this.rockEdges, this.rockSeams);
-          boulder.add(seams);
+          if (this.craftWorld) {
+            const edge = this.mesh(this.rockGeometry, this.terrainMaterial('rockShade', false, false, THREE.BackSide),
+              boulder.position.clone(), group);
+            edge.rotation.copy(boulder.rotation);edge.scale.setScalar(1.075);
+            edge.visible = isPaleGarden(this.theme, this.darkMode);edge.castShadow = false;edge.layers.disable(INPUT_LAYER);
+            edge.userData['terrainInk'] = true;
+          }
+          if (theme === 'winter') {
+            const snow = this.mesh(this.rockGeometry, this.material('#e7eff0'), new THREE.Vector3(-.04, .66, -.025), group);
+            snow.scale.set(.64, .16, .64);
+            snow.layers.disable(INPUT_LAYER);
+          }
+          if (!this.craftWorld) boulder.add(new THREE.LineSegments(this.rockEdges, this.rockSeams));
           const chip = this.mesh(this.rockGeometry, this.terrainMaterial('rock', true, true), new THREE.Vector3(0.23, 0.34, 0.17), group);
           chip.scale.set(0.42, 0.40, 0.48);
           chip.rotation.y = 0.65;
@@ -812,8 +1150,17 @@ export class LivingIsland {
           moss.scale.set(0.65, 0.6, 0.6);
         } else if (tile === '.') {
           this.addGrass(group, random, Math.max(14, Math.round((this.container.clientWidth < 680 ? 26 : 48) * 6 / this.size)));
+          if (this.craftMaterial && scenery.variant % 2 === 0) {
+            const detail = groundDetail(theme, scenery.variant);
+            let geometry = this.craftGround.get(detail.motif);
+            if (!geometry) { geometry = this.track(groundSculpture(detail.motif));this.craftGround.set(detail.motif, geometry); }
+            const scatter = this.mesh(geometry, this.craftMaterial, new THREE.Vector3(detail.x, .271, detail.z), group);
+            scatter.rotation.y = detail.turn;scatter.castShadow = false;scatter.layers.disable(INPUT_LAYER);
+            scatter.name = `seasonal-${detail.motif}`;
+          }
           if (scenery.flowers.length) this.addFlowers(group, scenery.flowers, theme);
-          else if ((row === 0 || row === this.size - 1 || col === 0 || col === this.size - 1) && random() > 0.84) this.addTree(group, random, theme);
+          else if (((row === 0 || row === this.size - 1 || col === 0 || col === this.size - 1) && random() > 0.84) ||
+            (theme !== 'meadow' && theme !== 'coast' && theme !== 'orchard' && scenery.variant === 0)) this.addTree(group, random, theme);
           if (this.postcard && this.postcardMaterial) {
             const geometry = this.postcardFlowerGeometries[scenery.variant % 3];
             if (!geometry) throw new Error('The living garden is missing its flowers.');
@@ -825,7 +1172,7 @@ export class LivingIsland {
           }
         }
         this.boardGroup.add(group);
-        this.tiles.push({ origin, group, water, links, bounds: new THREE.Box3(), batchParts: [], sprout });
+        this.tiles.push({ origin, group, water, links, bounds: new THREE.Box3(), batchParts: [], sprout, banks });
       }
     }
     this.refreshTerrain();
@@ -936,6 +1283,7 @@ export class LivingIsland {
       const row = Math.floor(index / this.size);
       const col = index % this.size;
       tile.links.forEach((link) => { link.mesh.visible = canTraverse(this.board, { row, col }, { row: row + link.row, col: col + link.col }); });
+      tile.banks.forEach(bank => { bank.mesh.visible = !hasWater(this.board[row + bank.row]?.[col + bank.col]); });
       if (!tile.water) return;
       tile.water.uniforms['uOffset']?.value.set(col, row);
       const banks = waterBanks(this.board, { row, col });
@@ -1004,6 +1352,7 @@ export class LivingIsland {
   }
 
   private clearFrames(): void {
+    this.invalidSelection = null;
     this.frames.clear();
     this.highlightKey = '';
   }
@@ -1034,13 +1383,15 @@ export class LivingIsland {
     return badge;
   }
 
-  setHighlights(shape: Shape, first: Cell | null, second: Cell | null, hover: Cell | null, invalid: boolean, blockedCells: readonly Cell[]): void {
-    const key = JSON.stringify([this.size, shape, first, second, hover, invalid, blockedCells, Boolean(this.movement)]);
+  setHighlights(shape: Shape, first: Cell | null, second: Cell | null, hover: Cell | null, invalid: boolean, blockedCells: readonly Cell[], invalidPick: number | null = null): void {
+    const key = JSON.stringify([this.size, shape, first, second, hover, invalid, blockedCells, invalidPick, Boolean(this.movement)]);
     if (key === this.highlightKey) return;
     this.clearFrames();
     this.highlightKey = key;
     if (!hover) this.currentHover = null;
-    const add = (cell: Cell, color: string, number: string, preview = false): void => {
+    const rejected = new THREE.Group();
+    rejected.name = 'invalid-selection';
+    const add = (cell: Cell, color: string, number: string, preview = false, target = this.frames): void => {
       if (cell.row + shape.rows > this.size || cell.col + shape.cols > this.size || cell.row < 0 || cell.col < 0) return;
       const left = cell.col - this.size / 2 + 0.015;
       const back = cell.row - this.size / 2 + 0.015;
@@ -1053,7 +1404,7 @@ export class LivingIsland {
         mesh.scale.set(horizontal ? length : thickness, 0.025, horizontal ? thickness : length);
         mesh.position.set(x, 0.46, z);
         mesh.renderOrder = order;
-        this.frames.add(mesh);
+        target.add(mesh);
       };
       const edge = (x: number, z: number, length: number, horizontal: boolean): void => {
         const thickness = this.size / 6;
@@ -1093,17 +1444,18 @@ export class LivingIsland {
         fill.rotation.x = -Math.PI / 2;
         fill.position.set(part.x, 0.43, part.z);
         fill.renderOrder = 32;
-        this.frames.add(fill);
+        target.add(fill);
       }
       const badge = this.frameBadge(number, color);
       badge.position.set(left - 0.035, 0.72, back - 0.015);
-      this.frames.add(badge);
+      target.add(badge);
     };
     if (!this.movement) {
       if (first) add(first, '#ad651b', '1');
       if (second) add(second, '#286797', '2');
       else if (hover && !(first && first.row === hover.row && first.col === hover.col)) {
-        add(hover, invalid ? '#b33f35' : first ? '#286797' : '#ad651b', invalid ? '!' : first ? '2' : '1', true);
+        add(hover, invalid ? '#b33f35' : first ? '#286797' : '#ad651b', invalid ? '!' : first ? '2' : '1', true,
+          invalid ? rejected : this.frames);
       }
       for (const cell of blockedCells) {
         const center = (this.size - 1) / 2;
@@ -1116,8 +1468,12 @@ export class LivingIsland {
           ring.rotation.x = -Math.PI / 2;
           ring.position.set(cell.col - center, 0.40, cell.row - center);
           ring.renderOrder = order;
-          this.frames.add(ring);
+          rejected.add(ring);
         }
+      }
+      if (rejected.children.length) {
+        this.frames.add(rejected);
+        if (invalidPick !== null && !this.reduced) this.invalidSelection = { group: rejected, began: this.visualTime };
       }
     }
     if (import.meta.env.DEV) this.canvas.dataset['blockedCells'] = JSON.stringify(blockedCells);
@@ -1126,14 +1482,24 @@ export class LivingIsland {
 
   setReducedMotion(reduced: boolean): void {
     this.reduced = reduced;
+    if (reduced && this.invalidSelection) {
+      this.invalidSelection.group.position.set(0, 0, 0);
+      this.invalidSelection = null;
+    }
     if (reduced && this.movement) this.finishSwap();
     this.dirty = true;
   }
 
   setAppearance(dark: boolean): void {
     this.darkMode = dark;
-    this.palette = worldPalette(this.theme, dark);
-    this.terrainMaterials.forEach(({ material, role }) => material.color.set(this.palette[role]));
+    this.palette = this.craftWorld ? craftedWorldPalette(this.theme, dark) : worldPalette(this.theme, dark);
+    if (this.craftWorld) {
+      this.tiles.forEach(tile => tile.group.traverse(object => {
+        if (object.userData['terrainInk']) object.visible = isPaleGarden(this.theme, dark);
+      }));
+      this.refreshBatchSlots();
+    }
+    this.terrainMaterials.forEach(({ material, role }) => material.color.copy(this.terrainColor(role)));
     this.rockSeams.color.set(this.palette.rockShade);
     this.tiles.forEach(({ water }) => {
       if (!water) return;
@@ -1149,13 +1515,29 @@ export class LivingIsland {
     this.sun.color.set(dark ? '#c4daff' : '#fff2d6');
     this.sun.intensity = dark ? 1.55 : 2.65;
     this.renderer.toneMappingExposure = dark ? 1.08 : 1;
+    if (this.miniature) {
+      this.hemisphere.color.set(dark ? '#b7d1e8' : '#e1ecf3');
+      this.hemisphere.groundColor.set(dark ? '#4e685b' : '#6a785c');
+      this.hemisphere.intensity = dark ? 1.4 : 1.2;
+      this.sun.color.set(dark ? '#c3d6f1' : '#ffe5bd');
+      this.sun.intensity = dark ? 1.6 : 2.75;
+      this.renderer.toneMappingExposure = dark ? 1.12 : 1.04;
+      this.rockSeams.opacity = .16;
+    }
+    if (this.craftWorld) {
+      const light = craftLighting(this.theme, dark);
+      this.hemisphere.color.set(light.sky);this.hemisphere.groundColor.set(light.ground);
+      this.hemisphere.intensity = dark ? 1.65 : 1.7;
+      this.sun.color.set(light.sun);this.sun.intensity = dark ? 1.35 : 2.15;
+      this.renderer.toneMappingExposure = dark ? 1.12 : 1.07;
+    }
     this.seaColor.set(this.palette.sea);
     this.dirty = true;
   }
 
   setPaused(paused: boolean): void {
     this.paused = paused;
-    this.previousTick = performance.now();
+    this.syncFrameLoop();
     this.dirty = true;
   }
 
@@ -1184,19 +1566,26 @@ export class LivingIsland {
     const home = locate(this.board, anchor);
     if (!home) throw new Error(`The traveler cannot rest at missing home ${anchor}.`);
     this.traveler.visible = true;
+    if (this.craftWorld) this.traveler.rotation.y = this.travelerTargetYaw = 0;
     this.moveTraveler({ position: home, facing: { row: 0, col: 0 }, walking: false, arrivals: [], finished: false });
   }
 
   moveTraveler(frame: PlaybackFrame): void {
-    this.shadowsDirty = true;
     const center = (this.size - 1) / 2;
     this.travelerWalking = frame.walking;
     const cell = { row: Math.round(frame.position.row), col: Math.round(frame.position.col) };
     const tile = tileAt(this.board, cell);
     const arch = tile === 'h' ? Math.cos((frame.position.col - cell.col) * Math.PI) :
       tile === 'v' ? Math.cos((frame.position.row - cell.row) * Math.PI) : 0;
-    this.traveler.position.set(frame.position.col - center, 0.37 + arch * 0.065, frame.position.row - center + 0.14);
-    if (frame.facing.row || frame.facing.col) this.traveler.rotation.y = Math.atan2(frame.facing.col, frame.facing.row);
+    const x = frame.position.col - center, y = .37 + arch * .065, z = frame.position.row - center + .14;
+    const moved = Math.abs(this.traveler.position.x - x) + Math.abs(this.traveler.position.y - y) + Math.abs(this.traveler.position.z - z) > .00001;
+    this.traveler.position.set(x, y, z);
+    if (frame.facing.row || frame.facing.col) {
+      const yaw = Math.atan2(frame.facing.col, frame.facing.row);
+      if (this.craftWorld) this.travelerTargetYaw = yaw;
+      else this.traveler.rotation.y = yaw;
+    } else if (this.craftWorld && frame.arrivals.length) this.travelerTargetYaw = 0;
+    if (moved || !this.craftWorld) this.shadowsDirty = true;
     if (import.meta.env.DEV) {
       const position = this.traveler.position.clone().project(this.camera);
       this.canvas.dataset['travelerPixel'] = JSON.stringify({
@@ -1213,17 +1602,29 @@ export class LivingIsland {
     this.celebrationComplete = celebration.complete;
     this.greetingUntil = this.celebrationStarted + (celebration.complete ? COMPLETION_CELEBRATION_MS : 1100);
     if (this.postcard && celebration.complete) {
+      this.homeGreetings.clear();
       this.postcardStarted = this.visualTime;
+      this.postcardCourierHome = celebration.anchors.at(-1) ?? null;
       this.postcardSettled = false;
-      this.postcardHomes.forEach(({ garden, resident }) => {
+      this.postcardHomes.forEach(({ garden, resident }, anchor) => {
         garden.visible = true;
-        if (resident) resident.visible = this.communityCount === null || this.communityCount === 0;
+        if (resident) resident.visible = anchor !== this.postcardCourierHome && (this.communityCount === null || this.communityCount === 0);
       });
-      this.tiles.forEach((tile, index) => {
-        if (tile.sprout) tile.sprout.visible = postcardGarden(this.board, { row: Math.floor(index / this.size), col: index % this.size });
-      });
+      const gardens = new Set(postcardGardens(this.board).map((cell) => cell.row * this.size + cell.col));
+      this.tiles.forEach((tile, index) => { if (tile.sprout) tile.sprout.visible = gardens.has(index); });
       this.refreshBatchSlots();
       this.updatePostcard();
+    }
+    if (this.craftEffects) {
+      const homes = celebration.anchors.map(anchor => {
+        const cell = locate(this.board, anchor);
+        if (!cell) throw new Error(`The celebration is missing home ${anchor}.`);
+        if (this.postcard && !celebration.complete) this.homeGreetings.set(anchor, this.visualTime);
+        return cell;
+      });
+      this.craftEffects.show(homes, this.size, celebration.complete, this.reduced, FLOWER_COLORS[this.theme]);
+      this.dirty = true;
+      return;
     }
     const center = (this.size - 1) / 2;
     for (const anchor of celebration.anchors) {
@@ -1264,13 +1665,16 @@ export class LivingIsland {
       }
     });
     this.festivities.clear();
+    this.craftEffects?.clear();
   }
 
   clearCelebration(): void {
     this.clearFestivities();
     this.greetingUntil = 0;
+    this.homeGreetings.clear();
     if (this.postcard) {
       this.postcardStarted = null;
+      this.postcardCourierHome = null;
       this.postcardSettled = false;
       this.postcardHomes.forEach(({ door, garden, resident, arm }) => {
         door.rotation.y = 0; garden.visible = false; garden.scale.y = 0.001;
@@ -1287,7 +1691,24 @@ export class LivingIsland {
   }
 
   private updatePostcard(): boolean {
-    if (this.postcardStarted === null || this.postcardSettled) return false;
+    let greeting = false;
+    for (const [anchor, began] of this.homeGreetings) {
+      const home = this.postcardHomes.get(anchor);
+      if (!home) throw new Error(`The greeting is missing home ${anchor}.`);
+      const progress = Math.min(1, (this.visualTime - began) / 720), welcome = Math.sin(progress * Math.PI);
+      home.door.rotation.y = welcome * .65;
+      const window = this.houseWindows.get(anchor);
+      if (window) window.emissiveIntensity = .85 + welcome * .22;
+      if (home.resident) {
+        home.resident.visible = progress < 1;
+        home.resident.position.set(-.12 * welcome, .27, .12 + welcome * .23);
+      }
+      if (home.arm) home.arm.rotation.z = welcome * 1.8;
+      if (progress === 1) this.homeGreetings.delete(anchor);
+      else greeting = true;
+      this.shadowsDirty = true;this.dirty = true;
+    }
+    if (this.postcardStarted === null || this.postcardSettled) return greeting;
     const elapsed = this.visualTime - this.postcardStarted;
     this.postcardHomes.forEach(({ door, garden, resident, arm, phase }) => {
       const progress = this.reduced ? 1 : villageProgress(elapsed, phase);
@@ -1300,7 +1721,7 @@ export class LivingIsland {
     for (const tile of this.tiles) {
       if (!tile.sprout?.visible) continue;
       const progress = this.reduced ? 1 : villageProgress(elapsed, tile.origin % 6);
-      const scale = Math.max(0.001, progress);
+      const scale = Math.max(0.001, progress * (this.craftWorld ? 2 : 1.8) * Math.max(1, this.size / 8));
       if (Math.abs(tile.sprout.scale.x - scale) < 0.00001) continue;
       tile.sprout.scale.setScalar(scale);
       grown.push(tile);
@@ -1320,7 +1741,9 @@ export class LivingIsland {
     this.communityCount = count;
     this.canvas.dataset['communityCount'] = count === null ? 'unknown' : String(count);
     if (this.postcardStarted !== null) {
-      this.postcardHomes.forEach(({ resident }) => { if (resident) resident.visible = count === null || count === 0; });
+      this.postcardHomes.forEach(({ resident }, anchor) => {
+        if (resident) resident.visible = anchor !== this.postcardCourierHome && (count === null || count === 0);
+      });
       this.updateCommunityCrowd(this.visualTime - this.postcardStarted);
     }
     this.shadowsDirty = true;
@@ -1330,7 +1753,7 @@ export class LivingIsland {
   private updateCommunityCrowd(elapsed: number): void {
     const bodies = this.communityBodies, arms = this.communityArms;
     if (!bodies || !arms) return;
-    const people = this.postcardStarted === null ? [] : communityCrowd([...this.postcardHomes.keys()], this.communityCount);
+    const people = this.postcardStarted === null ? [] : communityCrowd([...this.postcardHomes.keys()], this.communityCount, this.postcardCourierHome);
     const center = (this.size - 1) / 2;
     bodies.count = people.length; arms.count = people.length;
     bodies.visible = people.length > 0; arms.visible = people.length > 0;
@@ -1352,6 +1775,15 @@ export class LivingIsland {
   }
 
   private makeTraveler(): void {
+    if (this.detailed) {
+      const courier = this.craftWorld ? makeCraftCourier(this.craftWorld) : makeCourier();
+      this.courierBody = courier.body;this.armLeft = courier.armLeft;this.armRight = courier.armRight;
+      this.footLeft = courier.footLeft;this.footRight = courier.footRight;
+      this.courierEyes = courier.eyes ?? null;
+      this.traveler.add(courier.root);
+      this.geometries.push(...courier.geometries);this.extraMaterials.push(...courier.materials);this.textures.push(...courier.textures);
+      return;
+    }
     this.traveler.add(this.courierBody);
     this.mesh(this.track(new THREE.CapsuleGeometry(0.073, 0.10, 4, 9)), '#285e65', new THREE.Vector3(0, 0.13, 0), this.courierBody);
     const head = this.mesh(this.track(new THREE.SphereGeometry(0.069, 12, 9)), '#e7bb94', new THREE.Vector3(0, 0.28, 0), this.courierBody);
@@ -1460,6 +1892,9 @@ export class LivingIsland {
     this.camera.position.set(headOn ? 0.2 : 7.4, headOn ? 13 : 12, headOn ? 7.5 : 10.5);
     this.camera.lookAt(0, 0.1, 0);
     this.camera.updateMatrixWorld();
+    if (this.garden) this.boardGroup.traverse((object) => {
+      if (object.userData['gardenTree']) object.quaternion.copy(this.camera.quaternion);
+    });
     this.boardGroup.updateWorldMatrix(true, true);
     const extent = new THREE.Box3();
     const box = new THREE.Box3();
@@ -1488,7 +1923,7 @@ export class LivingIsland {
         extent.expandByPoint(new THREE.Vector3(point.x - halfLabel, point.y - halfLabel, point.z));
         extent.expandByPoint(new THREE.Vector3(point.x + halfLabel, point.y + halfLabel, point.z));
       }
-      this.traveler.scale.setScalar(Math.min(3, COURIER_SCALE * Math.max(1, Math.min(2.4, 28 * vertical / height * 1.65))));
+      this.traveler.scale.setScalar(courierWorldScale(28 * vertical / height));
       const scale = this.traveler.scale.x;
       const center = (this.size - 1) / 2;
       for (let row = 0; row < this.size; row++) for (let col = 0; col < this.size; col++) {
@@ -1525,7 +1960,7 @@ export class LivingIsland {
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
     this.labelScale = 28 * vertical / height;
-    this.traveler.scale.setScalar(Math.min(3, COURIER_SCALE * Math.max(1, Math.min(2.4, this.labelScale * 1.65))));
+    this.traveler.scale.setScalar(courierWorldScale(this.labelScale));
     this.landmarkSprites.forEach((sprite) => sprite.scale.set(this.labelScale, this.labelScale, 1));
     this.frames.children.forEach((object) => {
       if (object instanceof THREE.Sprite) object.scale.set(this.labelScale * 0.92, this.labelScale * 0.92, 1);
@@ -1533,6 +1968,7 @@ export class LivingIsland {
     this.updateFrameProjection(width, height);
     this.updatePickingMap();
     this.updatePickingBounds();
+    if (this.detailed) this.syncTerrainBatches(this.tiles);
     this.shadowsDirty = true;
     this.dirty = true;
   }
@@ -1620,26 +2056,59 @@ export class LivingIsland {
     if (cell) this.callbacks.onCell(cell);
   };
 
-  private resetTickTime = (): void => { this.previousTick = performance.now(); };
+  private syncFrameLoop = (): void => {
+    this.previousTick = performance.now();
+    if (this.paused || document.hidden) {
+      cancelAnimationFrame(this.frame);
+      this.frame = 0;
+    } else if (!this.disposed && !this.frame) {
+      this.frame = requestAnimationFrame(this.tick);
+    }
+  };
 
   private tick = (now: number): void => {
-    if (this.disposed) return;
+    this.frame = 0;
+    if (this.disposed || document.hidden || this.paused) return;
     this.frame = requestAnimationFrame(this.tick);
     const elapsedFrame = Math.min(60, Math.max(0, now - this.previousTick));
     this.previousTick = now;
-    if (document.hidden || this.paused) return;
     this.visualTime += elapsedFrame;
     this.time.value = this.reduced ? 0 : this.visualTime / 1000;
+    if (this.invalidSelection) {
+      const { group, began } = this.invalidSelection;
+      const progress = Math.min(1, (this.visualTime - began) / 320);
+      const pixels = Math.sin(progress * Math.PI * 8) * 3 * (1 - progress);
+      group.position.setFromMatrixColumn(this.camera.matrixWorld, 0)
+        .multiplyScalar(pixels * (this.camera.top - this.camera.bottom) / this.renderHeight);
+      if (progress === 1) {
+        group.visible = false;
+        this.invalidSelection = null;
+      }
+      this.dirty = true;
+    }
     const previousPoseMoving = this.footLeft.rotation.x !== 0 || this.armRight.rotation.z !== 0;
-    const stride = this.travelerWalking && !this.reduced ? Math.sin(this.time.value * 18) * 0.38 : 0;
+    const attention = this.movement ? Math.sin(Math.min(1, (this.visualTime - this.movement.began) / 680) * Math.PI) : 0;
+    const acting = this.craftWorld ? courierPose(this.time.value, this.travelerWalking,
+      !this.travelerWalking && this.visualTime < this.greetingUntil ? this.visualTime - this.celebrationStarted : null,
+      attention, this.celebrationComplete, this.reduced) : null;
+    const stride = acting?.stride ?? (this.travelerWalking && !this.reduced ? Math.sin(this.time.value * 13) * 0.38 : 0);
     this.footLeft.rotation.x = stride;
     this.footRight.rotation.x = -stride;
-    this.armLeft.rotation.x = -stride * 0.8;
-    this.armRight.rotation.x = stride * 0.8;
-    this.armRight.rotation.z = !this.reduced && !this.travelerWalking && this.visualTime < this.greetingUntil
-      ? -1.35 + Math.sin(this.time.value * 11) * 0.18 : 0;
-    this.courierBody.position.y = Math.abs(stride) * 0.04;
-    this.courierBody.rotation.z = stride * 0.06;
+    this.armLeft.rotation.x = acting?.leftArm ?? -stride * .8;
+    this.armRight.rotation.x = acting?.rightArm ?? stride * .8;
+    this.armRight.rotation.z = acting?.raisedArm ?? (!this.reduced && !this.travelerWalking && this.visualTime < this.greetingUntil
+      ? -1.35 + Math.sin(this.time.value * 11) * .18 : 0);
+    this.courierBody.position.y = acting?.bodyY ?? Math.abs(stride) * .04;
+    this.courierBody.rotation.x = acting?.bodyX ?? 0;
+    this.courierBody.rotation.z = acting?.bodyZ ?? stride * .06;
+    if (this.courierEyes) {
+      this.courierEyes.scale.y = acting?.eyes ?? 1;
+    }
+    if (this.craftWorld && !this.movement) {
+      const yaw = this.reduced ? this.travelerTargetYaw : turnToward(this.traveler.rotation.y, this.travelerTargetYaw, elapsedFrame);
+      if (Math.abs(yaw - this.traveler.rotation.y) > .00001) this.shadowsDirty = true;
+      this.traveler.rotation.y = yaw;
+    }
     if (previousPoseMoving || stride !== 0 || this.armRight.rotation.z !== 0) this.shadowsDirty = true;
     if (this.movement) {
       const progress = Math.min(1, (this.visualTime - this.movement.began) / 680);
@@ -1691,8 +2160,11 @@ export class LivingIsland {
       this.dirty = true;
     }
     if (import.meta.env.DEV) this.canvas.dataset['greetingActive'] = String(this.armRight.rotation.z !== 0);
+    const effectsWereActive = this.craftEffects?.active ?? false;
+    const effectsMoving = this.craftEffects?.update(this.visualTime - this.celebrationStarted) ?? false;
+    if (effectsWereActive) this.dirty = true;
     const postcardMoving = this.updatePostcard();
-    const activeMotion = this.movement || postcardMoving || this.travelerWalking || this.visualTime < this.greetingUntil || this.festivities.children.length > 0;
+    const activeMotion = this.movement || postcardMoving || effectsMoving || this.travelerWalking || this.visualTime < this.greetingUntil || this.festivities.children.length > 0;
     if (this.dirty || activeMotion || (!this.reduced && now - this.lastRender >= 1000 / 30 - 0.5)) {
       if (this.shadowsDirty || this.movement) {
         this.renderer.shadowMap.needsUpdate = true;
@@ -1717,6 +2189,7 @@ export class LivingIsland {
     this.postcardHomes.clear();
     this.postcardFlowerGeometries = [];
     this.postcardStarted = null;
+    this.postcardCourierHome = null;
     this.postcardSettled = false;
     this.communityCount = null;
     if (this.communityBodies && this.communityArms) {
@@ -1725,6 +2198,7 @@ export class LivingIsland {
     }
     this.canvas.dataset['postcard'] = this.postcard ? 'puzzle' : 'off';
     this.greetingUntil = 0;
+    this.homeGreetings.clear();
     this.clearFestivities();
     this.tiles = [];
     this.boardGeometries.forEach((geometry) => geometry.dispose());
@@ -1741,7 +2215,7 @@ export class LivingIsland {
     cancelAnimationFrame(this.frame);
     this.cancelHoverFrame();
     this.observer.disconnect();
-    document.removeEventListener('visibilitychange', this.resetTickTime);
+    document.removeEventListener('visibilitychange', this.syncFrameLoop);
     this.canvas.removeEventListener('pointermove', this.pointerMove);
     this.canvas.removeEventListener('pointerleave', this.pointerLeave);
     this.canvas.removeEventListener('click', this.pointerClick);
@@ -1749,11 +2223,13 @@ export class LivingIsland {
     this.clearBoard();
     this.communityBodies?.dispose();
     this.communityArms?.dispose();
+    this.craftEffects?.dispose();
     this.setRoutes([]);
     this.geometries.forEach((geometry) => geometry.dispose());
     this.materials.forEach((material) => material.dispose());
     this.extraMaterials.forEach((material) => material.dispose());
     this.textures.forEach((texture) => texture.dispose());
+    this.garden?.dispose();
     this.renderer.dispose();
     this.canvas.remove();
   }
