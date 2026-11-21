@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadPreferences, PREF_KEY, resolveAppearance } from './preferences.ts';
+import { loadPreferences, PRACTICE_FENCE_KEY, PREF_KEY, resolveAppearance } from './preferences.ts';
 
 const existing = { flat: true, completed: ['routes-01', 'daily-v4-2026-11-14'], soundWanted: true, seenGuides: ['basics', 'rocks'] };
 const saved = (value: unknown) => ({
@@ -86,3 +86,59 @@ test('invalid Practice stars are reported while old discoveries, sound and appea
   assert.match(result.warning ?? '', /stars could not be read/);
   assert.equal(warning.mock.calls.length, 1);
 });
+
+test('an old-client reset restores the newer client fence so authoritative sync can clear retained unknown IDs', (t) => {
+  const warning = t.mock.method(console, 'warn', () => {});
+  const owner = 'a'.repeat(64), fence = { owner, generation: 0 };
+  const value = { ...existing, completed: [...existing.completed, 'practice-v3-0003'],
+    practice: { bests: {}, unlockedWorlds: 1 }, practiceAccount: { owner, generation: 1 } };
+  const result = loadPreferences({ getItem: key => key === PREF_KEY ? JSON.stringify(value) :
+    key === PRACTICE_FENCE_KEY ? JSON.stringify(fence) : null });
+  assert.deepEqual(result.value.practiceAccount, fence);
+  assert.deepEqual(result.value.completed, value.completed);
+  assert.deepEqual(result.value.practice, value.practice);
+  assert.match(result.warning ?? '', /older game version/);
+  assert.equal(warning.mock.calls.length, 1);
+});
+
+test('ordinary old-client saves preserve newer completion credit when the account was not reset', () => {
+  const practiceAccount = { owner: 'a'.repeat(64), generation: 0 };
+  const value = { ...existing, completed: [...existing.completed, 'practice-v3-0003'],
+    practice: { bests: {}, unlockedWorlds: 1 }, practiceAccount };
+  const result = loadPreferences({ getItem: key => key === PREF_KEY ? JSON.stringify(value) : JSON.stringify(practiceAccount) });
+  assert.deepEqual(result.value.completed, value.completed);
+  assert.deepEqual(result.value.practiceAccount, practiceAccount);
+  assert.equal(result.warning, null);
+});
+
+test('valid newer move records are never discarded because a reset-history stamp is older', () => {
+  const value = { ...existing, completed: [...existing.completed, 'practice-v3-0003'],
+    practice: { bests: { 'practice-v3-0003': 8 }, unlockedWorlds: 1 },
+    practiceAccount: { owner: 'a'.repeat(64), generation: 1 } };
+  const result = loadPreferences(saved(value));
+  assert.deepEqual(result.value, { ...value, appearance: 'light' });
+  assert.equal(result.warning, null);
+});
+
+test('unreadable reset history is reported without deleting preferences or changing account identity', (t) => {
+  const warning = t.mock.method(console, 'warn', () => {});
+  const value = { ...existing, completed: [...existing.completed, 'practice-v3-0003'],
+    practice: { bests: {}, unlockedWorlds: 1 }, practiceAccount: { owner: 'a'.repeat(64), generation: 1 } };
+  const result = loadPreferences({ getItem: key => key === PREF_KEY ? JSON.stringify(value) : '{' });
+  assert.deepEqual(result.value, { ...value, appearance: 'light' });
+  assert.match(result.warning ?? '', /reset history could not be read/);
+  assert.equal(warning.mock.calls.length, 1);
+});
+
+for (const [name, practiceAccount, fence] of [
+  ['an older current generation', { owner: 'a'.repeat(64), generation: 0 }, { owner: 'a'.repeat(64), generation: 1 }],
+  ['a different current account', { owner: 'b'.repeat(64), generation: 0 }, { owner: 'a'.repeat(64), generation: 0 }],
+] as const) {
+  test(`reset history must not replace ${name} and hide the existing authoritative reset check`, () => {
+    const value = { ...existing, completed: ['practice-v3-0003'], practice: { bests: {}, unlockedWorlds: 1 }, practiceAccount };
+    const result = loadPreferences({ getItem: key => key === PREF_KEY ? JSON.stringify(value) : JSON.stringify(fence) });
+    assert.deepEqual(result.value.practiceAccount, practiceAccount);
+    assert.deepEqual(result.value.completed, value.completed);
+    assert.equal(result.warning, null);
+  });
+}

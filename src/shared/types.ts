@@ -183,7 +183,7 @@ export interface SavedRepair extends Leaderboard {
 }
 
 export interface Bootstrap {
-  campaignRevision?: 1 | 2;
+  campaignRevision?: 1 | 2 | 3;
   edition: Edition | null;
   catalog: CatalogEntry[];
   source: 'local' | 'reddit';

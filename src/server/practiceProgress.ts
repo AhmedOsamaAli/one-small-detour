@@ -14,7 +14,7 @@ export function mergedPractice(previous: PracticeSnapshot, generation: number, s
   if (previous.generation !== generation) {
     throw new RuleError('Practice progress was cleared on another device. Refresh your saved progress before continuing.', 'practice_reset');
   }
-  const merged = mergePracticeState(getCatalog(2), previous, state);
+  const merged = mergePracticeState(getCatalog(3), previous, state);
   const changed = JSON.stringify({ completed: previous.completed, practice: previous.practice }) !== JSON.stringify(merged);
   if (changed && previous.revision === Number.MAX_SAFE_INTEGER) throw new Error('The saved Practice revision reached its limit.');
   return { ...merged, generation, revision: previous.revision + Number(changed) };
@@ -26,7 +26,7 @@ export class MemoryPracticeStore implements PracticeStore {
   constructor(entries: Record<string, PracticeSnapshot> = {}) {
     for (const [id, value] of Object.entries(entries)) {
       if (!isPracticeSnapshot(value)) throw new Error('The local Practice archive is invalid.');
-      normalizePracticeState(getCatalog(2), value);
+      normalizePracticeState(getCatalog(3), value);
       this.entries.set(id, structuredClone(value));
     }
   }
@@ -59,7 +59,7 @@ export class RedisPracticeStore implements PracticeStore {
     if (text === undefined) return emptyPracticeSnapshot();
     const value: unknown = JSON.parse(text);
     if (!isPracticeSnapshot(value)) throw new Error('The saved Practice archive is invalid. It was not overwritten.');
-    normalizePracticeState(getCatalog(2), value);
+    normalizePracticeState(getCatalog(3), value);
     return value;
   }
 

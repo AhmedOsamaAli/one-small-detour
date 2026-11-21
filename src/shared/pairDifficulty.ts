@@ -53,12 +53,13 @@ export function pairGeometry(puzzle: Puzzle): PairGeometry {
 }
 
 export interface PairMinimumCertificate {
-  method: 'tight-road-inventory-and-geodesic-cut';
+  method: 'tight-road-inventory-and-geodesic-cut' | 'tight-road-inventory-and-matching-deficit';
   minimum: number;
   requiredRoadTiles: number;
   suppliedRoadTiles: number;
   initiallyOutsideGeodesics: number;
   maximumImportedPerSwap: 2;
+  matchingLowerBoundBonus: 0 | 1;
 }
 
 export function certifyPairMinimum(puzzle: AuthoredPuzzle): PairMinimumCertificate {
@@ -67,15 +68,20 @@ export function certifyPairMinimum(puzzle: AuthoredPuzzle): PairMinimumCertifica
   const road = [...state].flatMap((tile, index) => walkable(tile) && !isAnchor(tile) ? [index] : []);
   if (road.length !== geometry.requiredRoadTiles) throw new Error('The pair certificate requires exactly the necessary road inventory, with no spare tiles.');
   const outside = road.filter(index => !geometry.geodesic[index]).length;
-  const minimum = Math.ceil(outside / 2);
+  const stock = analyzePairStock(puzzle.board, geometry.geodesic);
+  const matchingLowerBoundBonus = outside % 2 === 0 && outside > 0 &&
+    stock.boundaryStockCells === 0 && !stock.initiallyMatchable ? 1 : 0;
+  const minimum = Math.ceil(outside / 2) + matchingLowerBoundBonus;
   // Tight inventory forces every successful leg to be geometrically shortest.
-  // All outside stock must therefore enter that union, at most two tiles per swap.
+  // Insulated, unmatchable stock cannot all enter in maximum-import swaps:
+  // those swaps would partition the original stock into a perfect domino matching.
   if (minimum < 1 || puzzle.witness.length !== minimum || puzzle.minimum !== minimum) {
     throw new Error('The legal witness does not match the proved minimum; a longer scramble is not a certificate.');
   }
   validateRepair(puzzle, 'daily', puzzle.witness);
-  return { method: 'tight-road-inventory-and-geodesic-cut', minimum, requiredRoadTiles: geometry.requiredRoadTiles,
-    suppliedRoadTiles: road.length, initiallyOutsideGeodesics: outside, maximumImportedPerSwap: 2 };
+  return { method: matchingLowerBoundBonus ? 'tight-road-inventory-and-matching-deficit' : 'tight-road-inventory-and-geodesic-cut',
+    minimum, requiredRoadTiles: geometry.requiredRoadTiles, suppliedRoadTiles: road.length,
+    initiallyOutsideGeodesics: outside, maximumImportedPerSwap: 2, matchingLowerBoundBonus };
 }
 
 export interface PairStockAnalysis {
@@ -164,18 +170,17 @@ export interface PairGreedyProbe {
 
 export const PAIR_JOURNEY_STATE_BUDGET = 4000;
 
-export function probePairGreedy(puzzle: Puzzle, minimum: number): PairGreedyProbe {
-  if (puzzle.area !== 2 || puzzle.frame !== undefined || !Number.isInteger(minimum) || minimum < 1) {
-    throw new Error('The pair greedy probe needs a two-tile puzzle and a positive certified minimum.');
+export function probePatchGreedy(puzzle: Puzzle, minimum: number): PairGreedyProbe {
+  if (![2, 3, 4].includes(puzzle.area) || !Number.isInteger(minimum) || minimum < 1) {
+    throw new Error('The patch greedy probe needs a supported frame and a positive certified minimum.');
   }
   const geometry = pairGeometry(puzzle), count = geometry.size ** 2;
   const original = puzzle.board.join('').replaceAll('~', '.');
-  const moves = legalSwaps(puzzle.board, 2).map(move => {
+  const moves = legalSwaps(puzzle.board, puzzle.area, puzzle.frame).map(move => {
     const a = patchCells(move.a, move).map(cell => cell.row * geometry.size + cell.col);
     const b = patchCells(move.b, move).map(cell => cell.row * geometry.size + cell.col);
-    const [a0, a1] = a, [b0, b1] = b;
-    if (a0 === undefined || a1 === undefined || b0 === undefined || b1 === undefined) throw new Error('A greedy pair move lost its two squares.');
-    return { indices: [a0, a1, b0, b1] as const, move };
+    if (a.length !== puzzle.area || b.length !== puzzle.area) throw new Error('A greedy patch move lost its footprint.');
+    return { a, b };
   });
   const scoreCache = new Map<string, number>();
   const distance = new Int16Array(count), visited = new Uint8Array(count);
@@ -221,7 +226,7 @@ export function probePairGreedy(puzzle: Puzzle, minimum: number): PairGreedyProb
   const boardOf = (state: string): Board => Array.from({ length: geometry.size }, (_, row) => state.slice(row * geometry.size, (row + 1) * geometry.size));
   const candidatesPerStep = 256, stepLimit = minimum + 2;
   let bestMoves: number | null = null, examined = 0, trials = 0, maximumJourneyStates = 0, orderedDeadEnds = 0;
-  const diagnostics = { explored: 0 };
+  const diagnostics = { explored: 0, limit: PAIR_JOURNEY_STATE_BUDGET };
   probe: for (const seed of [1, 23, 71]) {
     trials++;
     let state = original;
@@ -233,19 +238,28 @@ export function probePairGreedy(puzzle: Puzzle, minimum: number): PairGreedyProb
       if (check.solved) { bestMoves = Math.min(bestMoves ?? step, step); break; }
       if (checkRoutes(board, puzzle.goals).solved) orderedDeadEnds++;
       if (step === stepLimit) break;
-      const options = moves.flatMap(({ indices }, index) => {
-        const [a, b, c, d] = indices;
-        if (state[a] === state[c] && state[b] === state[d]) return [];
-        const improvement = placed(state[c], a) + placed(state[d], b) + placed(state[a], c) + placed(state[b], d) -
-          placed(state[a], a) - placed(state[b], b) - placed(state[c], c) - placed(state[d], d);
+      const options = moves.flatMap(({ a, b }, index) => {
+        let changed = false, improvement = 0;
+        for (let cell = 0; cell < a.length; cell++) {
+          const first = a[cell], second = b[cell];
+          if (first === undefined || second === undefined) throw new Error('The greedy patch footprint is incomplete.');
+          changed ||= state[first] !== state[second];
+          improvement += placed(state[second], first) + placed(state[first], second) - placed(state[first], first) - placed(state[second], second);
+        }
+        if (!changed) return [];
         const tie = ((Math.imul(index + 1, 1664525) ^ Math.imul(seed + step + 1, 1013904223)) >>> 0) / 0x100000000;
-        return [{ indices, improvement, tie }];
+        return [{ a, b, improvement, tie }];
       }).sort((a, b) => b.improvement - a.improvement || a.tie - b.tie).slice(0, candidatesPerStep);
       let best: string | null = null, rank = Infinity;
-      for (const { indices: [a, b, c, d], tie } of options) {
-        const cells = [...state], av = state[a], bv = state[b], cv = state[c], dv = state[d];
-        if (!av || !bv || !cv || !dv) throw new Error('The greedy probe moved outside its board.');
-        cells[a] = cv; cells[b] = dv; cells[c] = av; cells[d] = bv;
+      for (const { a, b, tie } of options) {
+        const cells = [...state];
+        for (let cell = 0; cell < a.length; cell++) {
+          const first = a[cell], second = b[cell];
+          if (first === undefined || second === undefined) throw new Error('The greedy probe lost a patch square.');
+          const av = state[first], bv = state[second];
+          if (!av || !bv) throw new Error('The greedy probe moved outside its board.');
+          cells[first] = bv; cells[second] = av;
+        }
         const next = cells.join('');
         if (seen.has(next)) continue;
         examined++;
@@ -258,6 +272,11 @@ export function probePairGreedy(puzzle: Puzzle, minimum: number): PairGreedyProb
     if (bestMoves === minimum) break;
   }
   return { bestMoves, examined, trials, candidatesPerStep, stepLimit, maximumJourneyStates, orderedDeadEnds };
+}
+
+export function probePairGreedy(puzzle: Puzzle, minimum: number): PairGreedyProbe {
+  if (puzzle.area !== 2 || puzzle.frame !== undefined) throw new Error('The pair greedy probe supports only two-tile patches.');
+  return probePatchGreedy(puzzle, minimum);
 }
 
 export interface PairRouteAnalysis {
@@ -284,7 +303,7 @@ export function pairRouteJunctions(board: Board, geodesic: Uint8Array): number {
 
 export function analyzePairRoute(puzzle: AuthoredPuzzle, geometry = pairGeometry(puzzle)): PairRouteAnalysis {
   let board = puzzle.board, maximumJourneyStates = 0, orderedDeadEnds = 0;
-  const diagnostics = { explored: 0 }, rules = rulesFor(puzzle, 'daily');
+  const diagnostics = { explored: 0, limit: PAIR_JOURNEY_STATE_BUDGET }, rules = rulesFor(puzzle, 'daily');
   for (let step = 0; step <= puzzle.witness.length; step++) {
     const check = checkPuzzle(board, puzzle, diagnostics);
     maximumJourneyStates = Math.max(maximumJourneyStates, diagnostics.explored);
@@ -304,6 +323,7 @@ export interface PairChallengeEvaluation {
   boardSize: number;
   certificate: PairMinimumCertificate;
   stock: PairStockAnalysis;
+  initialStock?: PairStockAnalysis;
   possibleRoadCells: number;
   greedy: PairGreedyProbe;
   route: PairRouteAnalysis;
@@ -312,7 +332,8 @@ export interface PairChallengeEvaluation {
 type PairDifficultySignal = Pick<PairChallengeEvaluation, 'boardSize' | 'certificate' | 'stock' | 'route'>;
 
 export function pairPlanningScore(signal: PairDifficultySignal): number {
-  return signal.certificate.minimum * 8 + signal.route.pressure * 4 + signal.stock.minimumBreakingCuts;
+  return signal.certificate.minimum * 8 + signal.route.pressure * 4 + signal.stock.minimumBreakingCuts +
+    (signal.certificate.matchingLowerBoundBonus ?? 0) * 4;
 }
 
 export function pairDifficultyRegresses(previous: PairDifficultySignal, next: PairDifficultySignal): boolean {
@@ -323,10 +344,18 @@ export function pairDifficultyRegresses(previous: PairDifficultySignal, next: Pa
 export function evaluatePairChallenge(puzzle: AuthoredPuzzle, previous?: PairChallengeEvaluation):
   { status: 'accepted'; evaluation: PairChallengeEvaluation } | { status: 'rejected'; reason: string } {
   const certificate = certifyPairMinimum(puzzle), geometry = pairGeometry(puzzle);
-  const stock = analyzePairStock(puzzle.board, geometry.geodesic);
-  if (stock.boundaryStockCells) return { status: 'rejected', reason: 'boundary-stock-needs-general-matching' };
-  if (!stock.initiallyMatchable) return { status: 'rejected', reason: 'stock-cannot-meet-minimum' };
-  if (stock.minimumBreakingCuts < Math.max(1, Math.floor(certificate.minimum / 2))) return { status: 'rejected', reason: 'too-few-planning-traps' };
+  const initialStock = analyzePairStock(puzzle.board, geometry.geodesic);
+  let stock = initialStock;
+  if (initialStock.boundaryStockCells) return { status: 'rejected', reason: 'boundary-stock-needs-general-matching' };
+  if (certificate.matchingLowerBoundBonus) {
+    const repair = puzzle.witness[0];
+    if (!repair) throw new Error('The matching-repair witness is missing.');
+    stock = analyzePairStock(applySwap(puzzle.board, repair, rulesFor(puzzle, 'daily'), 0), geometry.geodesic);
+    if (!stock.initiallyMatchable) return { status: 'rejected', reason: 'matching-repair-not-demonstrated' };
+  } else if (!stock.initiallyMatchable) return { status: 'rejected', reason: 'stock-cannot-meet-minimum' };
+  const traps = certificate.matchingLowerBoundBonus ? Math.max(0, Math.floor((certificate.minimum - 1) / 2) - 1) :
+    Math.max(1, Math.floor(certificate.minimum / 2));
+  if (stock.minimumBreakingCuts < traps) return { status: 'rejected', reason: 'too-few-planning-traps' };
   if (certificate.minimum >= 6 && stock.branchedStockCells < 2) return { status: 'rejected', reason: 'stock-too-obvious' };
   if (geometry.possibleRoadCells < certificate.requiredRoadTiles + Math.max(3, certificate.minimum)) return { status: 'rejected', reason: 'obvious-geodesic-corridor' };
   try {
@@ -335,14 +364,10 @@ export function evaluatePairChallenge(puzzle: AuthoredPuzzle, previous?: PairCha
     if (previous && pairDifficultyRegresses(previous, { certificate, boardSize: geometry.size, stock, route })) {
       return { status: 'rejected', reason: 'global-difficulty-regression' };
     }
-    if (certificate.minimum < 12 && previous?.certificate.minimum === certificate.minimum &&
-        (route.pressure <= previous.route.pressure || route.initialJunctions <= previous.route.initialJunctions)) {
-      return { status: 'rejected', reason: 'same-par-road-web-not-harder' };
-    }
     const greedy = probePairGreedy(puzzle, certificate.minimum);
     if (greedy.maximumJourneyStates > PAIR_JOURNEY_STATE_BUDGET) return { status: 'rejected', reason: 'runtime-route-check-budget' };
     if (greedy.bestMoves === certificate.minimum) return { status: 'rejected', reason: 'greedy-optimal' };
-    return { status: 'accepted', evaluation: { boardSize: geometry.size, certificate, stock,
+    return { status: 'accepted', evaluation: { boardSize: geometry.size, certificate, stock, initialStock,
       possibleRoadCells: geometry.possibleRoadCells, greedy, route } };
   } catch (error) {
     if (error instanceof RuleError && error.code === 'journey_complexity') return { status: 'rejected', reason: 'runtime-route-check-budget' };

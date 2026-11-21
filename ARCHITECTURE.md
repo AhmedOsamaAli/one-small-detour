@@ -91,14 +91,87 @@ and community boundaries are retained on merge.
 marked Local. Scores/progress under `.local/` are private development data.
 Native clients do not send the local identity header.
 
-Content generation runs offline. The installed reasoning bank and its
-refinements are verified independently of the pair-only review constructor.
-Changing a generated bank requires replay, certificate, hash and migration
-checks, not simply more scramble moves.
+Content generation runs offline. Older banks and refinements remain immutable
+for compatibility and archive replay. Changing an active bank requires replay,
+certificate, hash and migration checks, not simply more scramble moves.
 
 The promotional-film composition, private narration credentials, source audio,
 render cache and full-frame exports are kept outside this repository. Selected
 public gallery images are the only packaging artifacts copied in.
+
+## Four-family Practice construction
+
+[`patchGeneration.ts`](src/shared/patchGeneration.ts) constructs pairs,
+three-cell strips, squares and four-cell Ls using the actual legal footprints.
+It starts with a solved ordered route, moves complete road parcels into source
+stock, and keeps the inverse exchanges as a legal witness. Grass, water and
+decorative presentation do not decide difficulty.
+
+[`patchDifficulty.ts`](src/shared/patchDifficulty.ts) separates mathematical
+proofs from structural grading:
+
+- Fixed homes/boulders give a geometric lower bound for the ordered journey.
+  Road inventory equals that bound, so a successful non-repeating journey must
+  use every paving and bridge tile.
+- Each exchange imports at most the footprint's area into the union of
+  shortest home-leg paths. A witness attaining that bound proves the minimum.
+- A preparation step is accepted only when exact source-cover search proves
+  the initial stock cannot be partitioned into legal footprints. Full-footprint
+  insulation prevents a maximum-import exchange from secretly retiling the
+  remaining stock. A witness must attain the resulting one-step larger bound.
+- Search-limit exhaustion is a rejection, never a proof of impossibility.
+  Witness prefixes and bounded greedy probes must also respect the offline
+  route-search budget.
+
+[`campaignCurriculum.ts`](src/shared/campaignCurriculum.ts) defines absolute
+campaign stages, rather than restarting difficulty at each 20-stop island.
+The accepted chain has nondecreasing move minima, board size, route-choice
+pressure and planning grade. Frames are introduced and revisited; later stages
+require genuinely proved preparation moves for every family. Both bridge axes
+are revisited across each family/stage, not forced onto every individual board.
+
+[`generate-practice-campaign.ts`](tools/generate-practice-campaign.ts) rejects
+cheap envelope failures before expensive greedy grading. It selects a globally
+ordered, family-balanced chain, rejects normalized duplicates, near-clones and
+overused reasoning profiles, and assigns titles/themes only after grading.
+Checkpoints are payload-hashed and source-bound; changed sources do not silently
+approve earlier proof records. Only a complete 1,000-stop result is written.
+
+[`verify-practice-campaign.ts`](tools/verify-practice-campaign.ts) freshly
+replays and regrades the entire bank, checks the global curve and family quotas,
+reconstructs representative recipes, and verifies unchanged archived routes.
+Generation and audit code are not part of client render or API request paths.
+
+The design draws on [Traynor's puzzle-design strategies](https://cwpat.me/misc/puzzle-level-idea-strategies/),
+[Rix's Trainyard teaching presentation](https://media.gdcvault.com/gdc2012/slides/Design%20Track/Rix_Matt_Level_Design_Casestudies.pdf),
+[transport-puzzle difficulty research](https://cdn.aaai.org/ocs/2518/2518-11200-1-PB.pdf),
+[reasoning/dependency difficulty models](https://arxiv.org/html/1403.7373v1), and
+[construct-and-filter Sokoban generation](https://ianparberry.com/pubs/GAMEON-NA_METH_03.pdf).
+Applying those ideas here is an engineering inference. Exact inventory/minimum
+certificates are proofs; the structural grades are not an empirically calibrated
+human-difficulty or enjoyment model. Human playtesting remains necessary.
+
+## Campaign compatibility
+
+Campaign negotiation is separate from Daily rule and score versions. Retain
+older catalog responses and original puzzle IDs while archiving every replaced
+board in the latest catalog. The canonical Practice store must keep the superset
+of all revisions; responses are projected for older clients, but an older
+client's merge must not delete newer records.
+
+[`progression.ts`](src/shared/progression.ts) follows original-road references
+to preserve earned stars, completion credit and access. Credit is not a claim
+that a replacement board was solved. Old move records stay attached to the
+old board, and new boards never receive invented bests.
+
+Reset generations remain account/community scoped across campaign versions.
+The client retains a separate local generation stamp because an older cached
+client can preserve unknown newer IDs while dropping their move records during
+a reset. The newer client then lets authoritative account sync reconcile the
+reset, rather than silently deleting local records or resurrecting cleared ones.
+Migration checks include a frozen previous client earning real local results
+before a same-origin upgrade, and an older client saving again after a newer
+result exists. Those fixtures do not submit live Daily scores.
 
 ## Release boundaries
 

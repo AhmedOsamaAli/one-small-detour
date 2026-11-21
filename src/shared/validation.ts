@@ -69,7 +69,7 @@ export function isEdition(value: unknown): value is Edition {
 
 export function isBootstrap(value: unknown): value is Bootstrap {
   return isRecord(value) && (value['edition'] === null || isEdition(value['edition'])) &&
-    (value['campaignRevision'] === undefined || value['campaignRevision'] === 1 || value['campaignRevision'] === 2) &&
+    (value['campaignRevision'] === undefined || value['campaignRevision'] === 1 || value['campaignRevision'] === 2 || value['campaignRevision'] === 3) &&
     Array.isArray(value['catalog']) && value['catalog'].every(isCatalogEntry) &&
     (value['source'] === 'local' || value['source'] === 'reddit') &&
     typeof value['community'] === 'string' &&

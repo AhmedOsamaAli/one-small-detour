@@ -64,7 +64,7 @@ async function progressRequest(method: 'GET' | 'POST' | 'DELETE', body?: object)
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 8000);
   try {
-    return await request('/api/me/progress?campaign=2', isPracticeAccount, {
+    return await request('/api/me/progress?campaign=3', isPracticeAccount, {
       method, signal: controller.signal, ...(body ? { body: JSON.stringify(body) } : {}),
     });
   } catch (error) {
@@ -74,13 +74,13 @@ async function progressRequest(method: 'GET' | 'POST' | 'DELETE', body?: object)
 }
 
 export const gameApi = {
-  bootstrap: (): Promise<Bootstrap> => request('/api/bootstrap?campaign=2',
-    (data): data is Bootstrap => isBootstrap(data) && data.campaignRevision === 2),
+  bootstrap: (): Promise<Bootstrap> => request('/api/bootstrap?campaign=3',
+    (data): data is Bootstrap => isBootstrap(data) && data.campaignRevision === 3),
   place: async (id: string): Promise<Puzzle> => {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 8000);
     try {
-      return await request(`/api/places/${encodeURIComponent(id)}?campaign=2`, isPuzzle, { signal: controller.signal });
+      return await request(`/api/places/${encodeURIComponent(id)}?campaign=3`, isPuzzle, { signal: controller.signal });
     } catch (error) {
       if (controller.signal.aborted) throw new Error('Opening this stop took too long. Your progress is safe; please try again.');
       throw error;

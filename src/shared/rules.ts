@@ -334,10 +334,12 @@ export function checkRoutes(board: Board, goals: readonly Goal[]): RouteCheck {
   return { solved: missing.length === 0, routes, missing };
 }
 
-export interface JourneySearchDiagnostics { explored: number }
+export interface JourneySearchDiagnostics { explored: number; limit?: number }
 
 export function planJourney(board: Board, anchors: readonly Anchor[], diagnostics?: JourneySearchDiagnostics): JourneyPlan {
   if (diagnostics) diagnostics.explored = 0;
+  const searchLimit = diagnostics?.limit ?? 200_000;
+  if (!Number.isSafeInteger(searchLimit) || searchLimit < 1 || searchLimit > 200_000) throw new Error('The journey search budget is invalid.');
   if (anchors.length < 2 || new Set(anchors).size !== anchors.length) {
     throw new RuleError('A journey needs distinct stops in a clear order.', 'journey');
   }
@@ -351,10 +353,40 @@ export function planJourney(board: Board, anchors: readonly Anchor[], diagnostic
   if (start === undefined) throw new RuleError('The journey has no starting point.', 'journey');
   const stopOrder = new Map(stops.map((stop, index) => [stop, index]));
   const adjacent = Array.from({ length: size * size }, (_, index) => neighbors(board, index));
+  const legDistances = stops.map((destination, leg) => {
+    const distance = new Int16Array(size * size).fill(-1), queue = [destination];
+    distance[destination] = 0;
+    for (let cursor = 0; cursor < queue.length; cursor++) {
+      const current = queue[cursor];
+      if (current === undefined) throw new Error('The journey distance bound lost a square.');
+      for (const neighbor of adjacent[current] ?? []) {
+        if (distance[neighbor] !== -1 || stopOrder.has(neighbor) && neighbor !== stops[leg - 1]) continue;
+        distance[neighbor] = (distance[current] ?? 0) + 1; queue.push(neighbor);
+      }
+    }
+    return distance;
+  });
   let explored = 0;
   const search = (target: number): number[] | null => {
     const route = [start];
     const failed = new Set<string>();
+    const component = new Set([start]), queue = [start];
+    for (let cursor = 0; cursor < queue.length; cursor++) {
+      const current = queue[cursor];
+      if (current === undefined) throw new Error('The journey component lost a square.');
+      for (const neighbor of adjacent[current] ?? []) {
+        if (component.has(neighbor) || (stopOrder.get(neighbor) ?? -1) >= target) continue;
+        component.add(neighbor); queue.push(neighbor);
+      }
+    }
+    if (stops.slice(0, target).some(stop => !component.has(stop))) return null;
+    const usableSquares = component.size;
+    const remaining = new Int16Array(target);
+    for (let leg = target - 2; leg >= 1; leg--) {
+      const source = stops[leg], distance = source === undefined ? -1 : legDistances[leg + 1]?.[source] ?? -1;
+      if (distance < 0) return null;
+      remaining[leg] = (remaining[leg + 1] ?? 0) + distance;
+    }
     const canReachNext = (current: number, next: number, visited: bigint): boolean => {
       const destination = stops[next];
       const queue = [current];
@@ -374,7 +406,10 @@ export function planJourney(board: Board, anchors: readonly Anchor[], diagnostic
     };
     const visit = (current: number, next: number, visited: bigint): boolean => {
       if (next === target) return true;
-      if (++explored > 200_000) {
+      const distance = legDistances[next]?.[current] ?? -1;
+      // Disjoint ordered legs cannot use more walkable squares than the board supplies.
+      if (distance < 0 || route.length + distance + (remaining[next] ?? 0) > usableSquares) return false;
+      if (++explored > searchLimit) {
         if (diagnostics) diagnostics.explored = explored;
         throw new RuleError('This trail is too complex to verify. Undo a cut and try a simpler arrangement.', 'journey_complexity');
       }

@@ -145,3 +145,76 @@ test('campaign negotiation preserves old clients, original records and reset fen
     assert.equal((await send(2, 'POST', { generation: 0, ...changed })).status, 409);
     assert.deepEqual((await practice.read('owner')).completed, []);
 });
+
+for (const kind of ['memory', 'redis'] as const) {
+  test(`${kind}: revision three preserves chained credit and both older clients without inventing new clears`, async () => {
+    const practice = kind === 'memory' ? new MemoryPracticeStore() : new RedisPracticeStore(new RankingFixture());
+    const app = createGameApi({
+      source: 'local', community: () => 'Three campaign revisions', practice,
+      store: { list: async () => [], put: async () => undefined, erase: async () => undefined },
+      guides: new MemoryGuideStore(), attempts: new MemoryAttemptStore(),
+      player: async () => ({ id: 'owner', name: 'Owner' }), now: () => new Date('2026-11-21T12:00:00Z'),
+    });
+    const catalogs = [getCatalog(1), getCatalog(2), getCatalog(3)] as const;
+    for (const [index, catalog] of catalogs.entries()) {
+      const response = await app.request(`/api/bootstrap?campaign=${index + 1}`), text = await response.text();
+      const boot: unknown = JSON.parse(text);
+      assert.equal(response.status, 200);
+      assert.ok(isBootstrap(boot));
+      assert.equal(boot.campaignRevision, index + 1);
+      assert.deepEqual(boot.catalog, catalog);
+      for (const field of ['witness', 'certificate', 'evaluation', 'greedy']) assert.ok(!text.includes(`"${field}"`));
+    }
+    assert.equal((await app.request('/api/bootstrap?campaign=4')).status, 400);
+    const latest = catalogs[2], active = campaignPlaces(latest), previous = campaignPlaces(catalogs[1]);
+    assert.equal(active.length, 1000);
+    assert.equal(latest.filter(place => place.archived).length, catalogs[1].length);
+    const old = campaignPlaces(catalogs[0]).slice(0, 43);
+    const original = browserPracticeState(catalogs[0], old.map(place => place.id), {
+      bests: Object.fromEntries(old.map(place => [place.id, place.minimum ?? 1])), unlockedWorlds: 3,
+    });
+    const send = (revision: 1 | 2 | 3, method: string, value?: unknown) => app.request(`/api/me/progress?campaign=${revision}`, {
+      method, headers: { 'Content-Type': 'application/json' }, ...(value ? { body: JSON.stringify(value) } : {}),
+    });
+    assert.equal((await send(1, 'POST', { generation: 0, ...original })).status, 200);
+    const migrated: unknown = await (await send(3, 'GET')).json();
+    assert.ok(isPracticeAccount(migrated));
+    const earned = campaignAchievements(latest, migrated.snapshot.completed, migrated.snapshot.practice);
+    assert.ok(active.slice(0, 43).every(place => earned.get(place.id)?.credited &&
+      !earned.get(place.id)?.solved && earned.get(place.id)?.stars === 3));
+    assert.ok(active.every(place => !Object.hasOwn(migrated.snapshot.practice.bests, place.id)));
+    assert.ok(migrated.snapshot.practice.unlockedWorlds >= original.practice.unlockedWorlds);
+    const fresh = active[2], prior = previous[60];
+    assert.ok(fresh?.minimum && prior?.minimum);
+    assert.equal((await app.request(`/api/places/${fresh.id}?campaign=2`)).status, 404);
+    const newBoard = await app.request(`/api/places/${fresh.id}?campaign=3`);
+    assert.equal(newBoard.status, 200);
+    assert.equal((await newBoard.text()).includes('"witness"'), false);
+    const revised = browserPracticeState(latest, [...original.completed, fresh.id], {
+      bests: { ...original.practice.bests, [fresh.id]: fresh.minimum + 1 }, unlockedWorlds: 3,
+    });
+    assert.equal((await send(3, 'POST', { generation: 0, ...revised })).status, 200);
+    const v2View: unknown = await (await send(2, 'GET')).json();
+    assert.ok(isPracticeAccount(v2View));
+    assert.ok(!v2View.snapshot.completed.includes(fresh.id));
+    assert.ok(!Object.hasOwn(v2View.snapshot.practice.bests, fresh.id));
+    const v2Write = browserPracticeState(catalogs[1], [...v2View.snapshot.completed, prior.id], {
+      bests: { ...v2View.snapshot.practice.bests, [prior.id]: prior.minimum }, unlockedWorlds: 4,
+    });
+    assert.equal((await send(2, 'POST', { generation: 0, ...v2Write })).status, 200);
+    assert.equal((await send(1, 'POST', { generation: 0, ...original })).status, 200);
+    const saved = await practice.read('owner');
+    assert.equal(saved.practice.bests[fresh.id], fresh.minimum + 1);
+    assert.equal(saved.practice.bests[prior.id], prior.minimum);
+    assert.equal(saved.practice.unlockedWorlds, 4);
+    assert.ok(original.completed.every(id => saved.practice.bests[id] === original.practice.bests[id]));
+    const oldView: unknown = await (await send(1, 'GET')).json();
+    assert.ok(isPracticeAccount(oldView));
+    assert.ok(!oldView.snapshot.completed.includes(fresh.id));
+    assert.ok(!oldView.snapshot.completed.includes(prior.id));
+    assert.equal((await send(2, 'DELETE')).status, 200);
+    assert.equal((await send(3, 'POST', { generation: 0, ...revised })).status, 409);
+    assert.equal((await send(1, 'POST', { generation: 0, ...original })).status, 409);
+    assert.deepEqual((await practice.read('owner')).completed, []);
+  });
+}

@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Private Devvit v0.1.22** is installed in
+**Private Devvit v0.1.23** is installed in
 [r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/), on the
 [same existing interactive post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/).
 
@@ -15,38 +15,58 @@ The Daily still resets at 00:00 UTC for everyone. The timer is isolated from
 the game/3D renderer, stops while hidden or unmounted, and adds no per-second
 API requests.
 
-The existing 1,000 active Practice puzzles, 448 archived routes, stable IDs,
-ranked Daily policy and player records are retained. The pair-only constructor
-remains offline review tooling, not the installed bank.
+The installed Practice campaign is now the complete four-family replacement:
+1,000 active puzzles with exact necessary-road inventory and proved minima
+from 3 through 8 exchanges. All 1,448 earlier routes remain archived under their
+original IDs. Prior stars/access remain credit, not fabricated new-board solves
+or move records. Older campaign clients remain supported.
+
+Daily generation, ranking keys and first-result policy are unchanged. No
+player reset, new Reddit post or broad marketplace publication was performed.
 
 ### Verified
 
-- 221 source tests, three TypeScript checks and production build passed.
+- All 235 source tests, three TypeScript checks and production build passed.
+- A fresh full audit replayed/regraded every new puzzle: 295 pairs, 271 strips,
+  234 squares and 200 Ls. All paving/bridge tiles are used in each legal repair.
+  Exact minima, all four global non-regression measures, functional duplicate/
+  near-clone limits, family revisits and preparation quotas passed.
+- 599 puzzles have a proved necessary preparation step. Sixty-eight generation
+  recipes were independently reconstructed; all 1,448 old routes replayed
+  unchanged. Structural grades are not a calibrated human-difficulty study.
 - The annual Daily audit verified 365 distinct editions from 21 November 2026
   through 20 November 2027, with no campaign repeat in that sample.
-- Five timezone/layout browser cases checked live countdown updates, local
-  labels, compact phone controls and no additional requests during ticks.
-- 97 combined tutorial/Help browser checks cover first-card replay, actual
-  lesson completion, all three rule cards, early close, unlocks and progress.
-- The exact upload-built client passed three read-only compiled Home/Help/guide
-  checks with real lesson swaps and card navigation.
+- 232 tutorial/Help browser checks cover four no-scroll cards, first-card
+  replay, actual lesson completion, early close, unlocks and genuine progress.
+- 65 browser checks played late 12x12 boards in all four families in Flat and
+  normal-motion 3D, with actual controls, free deselection and layout checks.
+- Nineteen genuine frozen-v0.1.22 upgrade/save/reset checks passed against both
+  source and the actual upload-built client. An old-client account reset no
+  longer resurrects newer unknown completion IDs.
+- The exact upload-built client passed three timezone/layout Home/Help/guide
+  cases with real lesson swaps, all four cards, final unlock and the expected
+  ephemeral guest countdown. These fixtures made no live account/score writes.
 - All 34 delivered runtime files match that checked output: 32 binary assets
   and two HTML entrypoints normalized for the normal Devvit bridge.
-- The CLI confirms v0.1.22 installed only in the authorized test community.
+- Installation and a separate CLI listing confirm v0.1.23 in the authorized
+  test community.
 
 Devvit invokes its build during upload. Asset-name ordering can change between
 builds, so the upload-built output was checked and compared directly rather
 than assuming an earlier hash manifest still described it.
 
-These checks are not fresh authenticated play or physical-phone certification.
-The owner still needs the live access/native-device checks in the guide.
+The existing post page was also opened successfully signed out. That is not
+proof of embedded-game play, fresh authenticated play or physical-phone
+certification. The owner still needs the native-device checks in the guide.
 
 ## Tutorial and Help
 
 Lesson one retains its three genuine swaps and courier journey. Its completion
-now leads directly to three illustrated rule cards instead of the fixed-tile
-and bridge puzzle chapters. Cards cover what moves/stays, bridge end/side
-connections, and wide-left/tall-top/square-and-L-top-left selection.
+now leads directly to four illustrated rule cards instead of the fixed-tile
+and bridge puzzle chapters. They cover moving/fixed tiles, horizontal bridges,
+vertical bridges, and wide-left/tall-top/square-and-L-top-left selection.
+Grass and trees share a movable icon. Each bridge card contrasts a home's
+four accepting sides with a valid bridge end and blocked bridge side.
 Selecting the same start again clears the first choice at no move cost.
 
 Back/Next follows the reader's pace. Only the final Ready to play action records
@@ -56,11 +76,11 @@ unlocks and genuinely earned Practice results remain intact.
 Opening the question mark presents a prominent Replay walkthrough card first;
 the detailed tile rules and account-data controls follow it.
 
-The update passes the complete 221-test release gate, all TypeScript checks/
-build and 97 focused browser checks, including real Flat/3D lesson completion,
-partial close/reload, keyboard completion, reduced motion, light/dark and
-narrow/landscape layouts. It is installed in the existing private test community;
-no new post or broad app publication was performed.
+Essential card content fits the measured 320x480, small portrait, landscape
+and reduced-visible-height layouts without scrolling. An accessible scrolling
+fallback remains for exceptionally small windows. The checks include real
+Flat/3D lesson completion, partial close/reload, keyboard completion,
+reduced motion and light/dark appearance.
 
 ## Source
 
@@ -92,11 +112,15 @@ buffering waits or stalls in the local check; no universal zero-drop claim is ma
 The film includes legal gameplay, moving/fixed tile cards, bridge rules,
 real 3/4/5-minimum Practice examples, landscapes, views, Daily and devices.
 Harder excerpts are explicitly opening moves, not fabricated wins. The
-Top 10 graphic contains no invented players or scores.
+film contains no invented players or scores. Some filmed Practice examples
+belong to preserved earlier banks; their exchanges remain legal.
 
-Six selected gallery PNGs and a 4K thumbnail use actual game artwork, not
-external generated substitutes. Device images are local responsive captures,
-not evidence of native community activity.
+The separate cinematic-v2 package contains seven newly rendered gallery scenes
+and 4K/1280 thumbnails using actual game models. Its Daily scene uses the real
+unsolved November 21 board. Its dedicated Top 10 scene uses Demo 01 through
+Demo 10, a podium, and clearly labeled illustrative scores, not live standings.
+Keep that disclaimer visible. Device images are local responsive captures,
+not evidence of native community activity. No YouTube/Devpost upload was made.
 
 The earlier native recordings and Blender film were rejected and remain
 archived outside the public source. They are not selected submission footage.

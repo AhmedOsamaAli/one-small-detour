@@ -64,6 +64,11 @@ for (let slot = 0; slot < 20; slot++) {
       }
       const evaluation = evaluatePairChallenge(constructed.puzzle, preceding?.evaluation);
       if (evaluation.status === 'rejected') { reject(evaluation.reason); continue; }
+      if (preceding?.evaluation.certificate.minimum === minimum &&
+          (evaluation.evaluation.route.pressure <= preceding.evaluation.route.pressure ||
+            evaluation.evaluation.route.initialJunctions <= preceding.evaluation.route.initialJunctions)) {
+        reject('same-par-road-web-not-harder'); continue;
+      }
       const fingerprint = reasoningFingerprint(constructed.puzzle.board);
       if (seen.has(fingerprint) || poolSeen.has(fingerprint)) { reject('canonical-duplicate'); continue; }
       pool.push({ puzzle: constructed.puzzle, evaluation: evaluation.evaluation, seed, routePairs, fingerprint });

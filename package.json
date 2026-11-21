@@ -14,9 +14,11 @@
     "test": "node --experimental-strip-types --no-warnings=ExperimentalWarning --test \"src/**/*.test.ts\"",
     "check": "npm run typecheck && npm test && npm run build",
     "verify:daily": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/verify-daily.ts",
+    "verify:practice": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/verify-practice-campaign.ts",
     "generate:campaign": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/generate-campaign.ts",
     "generate:pair-preview": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/generate-pair-preview.ts",
-    "check:release": "npm run check && npm run verify:daily",
+    "generate:practice": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/generate-practice-campaign.ts",
+    "check:release": "npm run check && npm run verify:practice && npm run verify:daily",
     "devvit:login": "devvit login",
     "devvit:playtest": "devvit playtest"
   },

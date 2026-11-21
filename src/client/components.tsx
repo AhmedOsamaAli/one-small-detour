@@ -273,7 +273,7 @@ export function CompletionSeal({ perfect }: { perfect: boolean }) {
   </svg>;
 }
 
-export function TileGlyph({ tile }: { tile: Tile }) {
+export function TileGlyph({ tile, trees = false }: { tile: Tile; trees?: boolean }) {
   const bridge = tile === 'h' || tile === 'v';
   return <svg className="tile-guide-glyph" width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
     <rect x="1" y="1" width="30" height="30" rx="6"
@@ -283,6 +283,11 @@ export function TileGlyph({ tile }: { tile: Tile }) {
       <path d="M6 13h20M6 20h20m-11-14v7m5 0v7m-6 0v6" stroke="var(--world-road-shade, #b59464)" strokeWidth="1.4"/></>}
     {tile === '~' && <path d="M5 11q4-4 8 0t8 0m-12 9q4-4 8 0t8 0" stroke="var(--world-foam, #d4eee2)" strokeWidth="1.5" strokeLinecap="round"/>}
     {tile === '.' && <path d="m7 22 2-6m4 7 2-8m5 8 2-6" stroke="var(--world-blade, #8cab61)" strokeWidth="1.8" strokeLinecap="round"/>}
+    {tile === '.' && trees && <g data-rule-tree="true">
+      <path d="M21 25V12m0 8-4-4m4 3 4-4" stroke="var(--world-wood-shade, #765331)" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M13 13q-2-5 3-7 1-6 7-4 6-1 6 6 4 5-2 8-7 3-14-3Z"
+        fill="var(--world-blade, #8cab61)" stroke="var(--world-grass-deep, #386942)" strokeWidth="1"/>
+    </g>}
     {tile === 'x' && <><path d="m9 5 14 2 5 11-6 9-14-1-5-9L9 5Z" fill="var(--world-rock, #87979d)" stroke="var(--world-rock-shade, #415663)"/>
       <path d="m9 5 8 10 6-8-14-2Z" fill="var(--world-rock-light, #d4d6cc)"/>
       <path d="m17 15 5 12 6-9-11-3Z" fill="var(--world-rock-shade, #415663)"/>
@@ -300,7 +305,7 @@ export function TileGlyph({ tile }: { tile: Tile }) {
 export function TileGuide({ only }: { only?: readonly GuideTopic[] }) {
   const entries: { tiles: Tile[]; name: string; label: string; description: string }[] = [
     { tiles: ['o'], name: 'Paving', label: 'Moves', description: 'Walkable stone road. Connects on all four sides.' },
-    { tiles: ['.', '~'], name: 'Grass & water', label: 'Moves', description: 'Not walkable, but both move with their patch. Water is exchanged, not erased.' },
+    { tiles: ['.', '~'], name: 'Grass, trees & water', label: 'Moves', description: 'Not walkable. Trees travel with the grass; water is exchanged, not erased.' },
     { tiles: ['x', 'A'], name: 'Boulders & homes', label: 'Fixed', description: 'Cannot move. Neither selected patch may include them.' },
     { tiles: ['h', 'v'], name: 'Wooden bridges', label: 'Straight only', description: 'Ends connect to roads or homes, in both directions. Cross along the planks, never sideways. Bridges move but do not rotate.' },
   ];
@@ -309,7 +314,7 @@ export function TileGuide({ only }: { only?: readonly GuideTopic[] }) {
     <div className="tile-guide-grid">{entries.filter((entry) => !only ||
       (only.includes('rocks') && entry.tiles.includes('x')) ||
       (only.includes('bridges') && entry.tiles.includes('h'))).map((entry) => <div className="tile-guide-item" key={entry.name}>
-      <div className="tile-guide-pictures">{entry.tiles.map((tile) => <TileGlyph key={tile} tile={tile}/>)}</div>
+      <div className="tile-guide-pictures">{entry.tiles.map((tile) => <TileGlyph key={tile} tile={tile} trees={tile === '.'}/>)}</div>
       <div><h4>{entry.name} <span className={`tile-guide-tag ${entry.label === 'Fixed' ? 'fixed-tag' : ''}`}>{entry.label}</span></h4>
         <p>{entry.description}</p></div>
     </div>)}</div>

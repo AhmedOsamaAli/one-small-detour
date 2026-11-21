@@ -51,6 +51,11 @@ generation so older devices cannot immediately re-upload cleared progress.
 Daily records and view/sound choices are not removed. The separate existing
 score-removal control continues to preserve Practice progress.
 
+A separate browser-local copy of the existing opaque account identifier and
+reset generation lets newer code detect resets made by older cached clients.
+It contains no stop IDs, move records, scores or new tracking identifier.
+The account's authoritative reset generation still decides which data is valid.
+
 Sync occurs at load, after local progress changes and when returning to the
 page. Failed sync is shown with a retry action; local progress remains.
 The local server uses ignored `.local/practice.json` for rehearsal persistence.

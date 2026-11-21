@@ -24,8 +24,10 @@ you made.
 - **A little more tomorrow:** seven landscape themes and fresh road layouts
   bring variety to the same understandable rules.
 - **Keep exploring:** Practice has 1,000 active puzzles across 50 islands,
-  with pairs, three-cell strips, 2x2 squares and four-cell Ls. Difficulty varies;
-  we do not claim every successive stop is harder.
+  with pairs, three-cell strips, 2x2 squares and four-cell Ls. Every road and
+  bridge tile is necessary. Proved minima rise from 3 to 8 exchanges without
+  island resets; structural planning grades also do not decrease. This is not
+  a claim that every successive stop feels harder to every player.
 - **Make it comfortable:** 3D/Flat and Light/Dark views, bundled nature audio,
   reduced-motion support, and responsive phone/tablet/desktop layouts.
 
@@ -38,7 +40,7 @@ Guest finishes can be played and kept locally but are not a signed-in Daily rank
 1. Read the displayed home order: **A, then B, then C**, and so on.
 2. Choose a frame allowed on this island. Select one whole patch, then a
    matching, non-overlapping patch. They exchange immediately.
-3. Roads, grass, water, bridges and decorations travel with their patch.
+3. Roads, grass, trees, water, bridges and decorations travel with their patch.
    **Homes and boulders stay fixed.** Terrain never rotates.
 4. Build one orthogonal road through the homes in order, without revisiting
    a square. Grass and water cannot carry the courier.
@@ -52,16 +54,18 @@ footprint. Tap the selected start again, or press Escape, to deselect.
 There is no Undo; every completed exchange counts.
 
 The tutorial keeps the original untimed, three-swap lesson and
-courier journey, then shows three illustrated cards: moving/fixed tiles, bridge
-connections, and left/top/top-left selection. Tap or click the same starting
-tile again to clear the first choice.
+courier journey, then shows four concise illustrated cards: moving/fixed tiles,
+horizontal bridges, vertical bridges, and left/top/top-left selection. Grass
+and trees share a movable icon. Both bridge cards show a valid end, a blocked
+side, and how a home accepts a connection on any side. Tap or click the same
+starting tile again to clear the first choice.
 
 Cards advance at the player's pace with Back/Next. The final **Ready to play**
 action remembers the guide; closing early does not unlock Daily. Previously
 remembered unlocks and earned progress remain valid.
 Opening **?** shows a prominent **Replay walkthrough** card first, followed by
-the detailed rules and account-data controls. This guide is included in the
-private v0.1.22 test installation.
+the detailed rules and account-data controls. See the
+[release status](SUBMISSION.md) for the installed test build.
 
 Choosing Play begins a three-second countdown once the board is ready. The
 solve timer stops on the winning exchange, before the courier animation.
@@ -99,6 +103,7 @@ and Python caches are excluded from Git.
 npm run typecheck
 npm test
 npm run build
+npm run verify:practice
 npm run verify:daily
 ```
 
@@ -110,7 +115,10 @@ npm run check:release
 
 The tests cover immutable exchanges, bridge axes, ordered routes, generator
 certificates, first-result ranking, save/retry behavior, account isolation,
-progress migration, artwork and timer behavior. The Daily audit samples 365
+progress migration, artwork and timer behavior. The Practice audit freshly regrades all 1,000 boards, verifies every necessary
+road tile and exact move certificate, checks the global curriculum/diversity
+gates, reconstructs 68 representative recipes and replays all 1,448 archives.
+The Daily audit samples 365
 distinct editions, checks legal witnesses and rejects campaign repeats in
 that sample. These are engineering checks, not claims of worldwide novelty,
 guaranteed player retention or universal physical-device performance.
@@ -162,9 +170,12 @@ leaderboards. Read the full [privacy description](PRIVACY.md).
 | [`tools/`](tools/) | Offline content construction, certificate audits and art processing |
 | [`submission-assets/`](submission-assets/) | Selected presentation images; not player data |
 
-The experimental pair-only constructor is **offline review tooling**, not a
-replacement for the installed 1,000-stop campaign. Its work certificates
-measure rules/minima/search effort, not subjective human difficulty.
+Practice construction and expensive search run **offline**, never in the
+client render loop or an API request. The four-family bank contains 295 pair,
+271 strip, 234 square and 200 L puzzles; 599 require a proved preparation step.
+Earlier banks remain immutable archives. See the
+[construction and research notes](ARCHITECTURE.md#four-family-practice-construction)
+for the proof boundaries and human-playtesting limitation.
 
 ## Film and artwork
 

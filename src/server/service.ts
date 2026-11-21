@@ -33,10 +33,11 @@ export interface GameServiceOptions {
   practice?: PracticeStore;
 }
 
-function campaignRevision(url: string): 1 | 2 {
+function campaignRevision(url: string): 1 | 2 | 3 {
   const revision = new URL(url).searchParams.get('campaign');
   if (revision === null || revision === '1') return 1;
   if (revision === '2') return 2;
+  if (revision === '3') return 3;
   throw new RuleError('This Practice campaign version is not supported. Refresh the game.', 'campaign_version');
 }
 

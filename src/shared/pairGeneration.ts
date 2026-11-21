@@ -1,6 +1,6 @@
 import { randomSource, seedOf } from './generation.ts';
-import { certifyPairMinimum, pairGeometry } from './pairDifficulty.ts';
-import { isAnchor, MAX_EXCHANGES, RuleError, walkable } from './rules.ts';
+import { analyzePairStock, certifyPairMinimum, pairGeometry } from './pairDifficulty.ts';
+import { applySwap, inspectPatch, isAnchor, MAX_EXCHANGES, patchCells, RuleError, rulesFor, walkable } from './rules.ts';
 import type { Anchor, AuthoredPuzzle, Cell, Shape, Swap, Tile } from './types.ts';
 
 interface PairTemplate { size: 6 | 8 | 10 | 12; homes: readonly Cell[] }
@@ -20,6 +20,10 @@ const TEMPLATES: Readonly<Record<number, PairTemplate>> = {
   16: { size: 12, homes: [{ row: 0, col: 0 }, { row: 6, col: 3 }, { row: 0, col: 4 }, { row: 11, col: 0 }, { row: 10, col: 4 }] },
   17: { size: 12, homes: [{ row: 0, col: 0 }, { row: 6, col: 3 }, { row: 0, col: 4 }, { row: 11, col: 0 }, { row: 10, col: 6 }] },
   18: { size: 12, homes: [{ row: 0, col: 0 }, { row: 6, col: 3 }, { row: 0, col: 4 }, { row: 11, col: 0 }, { row: 10, col: 8 }] },
+  19: { size: 12, homes: [{ row: 0, col: 0 }, { row: 6, col: 3 }, { row: 0, col: 4 }, { row: 11, col: 0 }, { row: 10, col: 10 }] },
+  20: { size: 12, homes: [{ row: 0, col: 0 }, { row: 6, col: 3 }, { row: 0, col: 4 }, { row: 11, col: 0 }, { row: 10, col: 8 }, { row: 8, col: 11 }] },
+  22: { size: 12, homes: [{ row: 0, col: 0 }, { row: 10, col: 1 }, { row: 0, col: 2 }, { row: 10, col: 3 }, { row: 0, col: 4 }, { row: 4, col: 5 }] },
+  25: { size: 12, homes: [{ row: 0, col: 0 }, { row: 10, col: 1 }, { row: 0, col: 2 }, { row: 10, col: 3 }, { row: 0, col: 4 }, { row: 10, col: 5 }] },
 };
 
 export function pairProgressionTarget(slot: number): { minimum: number; routePairs: number; size: number } {
@@ -33,13 +37,13 @@ export function pairProgressionTarget(slot: number): { minimum: number; routePai
 
 interface TargetPair { start: Cell; shape: Shape; tiles: readonly [Tile, Tile] }
 export type PairConstruction = { status: 'constructed'; puzzle: AuthoredPuzzle; route: readonly Cell[] } |
-  { status: 'rejected'; reason: 'ordered-path-budget' | 'stock-packing-budget' | 'route-verification-budget' };
+  { status: 'rejected'; reason: 'ordered-path-budget' | 'stock-packing-budget' | 'route-verification-budget' | 'matching-repair-unavailable' };
 
 export function constructPairChallenge(minimum: number, seed: number, routePairs?: number): PairConstruction {
   const pairCount = routePairs ?? minimum + 1, template = TEMPLATES[pairCount];
-  if (!Number.isInteger(minimum) || minimum < 3 || minimum > 12 || !Number.isInteger(pairCount) ||
+  if (!Number.isInteger(minimum) || minimum < 2 || minimum > 12 || !Number.isInteger(pairCount) ||
       pairCount <= minimum || !template || !Number.isSafeInteger(seed) || seed < 1) {
-    throw new Error('Choose a minimum from 3 through 12, a larger route of at most 18 pairs, and a positive integer seed.');
+    throw new Error('Choose a minimum from 2 through 12, a supported larger route template, and a positive integer seed.');
   }
   const revision = routePairs === undefined ? 'v2' : `v3:${pairCount}`;
   const random = randomSource(seedOf(`detour:pair-engine-${revision}:${minimum}:${seed}`));
@@ -197,4 +201,39 @@ export function constructPairChallenge(minimum: number, seed: number, routePairs
     throw error;
   }
   return { status: 'constructed', puzzle, route };
+}
+
+export function constructMatchingRepair(minimum: number, seed: number, routePairs: number): PairConstruction {
+  if (!Number.isInteger(minimum) || minimum < 3 || minimum > 12) throw new Error('Published matching-repair puzzles need a minimum from 3 through 12.');
+  const base = constructPairChallenge(minimum - 1, seed, routePairs);
+  if (base.status === 'rejected') return base;
+  const geometry = pairGeometry(base.puzzle), size = geometry.size;
+  const random = randomSource(seedOf(`detour:matching-repair:${minimum}:${routePairs}:${seed}`));
+  const frames = [{ rows: 1, cols: 2 }, { rows: 2, cols: 1 }].flatMap(shape =>
+    Array.from({ length: size ** 2 }, (_, index) => ({ row: Math.floor(index / size), col: index % size }))
+      .filter(start => inspectPatch(base.puzzle.board, start, shape) === null)
+      .map(start => ({ start, shape, cells: patchCells(start, shape) }))
+      .filter(frame => frame.cells.every(cell => {
+        const index = cell.row * size + cell.col;
+        return !geometry.geodesic[index] && (geometry.neighbors[index] ?? []).every(next => !geometry.geodesic[next]);
+      }))
+      .map(frame => ({ ...frame, roads: frame.cells.filter(cell => walkable(base.puzzle.board[cell.row]?.[cell.col])).length })));
+  const choices = frames.filter(frame => frame.roads > 0).flatMap(source =>
+    frames.filter(target => target.roads === 0 && target.shape.rows === source.shape.rows &&
+      !source.cells.some(a => target.cells.some(b => a.row === b.row && a.col === b.col)))
+      .map(target => ({ move: { ...source.shape, a: source.start, b: target.start }, order: random() })))
+    .sort((a, b) => a.order - b.order).slice(0, 64);
+  for (const { move } of choices) {
+    const board = applySwap(base.puzzle.board, move, rulesFor(base.puzzle, 'daily'), 0);
+    const stock = analyzePairStock(board, geometry.geodesic);
+    if (stock.initiallyMatchable || stock.boundaryStockCells) continue;
+    const puzzle = { ...base.puzzle, id: `${base.puzzle.id}-repair`, board, minimum, witness: [move, ...base.puzzle.witness] };
+    try { certifyPairMinimum(puzzle); }
+    catch (error) {
+      if (error instanceof RuleError && error.code === 'journey_complexity') continue;
+      throw error;
+    }
+    return { status: 'constructed', puzzle, route: base.route };
+  }
+  return { status: 'rejected', reason: 'matching-repair-unavailable' };
 }

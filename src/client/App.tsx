@@ -17,7 +17,7 @@ import { AdventureMap } from './AdventureMap.tsx';
 import { useSolveTimer } from './useSolveTimer.ts';
 import { firstDailyResultOnly, formatSolveTime } from '../shared/timing.ts';
 import { mergeGuideTopics, newTileGuides } from '../shared/guidance.ts';
-import { loadPreferences, PREF_KEY, resolveAppearance } from './preferences.ts';
+import { loadPreferences, PRACTICE_FENCE_KEY, PREF_KEY, resolveAppearance } from './preferences.ts';
 import type { Anchor, Board, Bootstrap, CatalogEntry, Celebration, Cell, Edition, FrameAxes, GuideTarget, GuideTopic, JourneyPlayback, JourneyStop, MyRank, Puzzle, RouteCheck, Shape, Swap } from '../shared/types.ts';
 import type { TutorialProbe } from '../shared/tutorial.ts';
 import { sameGuideTarget } from './coachLayout.ts';
@@ -342,7 +342,10 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', start);
   }, [preferences.soundWanted, notify]);
   useEffect(() => {
-    try { localStorage.setItem(PREF_KEY, JSON.stringify(preferences)); }
+    try {
+      localStorage.setItem(PREF_KEY, JSON.stringify(preferences));
+      if (preferences.practiceAccount) localStorage.setItem(PRACTICE_FENCE_KEY, JSON.stringify(preferences.practiceAccount));
+    }
     catch (error) {
       console.warn('Detour progress could not be saved:', error);
       if (!warnedStorage.current) {
@@ -1184,7 +1187,7 @@ export default function App() {
         {CRAFT_PREVIEW ? 'Swap two matching patches.' : <>Connect A, then B, then C with one unbroken road. C is the final home here.
         The courier waits at A until the whole road is ready, then visits every home in order.
         No gaps, diagonals or revisiting a square.</>}</p>
-      <p className="tour-reassurance"><Icon name="clock" size={18}/>One little lesson. Three picture cards. No clock.</p>
+      <p className="tour-reassurance"><Icon name="clock" size={18}/>One lesson. Four short cards. No clock.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => setDialog(CRAFT_PREVIEW ? null : 'tour-tools')}>{CRAFT_PREVIEW ? 'Try a little swap' : 'See the moves'} <Icon name="arrow" size={17}/></button></div>
     </Modal>}
@@ -1204,7 +1207,7 @@ export default function App() {
             onClick={() => setPreferences((current) => ({ ...current, flat: true }))}><Icon name="grid" size={18}/>Try Flat</button>
         </div>
       </div>
-      <p className="tutorial-next">Next: one hands-on lesson, then three illustrated rule cards.</p>
+      <p className="tutorial-next">Next: one hands-on lesson, then four illustrated rule cards.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => setDialog(null)}>Show me <Icon name="arrow" size={17}/></button></div>
     </Modal>}
@@ -1229,7 +1232,7 @@ export default function App() {
       <section className="guide-replay-card" aria-labelledby="guide-replay-title" data-testid="guide-replay-card">
         <GuideCourier portrait/>
         <div className="guide-replay-copy"><h3 id="guide-replay-title">Replay walkthrough</h3>
-          <p>One lesson. Three picture cards.</p><small>No timer. No rank.</small></div>
+          <p>One lesson. Four short cards.</p><small>No timer. No rank.</small></div>
         <button className="primary-button" onClick={startWalkthrough}><Icon name="play" size={17}/>Replay walkthrough</button>
       </section>
       <div className="dialog-welcome">

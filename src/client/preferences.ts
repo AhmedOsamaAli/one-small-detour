@@ -17,6 +17,12 @@ export interface Preferences {
 }
 
 export const PREF_KEY = 'detour:preferences:1';
+export const PRACTICE_FENCE_KEY = 'detour:practice-fence:3';
+
+function isPracticeIdentity(value: unknown): value is NonNullable<Preferences['practiceAccount']> {
+  return isRecord(value) && typeof value['owner'] === 'string' && /^[a-f0-9]{64}$/.test(value['owner']) &&
+    typeof value['generation'] === 'number' && Number.isSafeInteger(value['generation']) && value['generation'] >= 0;
+}
 
 export function resolveAppearance(preference: AppearancePreference | 'system'): AppearancePreference {
   return preference === 'dark' ? 'dark' : 'light';
@@ -69,14 +75,31 @@ export function loadPreferences(storage?: Pick<Storage, 'getItem'>): { value: Pr
     let practiceAccount: Preferences['practiceAccount'];
       if (value['practiceAccount'] !== undefined) {
         const saved = value['practiceAccount'];
-        if (isRecord(saved) && typeof saved['owner'] === 'string' && /^[a-f0-9]{64}$/.test(saved['owner']) &&
-            typeof saved['generation'] === 'number' && Number.isSafeInteger(saved['generation']) && saved['generation'] >= 0) {
+        if (isPracticeIdentity(saved)) {
           practiceAccount = { owner: saved['owner'], generation: saved['generation'] };
         } else {
           console.warn('The saved Practice account could not be read.');
           warnings.push('The saved Practice account could not be read. Sign in again before syncing; your local stops are safe.');
         }
       }
+    // Older clients can retain newer IDs while dropping their moves and advancing the reset fence.
+    if (practiceAccount && value['completed'].some(id => id.startsWith('practice-v3-') && practice?.bests[id] === undefined)) {
+      try {
+        const text = (storage ?? localStorage).getItem(PRACTICE_FENCE_KEY);
+        if (text !== null) {
+          const fence: unknown = JSON.parse(text);
+          if (!isPracticeIdentity(fence)) throw new Error('Invalid saved Practice reset fence.');
+          if (fence.owner === practiceAccount.owner && fence.generation < practiceAccount.generation) {
+            practiceAccount = { ...fence };
+            console.warn('An older game version changed the Practice reset fence; checking the account before syncing newer stops.');
+            warnings.push('Practice data changed in an older game version. Checking your account reset before syncing newer stops.');
+          }
+        }
+      } catch (error) {
+        console.warn('Saved Practice reset history could not be read:', error);
+        warnings.push('Practice reset history could not be read. Your saved stops were kept; refresh account sync to check them.');
+      }
+    }
     return {
       value: { flat: value['flat'], completed: value['completed'], soundWanted: value['soundWanted'], seenGuides, appearance,
         ...(practice ? { practice } : {}), ...(practiceAccount ? { practiceAccount } : {}) },

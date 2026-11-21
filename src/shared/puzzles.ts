@@ -9,6 +9,7 @@ import type { AuthoredPuzzle, CatalogEntry, Edition, Puzzle, Swap, Theme } from 
 import { dailyLandscapeTheme } from './biomes.ts';
 import { REASONING_AUDIT, REASONING_CAMPAIGN } from './reasoningCampaign.generated.ts';
 import { REASONING_REFINEMENTS, REFINEMENT_AUDIT } from './reasoningRefinements.generated.ts';
+import { PRACTICE_CAMPAIGN } from './practiceCampaign.generated.ts';
 import { campaignPlaces } from './progression.ts';
 
 const s = (ar: number, ac: number, br: number, bc: number, rows = 1, cols = 1): Swap => ({
@@ -128,6 +129,7 @@ let expeditions: readonly AuthoredPuzzle[] | null = null;
 let campaign: readonly AuthoredPuzzle[] | null = null;
 let widePractice: readonly AuthoredPuzzle[] | null = null;
 let revised: readonly AuthoredPuzzle[] | null = null;
+let certifiedPractice: readonly AuthoredPuzzle[] | null = null;
 
 function getWidePractice(): readonly AuthoredPuzzle[] {
   if (!widePractice) {
@@ -202,8 +204,24 @@ export function getLegacyPuzzles(): readonly AuthoredPuzzle[] {
   return campaign;
 }
 
-export function getPuzzles(revision: 1 | 2 = 1): readonly AuthoredPuzzle[] {
+export function getPuzzles(revision: 1 | 2 | 3 = 1): readonly AuthoredPuzzle[] {
   if (revision === 1) return getLegacyPuzzles();
+  if (revision === 3) {
+    if (!certifiedPractice) {
+      const previous = getPuzzles(2), places = previous.filter(puzzle => !puzzle.archived);
+      if (PRACTICE_CAMPAIGN.length !== 1000 || places.length !== 1000) throw new Error('The certified Practice bank is incomplete.');
+      const ids = new Set(previous.map(puzzle => puzzle.id));
+      for (const [slot, puzzle] of PRACTICE_CAMPAIGN.entries()) {
+        if (puzzle.campaignSlot !== slot || puzzle.archived || ids.has(puzzle.id) ||
+            puzzle.legacyId !== places[slot]?.id || puzzle.minimum !== puzzle.witness.length) {
+          throw new Error('The certified Practice manifest is inconsistent.');
+        }
+        ids.add(puzzle.id);
+      }
+      certifiedPractice = [...PRACTICE_CAMPAIGN, ...previous.map(puzzle => ({ ...puzzle, archived: true }))];
+    }
+    return certifiedPractice;
+  }
   if (!revised) {
     if (REASONING_CAMPAIGN.length !== 1000 || REASONING_AUDIT.count !== 1000 ||
         REFINEMENT_AUDIT.baseSha256 !== REASONING_AUDIT.sha256 || REFINEMENT_AUDIT.count !== REASONING_REFINEMENTS.length) {
@@ -300,12 +318,12 @@ export function editionById(id: string): Edition | null {
   return date ? editionForDate(date) : null;
 }
 
-export function findPuzzle(id: string, revision: 1 | 2 = 1): Puzzle | null {
+export function findPuzzle(id: string, revision: 1 | 2 | 3 = 1): Puzzle | null {
   const puzzle = getPuzzles(revision).find((item) => item.id === id);
   return puzzle ? publicPuzzle(puzzle) : null;
 }
 
-export function getCatalog(revision: 1 | 2 = 1): CatalogEntry[] {
+export function getCatalog(revision: 1 | 2 | 3 = 1): CatalogEntry[] {
   return getPuzzles(revision).map(({ id, title, note, theme, chapter, area, board, minimum, frame, practiceAfter, campaignSlot, originalSlot, legacyId, archived, challengeTier }) => ({
     id, title: displayTitle(id, title), note, theme, chapter, area, budget: MAX_EXCHANGES, size: board.length,
     ...(minimum === undefined ? {} : { minimum }),

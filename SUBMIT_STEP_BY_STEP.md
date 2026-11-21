@@ -4,9 +4,10 @@ Checked against the [official rules](https://redditgameofday2026.devpost.com/rul
 on **21 November 2026**. This is a preparation guide, not a record that the
 entry has already been submitted.
 
-**Current test build: v0.1.22.** The tutorial uses one hands-on lesson followed
-by three illustrated rule cards. The question mark opens Help with Replay
-walkthrough first, followed by detailed rules and data controls.
+**Current test build: v0.1.23.** It contains the complete 1,000-puzzle,
+four-family no-surplus Practice replacement and preserved earlier routes/
+progress. The tutorial uses one hands-on lesson followed by four illustrated
+rule cards. The question mark opens Help with Replay walkthrough first.
 
 **Deadline:** 8 December 2026, 6:00 PM Pacific = 9 December, 02:00 UTC /
 04:00 UTC+2.
@@ -25,7 +26,7 @@ walkthrough first, followed by detailed rules and data controls.
 
 The rules allow either a new project or a significantly updated existing one.
 Explain the substantial changes made during the submission period if needed:
-the 1,000-stop revision, state-aware Home, three practical guide chapters,
+the certified 1,000-stop revision, state-aware Home, four illustrated guide cards,
 art/performance work, persistent progress and local-time reset display.
 Do not give an invented creation date.
 
@@ -55,7 +56,7 @@ Use these clean canonical URLs, not challenge-token or local preview URLs:
 **No extra post or broad `devvit publish` is required by the reviewed rules.**
 They ask for an uploaded app listing, test subreddit and a post running the
 game. The same existing post and community are the intended judging links.
-The countdown/tutorial update is installed as **v0.1.22**; 34 delivered runtime files
+The campaign/countdown/tutorial update is installed as **v0.1.23**; 34 delivered runtime files
 were compared with the upload-built release.
 
 If the subreddit is public and judges can access the post, there is no reason
@@ -69,7 +70,8 @@ native checks above remain real work.
 
 ## 3. Upload the film to YouTube
 
-The prepared upload folder contains:
+Use the prepared **`upload-cinematic-v2`** package, not the older gallery.
+It contains:
 
 - The approved 80-second MP4.
 - `youtube-thumbnail.jpg` and its smaller alternative.
@@ -97,17 +99,20 @@ interpretation needs resolving.
 
 ## 4. Add the project image and gallery
 
-Use the six PNGs in order:
+Use the seven cinematic PNGs in order:
 
 1. **01-cover** - the distinctive idea.
 2. **02-gameplay** - the actual interaction.
 3. **03-terrain** - what moves and what stays.
 4. **04-challenge** - deeper planning and the Practice campaign.
-5. **05-daily** - shared Daily and first-result ranking.
+5. **05-daily** - the actual unsolved November 21 Daily board.
 6. **06-your-view** - views and devices.
+7. **07-daily-top-10** - podium and ten clearly illustrative move/time results.
 
 Use the short captions in `GALLERY.md`. These are authentic designed
-presentation assets, not evidence of invented community usage.
+presentation assets, not evidence of community usage. The separate Top 10
+scene explicitly says its Demo scores are illustrative, not live; keep that
+disclaimer visible when cropping or publishing.
 
 ## 5. Fill the Devpost fields
 
@@ -135,7 +140,7 @@ Pick two equal-shaped, non-overlapping terrain patches and swap them. Build a
 single road through the homes in their displayed order, without revisiting a
 square. The courier only starts once the complete route works.
 
-Roads, grass, water and bridges move together. Homes and boulders stay fixed.
+Roads, grass, trees, water and bridges move together. Homes and boulders stay fixed.
 Bridge ends connect along their planks, but their sides do not; nothing rotates.
 
 Each UTC day brings one shared challenge. A signed-in player's first completed
@@ -143,9 +148,11 @@ result is ranked by fewest exchanges, then server-measured time. Replays are
 unranked. Home shows when the next island opens in the player's local timezone.
 
 Between Dailies, explore 1,000 Practice puzzles across 50 islands and seven
-landscapes. Longer patches, L-shapes and larger boards add planning choices.
-Choose 3D or Flat, Light or Dark. One playable lesson teaches the swaps; three
-illustrated cards explain moving/fixed terrain, bridge directions and selection.
+landscapes. Pairs, strips, squares and Ls combine with longer home orders.
+Every road tile is necessary; proved minima rise from 3 to 8 exchanges without
+restarting at each island. Older earned progress and original routes are kept.
+Choose 3D or Flat, Light or Dark. One playable lesson teaches the swaps; four
+concise cards show moving/fixed terrain, both bridge axes and selection.
 
 ### How we built it
 
@@ -157,8 +164,12 @@ The server uses Reddit's authenticated context and Redis for timed attempts,
 first-result reservations, rankings and account-scoped Practice progress.
 It replays repairs instead of trusting a client score or elapsed time.
 
-The campaign and Daily generator have offline legal-witness and difficulty
-checks. Batched terrain, bundled assets and visibility-aware presentation keep
+Practice is constructed offline from solved routes, then checked for exact road
+inventory, move lower bounds, real preparation dependencies, structural variety
+and a globally ordered curriculum. All 1,000 boards are freshly replayed and
+graded; heuristic grades are kept separate from human-playtesting claims.
+The shared Daily generator remains independent and date-seeded.
+Batched terrain, bundled assets and visibility-aware presentation keep
 the interface responsive. The local reset countdown is a small Home-only
 component; its ticks add no requests or 3D work.
 

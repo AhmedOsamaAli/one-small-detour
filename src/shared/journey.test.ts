@@ -16,7 +16,7 @@ test('ordered journey cannot visit C before B, even when separate connections ex
   assert.deepEqual(journey.stops.map((stop) => stop.anchor), ['A']);
   const diagnostics = { explored: -1 };
   assert.deepEqual(planJourney(board, ['A', 'B', 'C'], diagnostics), journey);
-  assert.ok(diagnostics.explored > 0);
+  assert.ok(diagnostics.explored < 10, 'An impossible home order should be rejected before exploring long trails.');
 });
 
 test('journey finds a continuous no-retrace tour, and an honest reachable prefix', () => {
@@ -39,6 +39,13 @@ test('journey finds a continuous no-retrace tour, and an honest reachable prefix
   assert.throws(() => planJourney(full, ['A', 'F']));
 });
 
+test('bounded offline journey checks fail explicitly instead of presenting a partial search as a valid result', () => {
+  const board = ['AoB...', '..o...', '..C...', '......', '......', '......'];
+  assert.throws(() => planJourney(board, ['A', 'B', 'C'], { explored: 0, limit: 1 }), /too complex/);
+  const diagnostics = { explored: 0, limit: 100 };
+  assert.equal(planJourney(board, ['A', 'B', 'C'], diagnostics).solved, true);
+  assert.ok(diagnostics.explored <= 100);
+});
 const route: JourneyPlan = {
   path: [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 1, col: 2 }, { row: 2, col: 2 }],
   stops: [{ anchor: 'A', pathIndex: 0 }, { anchor: 'B', pathIndex: 2 }, { anchor: 'C', pathIndex: 4 }],
