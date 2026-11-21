@@ -4,6 +4,10 @@ Checked against the [official rules](https://redditgameofday2026.devpost.com/rul
 on **21 November 2026**. This is a preparation guide, not a record that the
 entry has already been submitted.
 
+**Current test build: v0.1.22.** The tutorial uses one hands-on lesson followed
+by three illustrated rule cards. The question mark opens Help with Replay
+walkthrough first, followed by detailed rules and data controls.
+
 **Deadline:** 8 December 2026, 6:00 PM Pacific = 9 December, 02:00 UTC /
 04:00 UTC+2.
 **Keep judging access open until:** 16 December, 6:00 PM Pacific =
@@ -51,7 +55,7 @@ Use these clean canonical URLs, not challenge-token or local preview URLs:
 **No extra post or broad `devvit publish` is required by the reviewed rules.**
 They ask for an uploaded app listing, test subreddit and a post running the
 game. The same existing post and community are the intended judging links.
-The countdown update is installed as **v0.1.21**; 34 delivered runtime files
+The countdown/tutorial update is installed as **v0.1.22**; 34 delivered runtime files
 were compared with the upload-built release.
 
 If the subreddit is public and judges can access the post, there is no reason
@@ -140,8 +144,8 @@ unranked. Home shows when the next island opens in the player's local timezone.
 
 Between Dailies, explore 1,000 Practice puzzles across 50 islands and seven
 landscapes. Longer patches, L-shapes and larger boards add planning choices.
-Choose 3D or Flat, Light or Dark. Three playable guide chapters teach the rules
-through real exchanges and no-cost checks.
+Choose 3D or Flat, Light or Dark. One playable lesson teaches the swaps; three
+illustrated cards explain moving/fixed terrain, bridge directions and selection.
 
 ### How we built it
 
@@ -176,7 +180,7 @@ overlapping controls or hiding mistakes behind animations.
 - A clear world-swapping interaction followed by a genuine ordered journey.
 - A complete shared Daily loop with authoritative first-result ranking.
 - 1,000 active Practice puzzles, stable archived routes and preserved progress.
-- Three hands-on guide chapters and coherent seasonal art in both views.
+- A hands-on lesson, concise illustrated rule cards and coherent seasonal art in both views.
 - A next-Daily display that respects local time without splitting the challenge.
 - An approved branded trailer and gallery based on actual game assets.
 

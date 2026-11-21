@@ -60,7 +60,7 @@ export function GameHome(props: HomeProps) {
         <div className="home-signpost-heading"><Icon name={complete ? 'check' : learning ? 'book' : 'leaf'} size={22}/>
           <span className="eyebrow">{complete ? 'TODAY COMPLETE' : learning ? 'A LITTLE FIRST STEP' : "TODAY'S ISLAND"}</span></div>
         <h2 id="home-daily-title">{learning ? 'Your first little swap.' : edition?.puzzle.title ?? 'A road at your own pace.'}</h2>
-        {learning && <p id="home-demo-lock">3 guided lessons unlock today.</p>}
+        {learning && <p id="home-demo-lock">One lesson + picture cards unlock today.</p>}
         {daily.status === 'checking' && <p className="home-status" role="status">Checking today. No clock yet.</p>}
         {daily.status === 'error' && <p className="inline-error" role="alert">{daily.message}</p>}
         {daily.status === 'unavailable' && <p>A new Daily is not available. Practice is open.</p>}
@@ -80,7 +80,7 @@ export function GameHome(props: HomeProps) {
             <button className="secondary-button" onClick={props.onRetry}><Icon name="reset" size={17}/>Retry today's status</button> :
             edition && <button className={learning ? 'secondary-button' : 'primary-button'} onClick={props.onPlay}
               disabled={firstVisit || !ready} data-demo-locked={firstVisit} aria-describedby={learning ? 'home-demo-lock' : undefined}
-              title={firstVisit ? 'Finish the guided lessons to unlock today.' : undefined}>
+              title={firstVisit ? 'Finish the lesson and picture cards to unlock today.' : undefined}>
               <Icon name={firstVisit ? 'lock' : 'play'} size={17}/>{daily.status === 'checking' ? 'Checking today...' : 'Play today'}</button>}
         </div>
         {edition && <NextDailyCountdown clock={props.nextDailyClock}/>}

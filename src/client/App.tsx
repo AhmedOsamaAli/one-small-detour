@@ -12,6 +12,7 @@ import { CelebrationHold } from '../shared/playback.ts';
 import { advancePracticeWorlds, campaignAchievements, campaignPlaces, campaignWorlds, completedOriginalRoad, initializePracticeProgress, nextCampaignPlace, PRACTICE_WORLD_SIZE, practiceGate, practiceStars, recordPracticeMoves, worldStarRequirement, worldStars } from '../shared/progression.ts';
 import { guidePatchStart, pendingTutorialProbe, TUTORIAL, TUTORIAL_LESSONS, tutorialLesson, tutorialStage } from '../shared/tutorial.ts';
 import { TutorialCoach } from './TutorialCoach.tsx';
+import { TutorialCards } from './TutorialCards.tsx';
 import { AdventureMap } from './AdventureMap.tsx';
 import { useSolveTimer } from './useSolveTimer.ts';
 import { firstDailyResultOnly, formatSolveTime } from '../shared/timing.ts';
@@ -272,7 +273,7 @@ export default function App() {
 
   const openDaily = useCallback((edition: Edition, seen: readonly GuideTopic[]): void => {
     if (!seen.includes('basics')) {
-      notify('Finish the guided lessons to unlock today.', true);
+      notify('Finish the lesson and picture cards to unlock today.', true);
       return;
     }
     openRun({ puzzle: edition.puzzle, kind: 'daily', edition: edition.id, number: edition.number }, seen);
@@ -493,14 +494,7 @@ export default function App() {
     finishedRevision.current = eventRevision;
     setArrivalComplete(true);
     audio.current?.finish(check.journey?.path ?? []);
-    if (run.kind === 'guide') {
-      if (!nextGuideLesson) {
-        const topics: GuideTopic[] = ['basics', 'rocks', 'bridges'];
-        setPreferences(current => ({ ...current, seenGuides: mergeGuideTopics(current.seenGuides, topics) }));
-        syncGuides(topics, bootstrap !== null && bootstrap.playerName !== null);
-      }
-      return;
-    }
+    if (run.kind === 'guide') return;
     setPreferences((current) => {
       const completed = current.completed.includes(run.puzzle.id) ? current.completed : [...current.completed, run.puzzle.id];
       if (run.kind !== 'studio') return completed === current.completed ? current : { ...current, completed };
@@ -508,7 +502,7 @@ export default function App() {
       const practice = advancePracticeWorlds(catalog, completed, recordPracticeMoves(previous, run.puzzle, moves.length));
       return completed === current.completed && practice === current.practice ? current : { ...current, completed, practice };
     });
-  }, [run, roadReady, check.journey, campaign, moves.length, bootstrap, syncGuides, nextGuideLesson]);
+  }, [run, roadReady, check.journey, campaign, catalog, moves.length]);
 
   useEffect(() => {
     if (!allHomesArrived || resultRevealed || dialog || !boardReady) return;
@@ -619,7 +613,7 @@ export default function App() {
     }
     if (!first) {
       if (run.kind === 'guide' && (cell.row !== guideMove?.a.row || cell.col !== guideMove?.a.col)) {
-        notify('Tap inside the outlined orange patch. The dot marks its start.');
+        notify('Tap inside the outlined orange patch. The arrow marks its start.');
         return;
       }
       setFirst(cell); setHover(null); audio.current?.select(false);
@@ -973,7 +967,7 @@ export default function App() {
     {!loading && !loadError && screen === 'game' && run && bootstrap && <main className={`game-layout board-first ${run.kind === 'studio' || run.kind === 'guide' ? 'practice-play' : ''}`}>
       <aside className="story-panel">
         <div className="place-heading">
-          <div className="edition-label">{run.kind === 'guide' ? `LESSON ${guideLessonIndex + 1} / ${TUTORIAL_LESSONS.length}` : run.kind === 'studio' ?
+          <div className="edition-label">{run.kind === 'guide' ? 'HANDS-ON / SWAP PATCHES' : run.kind === 'studio' ?
             `${run.puzzle.archived ? 'ORIGINAL ROAD' : `ISLAND ${(currentWorld?.index ?? 0) + 1}`} / STOP ${currentCampaignIndex + 1}` : `${todayLabel.toUpperCase()} / NO. ${run.number?.toString().padStart(3, '0')}`}</div>
           <h1 title={run.puzzle.title}>{run.puzzle.title}<span className="title-period">.</span></h1>
           <div className="challenge-facts"><span>{board.length} x {board.length}</span><span>{difficultyLabel(run.puzzle.minimum, run.kind === 'studio' ? run.puzzle.challengeTier : undefined)}</span>
@@ -1079,7 +1073,9 @@ export default function App() {
             onClick={() => setPreferences((current) => current.flat ? current : { ...current, flat: true })}><Icon name="grid" size={14}/><span>Flat</span></button>
         </div>
         </div>
-        {completionOpen && <Modal title={CRAFT_PREVIEW ? "Everyone's home." : standingsOpen ? 'Daily Top 10.' : run.kind === 'daily' ? 'Your daily result.' : run.kind === 'guide' ? 'You found the way.' : 'Practice complete.'}
+        {completionOpen && run.kind === 'guide' && <TutorialCards soundControl={soundToggle} onClose={visitToday}
+          onFinish={() => { rememberGuides(['basics', 'rocks', 'bridges']); finishWalkthrough(false); }}/>}
+        {completionOpen && run.kind !== 'guide' && <Modal title={CRAFT_PREVIEW ? "Everyone's home." : standingsOpen ? 'Daily Top 10.' : run.kind === 'daily' ? 'Your daily result.' : 'Practice complete.'}
           kind="guide" className="completion-dialog" eyebrow={CRAFT_PREVIEW ? 'A GOOD LITTLE JOURNEY' : 'FIELD GUIDE'} emblem={<Icon name="trophy" size={25}/>} headerControl={soundToggle} onClose={() => { setResultDismissed(true); setStandingsOpen(false); }}>
         <div ref={resultCard} className={`result-card ${run.puzzle.minimum === moves.length ? 'perfect-result' : ''} ${reducedMotion ? '' : 'celebrate-completion'} ${standingsOpen ? 'standings-view' : ''}`} data-testid="result-card">
           <div className="completion-confetti" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <i key={index}
@@ -1096,17 +1092,13 @@ export default function App() {
                 `Of ${earnedRank.participants} ${earnedRank.participants === 1 ? 'finisher' : 'finishers'}. Rank when saved.` :
                 `Among ${earnedRank.participants} saved ${earnedRank.participants === 1 ? 'finisher' : 'finishers'} in this community. Rank when saved.`}</span>
               {firstResultOnly && earnedRank.solveMs !== null && <span className="ranked-first-metrics">{standingsOpen ? 'Ranked:' : 'Ranked result:'} {earnedRank.swaps} moves · {formatSolveTime(earnedRank.solveMs, true)}.</span>}
-            </div> : <h2>{run.kind === 'guide' ? nextGuideLesson ? 'Lesson complete.' : 'You know the little rules.' :
-              CRAFT_PREVIEW ? run.puzzle.minimum === moves.length ? 'A perfect little detour.' : 'You found the way.' :
+            </div> : <h2>{CRAFT_PREVIEW ? run.puzzle.minimum === moves.length ? 'A perfect little detour.' : 'You found the way.' :
                 run.puzzle.minimum === moves.length ? 'Perfect detour!' : 'Everyone is home!'}</h2>}
             <div className={`result-metrics ${firstResultOnly && earnedRank && !replayStatus ? 'ranked-metrics-repeat' : ''}`}>
               {replayStatus && <span>This replay:</span>}
               <span><Icon name="swap" size={15}/>{moves.length} {moves.length === 1 ? 'exchange' : 'exchanges'}</span>
               <span><Icon name={timed ? 'clock' : 'grid'} size={15}/>{timed ? formatSolveTime(elapsedMs, true) : `${footprint} tiles moved`}</span>
             </div>
-            {guideLesson && <p className="completion-next" data-testid="lesson-takeaway">
-              {guideLesson.takeaway}{nextGuideLesson && <> Next: {nextGuideLesson.name}.</>}
-            </p>}
             {run.kind === 'studio' && <div className="practice-star-result" data-testid="practice-star-result">
               <StarRating stars={practiceAward} label={`${practiceAward} of 3 stars for this solution`}/>
               <strong>{practiceAward === 3 ? 'The smallest detour.' : practiceAward > practiceBefore.stars ? 'A brighter little journey.' : 'Another road home.'}</strong>
@@ -1154,11 +1146,7 @@ export default function App() {
           </section>}
         </div>
           <div className={`result-actions completion-actions ${run.kind === 'studio' ? 'practice-completion-actions' : ''}`}>
-            {run.kind === 'guide' ? <button className="primary-button" onClick={() => nextGuideLesson ?
-              begin({ puzzle: nextGuideLesson.puzzle, kind: 'guide', edition: null, number: null }) :
-              CRAFT_PREVIEW ? finishWalkthrough(false) : setDialog('tour-places')}>
-              {nextGuideLesson ? 'Next lesson' : CRAFT_PREVIEW ? bootstrap.edition && homeDaily.state.status === 'ready' ? "Play today's island" : 'Back home' : 'Choose your next road'} <Icon name="arrow" size={17}/></button> :
-              <>{run.kind === 'daily' && saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}
+            {run.kind === 'daily' && saveError && <button className="primary-button" onClick={() => { void publish(); }} disabled={publishing} aria-label="Retry saving score"><Icon name="reset" size={17}/>Retry save</button>}
                 {run.kind === 'daily' && replayRankError && <button className="secondary-button" onClick={() => setReplayRankRetry((current) => current + 1)}
                   aria-label="Retry loading recorded rank"><Icon name="reset" size={17}/>Retry rank</button>}
                 {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
@@ -1173,7 +1161,6 @@ export default function App() {
                   <Icon name={standingsOpen ? 'undo' : 'trophy'} size={16}/>{standingsOpen ? 'Back to result' : 'Top 10'}
                 </button> : <button className={nextCampaign ? 'secondary-button' : 'primary-button'} onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }}
                   aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={17}/>Practice map</button>}
-              </>}
           </div>
         </Modal>}
       </section>
@@ -1197,7 +1184,7 @@ export default function App() {
         {CRAFT_PREVIEW ? 'Swap two matching patches.' : <>Connect A, then B, then C with one unbroken road. C is the final home here.
         The courier waits at A until the whole road is ready, then visits every home in order.
         No gaps, diagonals or revisiting a square.</>}</p>
-      <p className="tour-reassurance"><Icon name="clock" size={18}/>{CRAFT_PREVIEW ? 'Three little lessons. No clock. No rank.' : 'Three guided lessons, with no timer and no effect on your rank.'}</p>
+      <p className="tour-reassurance"><Icon name="clock" size={18}/>One little lesson. Three picture cards. No clock.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => setDialog(CRAFT_PREVIEW ? null : 'tour-tools')}>{CRAFT_PREVIEW ? 'Try a little swap' : 'See the moves'} <Icon name="arrow" size={17}/></button></div>
     </Modal>}
@@ -1217,7 +1204,7 @@ export default function App() {
             onClick={() => setPreferences((current) => ({ ...current, flat: true }))}><Icon name="grid" size={18}/>Try Flat</button>
         </div>
       </div>
-      <p className="tutorial-next">Next: three hands-on lessons on patches, water and fixed tiles, then bridges.</p>
+      <p className="tutorial-next">Next: one hands-on lesson, then three illustrated rule cards.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => setDialog(null)}>Show me <Icon name="arrow" size={17}/></button></div>
     </Modal>}
@@ -1239,6 +1226,12 @@ export default function App() {
     </Modal>}
 
     {dialog === 'guide' && <Modal title="How to find a way." kind="guide" headerControl={soundToggle} onClose={() => setDialog(null)} wide>
+      <section className="guide-replay-card" aria-labelledby="guide-replay-title" data-testid="guide-replay-card">
+        <GuideCourier portrait/>
+        <div className="guide-replay-copy"><h3 id="guide-replay-title">Replay walkthrough</h3>
+          <p>One lesson. Three picture cards.</p><small>No timer. No rank.</small></div>
+        <button className="primary-button" onClick={startWalkthrough}><Icon name="play" size={17}/>Replay walkthrough</button>
+      </section>
       <div className="dialog-welcome">
         <LandscapeIllustration theme={run?.puzzle.theme ?? 'meadow'}/>
         <p className="dialog-intro"><strong>The whole road comes first.</strong> Connect A, then B, then C, in the shown order.
@@ -1253,8 +1246,7 @@ export default function App() {
       <TileGuide/>
       <div className="guide-bottom"><div className="guide-score-note"><span className="state-emblem"><Icon name="trophy" size={23}/></span><p><strong>Fewest moves first. Time breaks ties.</strong>
         From November 16, your first saved Daily finish is final. Replays are unranked; Retry save keeps the same result.
-        The clock starts after 3, 2, 1 and stops on the winning exchange.</p></div>
-        <button className="primary-button" onClick={startWalkthrough}><Icon name="play" size={17}/>Replay walkthrough</button></div>
+        The clock starts after 3, 2, 1 and stops on the winning exchange.</p></div></div>
       <div className="guide-footnotes">
         <p><Icon name="trophy" size={18}/><span>Practice stars reward efficient routes. Keep your highest stars, and discover better roads by replaying.
           Finish an island's stops and collect 30 of its 60 stars to open the next one. Daily ranking is separate.</span></p>

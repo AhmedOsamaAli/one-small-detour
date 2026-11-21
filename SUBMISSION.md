@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Private Devvit v0.1.21** is installed in
+**Private Devvit v0.1.22** is installed in
 [r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/), on the
 [same existing interactive post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/).
 
@@ -26,10 +26,13 @@ remains offline review tooling, not the installed bank.
   through 20 November 2027, with no campaign repeat in that sample.
 - Five timezone/layout browser cases checked live countdown updates, local
   labels, compact phone controls and no additional requests during ticks.
-- The exact upload-built client passed three read-only compiled Home checks.
+- 97 combined tutorial/Help browser checks cover first-card replay, actual
+  lesson completion, all three rule cards, early close, unlocks and progress.
+- The exact upload-built client passed three read-only compiled Home/Help/guide
+  checks with real lesson swaps and card navigation.
 - All 34 delivered runtime files match that checked output: 32 binary assets
   and two HTML entrypoints normalized for the normal Devvit bridge.
-- The CLI confirms v0.1.21 installed only in the authorized test community.
+- The CLI confirms v0.1.22 installed only in the authorized test community.
 
 Devvit invokes its build during upload. Asset-name ordering can change between
 builds, so the upload-built output was checked and compared directly rather
@@ -37,6 +40,27 @@ than assuming an earlier hash manifest still described it.
 
 These checks are not fresh authenticated play or physical-phone certification.
 The owner still needs the live access/native-device checks in the guide.
+
+## Tutorial and Help
+
+Lesson one retains its three genuine swaps and courier journey. Its completion
+now leads directly to three illustrated rule cards instead of the fixed-tile
+and bridge puzzle chapters. Cards cover what moves/stays, bridge end/side
+connections, and wide-left/tall-top/square-and-L-top-left selection.
+Selecting the same start again clears the first choice at no move cost.
+
+Back/Next follows the reader's pace. Only the final Ready to play action records
+the guide flags; closing early keeps a new player's Daily locked. Existing
+unlocks and genuinely earned Practice results remain intact.
+
+Opening the question mark presents a prominent Replay walkthrough card first;
+the detailed tile rules and account-data controls follow it.
+
+The update passes the complete 221-test release gate, all TypeScript checks/
+build and 97 focused browser checks, including real Flat/3D lesson completion,
+partial close/reload, keyboard completion, reduced motion, light/dark and
+narrow/landscape layouts. It is installed in the existing private test community;
+no new post or broad app publication was performed.
 
 ## Source
 

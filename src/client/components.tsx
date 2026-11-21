@@ -273,7 +273,7 @@ export function CompletionSeal({ perfect }: { perfect: boolean }) {
   </svg>;
 }
 
-function TileGlyph({ tile }: { tile: Tile }) {
+export function TileGlyph({ tile }: { tile: Tile }) {
   const bridge = tile === 'h' || tile === 'v';
   return <svg className="tile-guide-glyph" width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden="true">
     <rect x="1" y="1" width="30" height="30" rx="6"

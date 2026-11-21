@@ -51,10 +51,17 @@ of a tall patch, or the top-left of a square/L. The outline shows the complete
 footprint. Tap the selected start again, or press Escape, to deselect.
 There is no Undo; every completed exchange counts.
 
-New players get three untimed, playable guide chapters:
-matching patches, fixed homes/rocks, and bridge connections. The guide includes
-real exchanges and no-cost rule checks, not a sequence of Next buttons.
-Previously remembered guide unlocks are retained.
+The tutorial keeps the original untimed, three-swap lesson and
+courier journey, then shows three illustrated cards: moving/fixed tiles, bridge
+connections, and left/top/top-left selection. Tap or click the same starting
+tile again to clear the first choice.
+
+Cards advance at the player's pace with Back/Next. The final **Ready to play**
+action remembers the guide; closing early does not unlock Daily. Previously
+remembered unlocks and earned progress remain valid.
+Opening **?** shows a prominent **Replay walkthrough** card first, followed by
+the detailed rules and account-data controls. This guide is included in the
+private v0.1.22 test installation.
 
 Choosing Play begins a three-second countdown once the board is ready. The
 solve timer stops on the winning exchange, before the courier animation.

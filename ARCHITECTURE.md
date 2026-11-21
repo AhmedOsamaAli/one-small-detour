@@ -50,6 +50,14 @@ authoritative saved result. Other people's ranks do not unlock today's result.
 [`usePracticeSync.ts`](src/client/usePracticeSync.ts) handles account generation,
 merge/retry behavior and local records safely.
 
+The guide uses [`TutorialCards.tsx`](src/client/TutorialCards.tsx)
+after the original hands-on lesson's actual arrivals. It reuses tile artwork,
+bridge connectivity and complete frame outlines. Finishing the last card
+records the existing three guide flags; closing a partial deck does not.
+The earlier lesson fixtures remain available for rule tests and the approved
+film, not as the current onboarding sequence. Help presents the explicit replay
+action first; opening Help alone does not start an attempt or alter guide flags.
+
 The next-Daily display is a separate
 [`NextDailyCountdown.tsx`](src/client/NextDailyCountdown.tsx) component. Its
 one-second state updates do not rerender the parent game or touch the 3D board.
