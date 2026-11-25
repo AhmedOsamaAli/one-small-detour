@@ -30,7 +30,9 @@ fonts. Nature geometry, sound and fonts are bundled or created locally.
 
 The next-Daily countdown uses the server-provided shared UTC reset time.
 The browser formats its opening time with the player's local timezone.
-That timezone is not saved, transmitted or used to split leaderboards.
+The countdown alone does not save or transmit that timezone. The separate,
+explicitly opted-in reminder feature described below saves a scheduling timezone;
+neither feature splits leaderboards.
 The display updates only while Home is visible; it adds no per-second requests.
 
 ## Account Practice sync
@@ -81,6 +83,41 @@ server, and is shared only between this app's same-origin preview and game.
 Existing local progress is preserved when the new preference is introduced.
 No appearance-tracking record is collected.
 
+## Daily inbox reminders
+
+Reminders are off by default. A signed-in player can explicitly enable
+**Home -> Remind me daily** and choose a time in the displayed timezone.
+This asks the app to send one Reddit private inbox message on unfinished Daily
+editions. These are not native push notifications; phone alerts depend on the
+player's Reddit settings. No message is sent simply by opening or playing the game.
+
+The community installation stores the platform identifier, chosen time and
+timezone, the existing game post ID, next scheduled time and an opaque preference
+revision. It uses these only to schedule and link the requested reminder.
+It resolves the current Reddit username when sending rather than retaining a
+separate username list. Message contents, phone numbers, email addresses,
+device push tokens and private inbox contents are not stored or read.
+
+Completed or removed Daily turns are skipped. A short-lived, per-player edition
+marker records attempted, sent, failed or skipped delivery and expires no later
+than 48 hours after that edition opened. Reserving an attempt before sending
+prevents duplicate messages when delivery is uncertain. A failed or unconfirmed
+delivery is visible on Home; failures are logged, not silently treated as sends.
+Missed reminder windows are skipped instead of sending an old edition or a message
+more than an hour late. Daylight-saving gaps move a nonexistent time forward
+by the gap; repeated times cannot produce two messages for an edition.
+
+Turning the switch off removes the preference and due-schedule entry. A message
+already being sent cannot be recalled. The short-lived edition marker remains
+until expiry to prevent off/on toggles from producing duplicate messages.
+A minimal reset generation also remains, containing no time, timezone, post,
+score or message, so delayed requests or stale tabs cannot turn reminders back on.
+**Remove my records** also turns reminders off. Accounts reported unavailable
+are removed when the scheduler or existing account reconciliation checks them.
+Preferences otherwise persist until removed; no account is subscribed by an
+app update. Local rehearsal keeps choices only in server memory, never sends
+messages, and loses those choices when its local server restarts.
+
 ## Automatic daily scores and timed attempts
 
 Signed-in daily results save automatically once the trail is solved. The backend
@@ -93,16 +130,16 @@ Starting a daily countdown creates a short-lived, player-bound attempt record:
 random attempt ID, player ID, edition, rules/ranking versions and server start
 and expiry times. Completed repairs retain a one-way hash of their normalized
 exchanges, an opaque per-solve identifier and server-measured duration, not the
-raw solution. Retries keep the same solve identifier; solving again after Undo
+raw solution. Retrying a save keeps the same solve identifier; a fresh solve
 uses a new one. Native attempt
 records expire within 24 hours and a per-player index prunes older attempts.
 Local attempt records are memory-only; saved local scores remain on disk.
 
 On Reddit, identity comes from the platform context, not a client-provided user
-ID. The game displays the current player's rank and daily top-percentage only
-after the current daily attempt has finished and successfully saved. It does
-not fetch or display a previous rank before play. Own exchange count and solve
-time remain available.
+ID. Home checks whether this edition is already complete and can display the
+player's previously saved rank, exchange count and solve time. During a new
+Daily run, rank and daily top-percentage are displayed only after the completed
+result has successfully saved. Own exchange count and solve time remain available.
 The percentage is derived from unique valid finishers on the same edition in
 this installation. Viewers and scores on other days are not included, and a
 sole finisher has no percentage comparison. Tied best results receive the same
@@ -122,7 +159,7 @@ The current player can use **Guide -> Manage saved data -> Remove my records** t
 remove their records from this installation. A per-player index records the
 daily score keys needed for erasure; expired dates are pruned and the index
 expires if inactive. It does not store solutions, private messages or profiles.
-Removing records also removes active timed attempts and the synced guide flags,
+Removing records also removes active timed attempts, inbox reminder preferences and the synced guide flags,
 clears the browser's guide acknowledgements, and prevents the current completed
 run from automatically re-saving itself. The walkthrough can appear again on
 the next visit. Campaign progress, view and sound choices remain. Earlier Daily
