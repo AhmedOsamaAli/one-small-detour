@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Devvit `small-detour` v0.1.1** (submitted for unlisted Reddit launch review) is installed in
+**Devvit `small-detour` v0.1.2** (private test build; `v0.1.1` remains in unlisted Reddit launch review) is installed in
 [r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/), on the
 [interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
 
@@ -49,6 +49,26 @@ player choices are preserved; phone alerts still depend on Reddit settings.
 Actual scheduled inbox delivery, fresh signed-out play and physical-phone
 behavior remain separate checks; opening Home does not certify them.
 No public launch review, App Directory publication or promotional post was made.
+
+### UX, Top 10 scoreboard, 45-star gate, and bigger gameplay map (v0.1.2)
+
+- Top 10 scoreboard fits all 10 entries (plus the player's own row when outside
+  the top 10) without scrolling across phones, tablets, and desktop, with aligned
+  tabular numbers.
+- Home places Today's Daily and Practice above the fold without scrolling, moves
+  Remind me daily into a compact expandable strip below both cards, and styles
+  Replay unranked, Map, Top 10, and Guide as clear clickable buttons.
+- First-visit Home and the final tutorial card make the Demo-to-Daily unlock
+  explicit, with Play today's Daily and Home choices; the Practice Map and
+  walkthrough dialogs use a Home button to return to the homepage.
+- Island star requirement is raised from 30 to 45 of 60 stars per 20-stop island
+  (preserving previously unlocked islands) and displayed on Home, Practice Map,
+  Practice completion, and Help.
+- Gameplay trims outer margins, borders, and HUD chrome so the playable board
+  fills 97% of phone width and 91% of desktop height.
+- All 258 unit tests, three TypeScript checks, production build, and responsive
+  browser checks passed. Installed in `r/small_detour_dev` as private `v0.1.2`;
+  `v0.1.1` remains queued for unlisted Reddit review.
 
 ### Route-rule tutorial cards and `small-detour` launch submission (v0.1.1)
 

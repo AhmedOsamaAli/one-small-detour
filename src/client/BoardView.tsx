@@ -163,7 +163,7 @@ export function BoardView(props: BoardProps) {
     const element = stage.current;
     if (!element) return;
     const measure = (): void => {
-      const extent = Math.max(1, Math.floor(Math.min(element.clientWidth, element.clientHeight) - 16));
+      const extent = Math.max(1, Math.floor(Math.min(element.clientWidth, element.clientHeight) - 4));
       setFlatExtent((previous) => previous === extent ? previous : extent);
     };
     const observer = new ResizeObserver(measure);

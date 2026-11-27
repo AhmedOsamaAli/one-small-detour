@@ -90,7 +90,7 @@ export function campaignAchievements(catalog: readonly CatalogEntry[], completed
 }
 
 export function worldStarRequirement(world: CampaignWorld): number {
-  return Math.ceil((world.end - world.start) * 1.5);
+  return Math.ceil((world.end - world.start) * 2.25);
 }
 
 export function initializePracticeProgress(catalog: readonly CatalogEntry[], completed: readonly string[]): PracticeProgress {

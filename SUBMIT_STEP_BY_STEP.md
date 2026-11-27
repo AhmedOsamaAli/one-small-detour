@@ -4,7 +4,7 @@ Checked against the [official rules](https://redditgameofday2026.devpost.com/rul
 on **21 November 2026**. This is a preparation guide, not a record that the
 entry has already been submitted.
 
-**Current build: `small-detour` v0.1.1 (submitted for unlisted review).** It contains the complete 1,000-puzzle,
+**Current build: `small-detour` v0.1.2 (installed in `r/small_detour_dev`; `v0.1.1` remains in unlisted review).** It contains the complete 1,000-puzzle,
 four-family no-surplus Practice replacement and preserved earlier routes/
 progress. The tutorial uses one hands-on lesson followed by six illustrated
 rule cards (including home order and no repeated road squares). The question

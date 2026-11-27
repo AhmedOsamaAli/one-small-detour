@@ -13,20 +13,22 @@ export function DailyStandings({ state, edition, onRetry }: { state: StandingsSt
   const leaders = board.entries.slice(0, 10);
   const own = board.yourBest && !leaders.some((entry) => entry.isYou) ? board.yourBest : null;
   return <section className="daily-standings" aria-label="Current Daily top 10">
-    <h3>{board.source === 'local' ? 'Local Top 10' : 'Daily Top 10'}</h3>
-    <p>{edition} / Moves first, then time.</p>
-    {!leaders.length ? <p>No saved finishers yet.</p> : <table>
+    <div className="standings-header">
+      <h3>{board.source === 'local' ? 'Local Top 10' : 'Daily Top 10'}</h3>
+      <span className="standings-meta">{edition} · Moves, then time</span>
+    </div>
+    {!leaders.length ? <p className="standings-empty">No saved finishers yet.</p> : <table>
       <caption className="sr-only">Current Daily top ten by moves, then time</caption>
       <colgroup><col className="standing-rank"/><col/><col className="standing-moves"/><col className="standing-time"/></colgroup>
-      <thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Moves</th><th scope="col">Time</th></tr></thead>
+      <thead><tr><th scope="col" className="standing-num">#</th><th scope="col">Player</th><th scope="col" className="standing-num">Moves</th><th scope="col" className="standing-num">Time</th></tr></thead>
       <tbody>{leaders.map((entry) => <tr key={entry.userId} className={entry.isYou ? 'standing-you' : undefined}>
-        <td>{entry.rank}</td><th scope="row" title={entry.name}>{entry.name}{entry.isYou && <small> You</small>}</th><td>{entry.swaps}</td>
-        <td>{formatSolveTime(entry.solveMs, true)}</td>
+        <td className="standing-num">{entry.rank}</td><th scope="row" title={entry.name}><span className="standing-name">{entry.name}</span>{entry.isYou && <small className="standing-you-tag">You</small>}</th><td className="standing-num">{entry.swaps}</td>
+        <td className="standing-num">{formatSolveTime(entry.solveMs, true)}</td>
       </tr>)}</tbody>
-      {own && <tfoot><tr className="standing-you"><td>{own.rank}</td><th scope="row">{firstDailyResultOnly(edition) ? 'Your result' : 'Your best'}</th><td>{own.swaps}</td>
-        <td>{formatSolveTime(own.solveMs, true)}</td></tr></tfoot>}
+      {own && <tfoot><tr className="standing-you"><td className="standing-num">{own.rank}</td><th scope="row">{firstDailyResultOnly(edition) ? 'Your result' : 'Your best'}</th><td className="standing-num">{own.swaps}</td>
+        <td className="standing-num">{formatSolveTime(own.solveMs, true)}</td></tr></tfoot>}
     </table>}
-    <p>{crafted ? `${board.players} ${board.players === 1 ? 'finisher' : 'finishers'}. ${firstDailyResultOnly(edition) ? 'First finishes only. ' : ''}Rank when opened.` :
+    <p className="standings-footnote">{crafted ? `${board.players} ${board.players === 1 ? 'finisher' : 'finishers'} · ${firstDailyResultOnly(edition) ? 'First finish only · ' : ''}Snapshot when opened.` :
       <>{board.players} saved {board.players === 1 ? 'finisher' : 'finishers'}. Each person counts once.
         {' '}{firstDailyResultOnly(edition) && 'First recorded result only. '}Snapshot when opened.</>}</p>
   </section>;

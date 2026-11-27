@@ -422,6 +422,17 @@ export default function App() {
   const practiceAward = run?.kind === 'studio' && roadReady ? practiceStars(run.puzzle, moves.length, true) : 0;
   const bestPracticeStars = Math.max(practiceBefore.stars, practiceAward);
   const gateWorld = replayForStars ? worlds[practiceProgress.unlockedWorlds - 1] : null;
+  const activeGoalWorld = useMemo(() => {
+    const world = worlds[practiceProgress.unlockedWorlds - 1];
+    if (!world || practiceProgress.unlockedWorlds >= worlds.length) return null;
+    return { stars: worldStars(world, catalog, preferences.completed, practiceProgress), required: worldStarRequirement(world), nextIsland: world.index + 2 };
+  }, [worlds, practiceProgress, catalog, preferences.completed]);
+  const currentWorldGoal = useMemo(() => {
+    if (!currentWorld || currentWorld.index + 1 >= worlds.length || currentWorld.index + 1 < practiceProgress.unlockedWorlds) return null;
+    const stars = worldStars(currentWorld, catalog, preferences.completed, practiceProgress);
+    const required = worldStarRequirement(currentWorld);
+    return { title: currentWorld.title, stars, required, remaining: Math.max(0, required - stars), nextIsland: currentWorld.index + 2 };
+  }, [currentWorld, worlds.length, practiceProgress, catalog, preferences.completed]);
   const playback = useMemo<JourneyPlayback | null>(() => {
     const plan = roadReady && !arrivalComplete ? check.journey : null;
     return plan ? { revision, plan } : null;
@@ -890,8 +901,8 @@ export default function App() {
     roadReady ? nextStop ? `Next stop: ${nextStop}` : 'Final stop reached.' :
     moves.length >= rules.budget ? 'Exchange limit reached. Start a fresh island.' :
     run?.kind === 'guide' ? guideProbe?.instruction ?? (guideStage === 'frame' ? 'Choose the glowing frame.' : !first ? 'Tap the orange patch.' : 'Tap the blue patch.') :
-    !first ? shape.rows > 1 && shape.cols > 1 ? 'Start at the top-left.' :
-      shape.rows > shape.cols ? 'Start at the top.' : 'Start at the left.' : 'Pick 2; tap start to clear.';
+    !first ? shape.rows > 1 && shape.cols > 1 ? 'Pick patch 1 (top-left)' :
+      shape.rows > shape.cols ? 'Pick patch 1 (top)' : 'Pick patch 1 (left)' : 'Pick patch 2 · tap 1st to cancel';
   const earnedRank = won && published && run?.kind === 'daily' && myRank?.edition === run.edition && myRank.rank !== null ? myRank : null;
   const rankLabel = run?.edition === bootstrap?.edition?.id ? 'today' : `on ${todayLabel}`;
   const pendingTopics = pendingRun ? newTileGuides(pendingRun.puzzle.board, preferences.seenGuides) : [];
@@ -960,6 +971,7 @@ export default function App() {
       nextPracticeNumber={nextCampaignIndex + 1} completed={[...achievements.values()].filter(value => value.completed).length}
       total={campaign.length} practiceBusy={practiceLoading !== null} practiceSyncing={progressSync.phase === 'loading'}
       practiceNeedsStars={replayForStars}
+      islandStarGoal={activeGoalWorld}
       practiceError={dialogError} syncError={progressSync.phase === 'error' ? progressSync.message : null}
       onGuide={startWalkthrough} onRetry={homeDaily.refresh} onRetrySync={progressSync.retry}
       onPlay={() => { if (bootstrap.edition) openDaily(bootstrap.edition, preferencesRef.current.seenGuides); }}
@@ -974,7 +986,8 @@ export default function App() {
     {!loading && !loadError && screen === 'results' && recordedDaily && <SavedDailyResults key={recordedDaily.edition.id}
       edition={recordedDaily.edition} result={recordedDaily.result}
       onReplay={() => openRun({ puzzle: recordedDaily.edition.puzzle, kind: 'daily', edition: recordedDaily.edition.id, number: recordedDaily.edition.number }, preferencesRef.current.seenGuides)}
-      onPractice={() => { setDialogError(null); setDialog('atlas'); }}/>}
+      onPractice={() => { setDialogError(null); setDialog('atlas'); }}
+      onHome={visitToday}/>}
     {!loading && !loadError && screen !== 'home' && !run && pendingRun && <main className="loading-place">{CRAFT_PREVIEW ? <BrandMark/> : <LandscapeIllustration theme={pendingRun.puzzle.theme}/>}<h1>Before the clock starts.</h1></main>}
 
     {!loading && !loadError && screen === 'game' && run && bootstrap && <main className={`game-layout board-first ${run.kind === 'studio' || run.kind === 'guide' ? 'practice-play' : ''}`}>
@@ -1086,7 +1099,10 @@ export default function App() {
             onClick={() => setPreferences((current) => current.flat ? current : { ...current, flat: true })}><Icon name="grid" size={14}/><span>Flat</span></button>
         </div>
         </div>
-        {completionOpen && run.kind === 'guide' && <TutorialCards soundControl={soundToggle} onClose={visitToday}
+        {completionOpen && run.kind === 'guide' && <TutorialCards soundControl={soundToggle}
+          dailyReady={Boolean(bootstrap?.edition && homeDaily.state.status === 'ready')}
+          onClose={visitToday}
+          onFinishHome={() => { rememberGuides(['basics', 'rocks', 'bridges']); visitToday(); }}
           onFinish={() => { rememberGuides(['basics', 'rocks', 'bridges']); finishWalkthrough(false); }}/>}
         {completionOpen && run.kind !== 'guide' && <Modal title={CRAFT_PREVIEW ? "Everyone's home." : standingsOpen ? 'Daily Top 10.' : run.kind === 'daily' ? 'Your daily result.' : 'Practice complete.'}
           kind="guide" className="completion-dialog" eyebrow={CRAFT_PREVIEW ? 'A GOOD LITTLE JOURNEY' : 'FIELD GUIDE'} emblem={<Icon name="trophy" size={25}/>} headerControl={soundToggle} onClose={() => { setResultDismissed(true); setStandingsOpen(false); }}>
@@ -1135,9 +1151,14 @@ export default function App() {
                 nextCampaignIndex === currentCampaignIndex + 1 ? `Next: stop ${nextCampaignIndex + 1}.` :
                 nextCampaign ? 'Your next stop is ready.' : `All ${campaign.length} stops complete.`}
             </p>}
-            {gateWorld && <p className="completion-next" data-testid="practice-star-gate">
-              {worldStars(gateWorld, catalog, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title}.
-              {' '}Replay earlier stops to open the next island.
+            {gateWorld && <p className="completion-next completion-star-goal" data-testid="practice-star-gate">
+              ★ {worldStars(gateWorld, catalog, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title}.
+              {' '}Collect {Math.max(0, worldStarRequirement(gateWorld) - worldStars(gateWorld, catalog, preferences.completed, practiceProgress))} more to open Island {gateWorld.index + 2}.
+            </p>}
+            {!gateWorld && run.kind === 'studio' && currentWorldGoal && <p className="completion-next completion-star-goal" data-testid="practice-island-star-goal">
+              {currentWorldGoal.remaining > 0
+                ? `★ ${currentWorldGoal.stars} / ${currentWorldGoal.required} stars in ${currentWorldGoal.title} (${currentWorldGoal.remaining} more for Island ${currentWorldGoal.nextIsland}).`
+                : `★ ${currentWorldGoal.stars} / ${currentWorldGoal.required} stars — goal met for Island ${currentWorldGoal.nextIsland}!`}
             </p>}
             {run.kind === 'daily' && nextCampaign && <p className="completion-next">{replayForStars ?
               'Choose a completed Practice stop on the map for more stars.' : `Continue in unranked Practice: stop ${nextCampaignIndex + 1}.`}</p>}
@@ -1183,7 +1204,7 @@ export default function App() {
 
     {notice && <div className={`toast ${notice.error ? 'toast-error' : ''}`} role={notice.error ? 'alert' : 'status'}><Icon name={notice.error ? 'warning' : 'check'} size={18}/><span>{notice.message}</span><button aria-label="Dismiss message" onClick={() => setNotice(null)}><Icon name="close" size={15}/></button></div>}
 
-    {dialog === 'welcome' && <Modal title={CRAFT_PREVIEW ? 'A little way home.' : 'Move a little world.'} kind="guide" eyebrow={CRAFT_PREVIEW ? 'ONE SMALL DETOUR' : 'FIELD GUIDE'} className="walkthrough-dialog" emblem={<GuideCourier portrait/>} headerControl={soundToggle} onClose={visitToday}>
+    {dialog === 'welcome' && <Modal title={CRAFT_PREVIEW ? 'A little way home.' : 'Move a little world.'} kind="guide" eyebrow={CRAFT_PREVIEW ? 'ONE SMALL DETOUR' : 'FIELD GUIDE'} className="walkthrough-dialog" emblem={<GuideCourier portrait/>} headerControl={soundToggle} closeIcon="home" onClose={visitToday}>
       {CRAFT_PREVIEW ? <CraftScene/> : <p className="tour-eyebrow">1 / 3 · THE GOAL</p>}
       <div className="tutorial-goal" data-testid="tutorial-goal">
         <GuideIllustration step={3}/>
@@ -1203,7 +1224,7 @@ export default function App() {
         <button className="primary-button" onClick={() => setDialog(CRAFT_PREVIEW ? null : 'tour-tools')}>{CRAFT_PREVIEW ? 'Try a little swap' : 'See the moves'} <Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
-    {dialog === 'tour-tools' && <Modal title="Your little toolkit." kind="guide" className="walkthrough-dialog tutorial-tools" headerControl={soundToggle} wide onClose={visitToday}>
+    {dialog === 'tour-tools' && <Modal title="Your little toolkit." kind="guide" className="walkthrough-dialog tutorial-tools" headerControl={soundToggle} closeIcon="home" wide onClose={visitToday}>
       <div className="tutorial-step-nav"><p className="tour-eyebrow">2 / 3 · YOUR MOVES</p>
         <button className="text-button tutorial-back" onClick={() => setDialog('welcome')} aria-label="Back" title="Back to the goal"><Icon name="undo" size={16}/>Back</button>
       </div>
@@ -1225,7 +1246,7 @@ export default function App() {
 
     {dialog === 'tour-places' && <Modal
       title="A new way, every day."
-      kind="guide" className="walkthrough-dialog" emblem={<GuideCourier portrait/>} headerControl={soundToggle} wide onClose={visitToday}>
+      kind="guide" className="walkthrough-dialog" emblem={<GuideCourier portrait/>} headerControl={soundToggle} closeIcon="home" wide onClose={visitToday}>
       <p className="tour-eyebrow">YOU'RE READY · CHOOSE YOUR ROAD</p>
       <WalkthroughFeatures section="places" places={campaign.length}/>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
@@ -1239,11 +1260,11 @@ export default function App() {
       <div className="dialog-actions"><button className="primary-button" onClick={acceptTileGuide}>Start island <Icon name="arrow" size={17}/></button></div>
     </Modal>}
 
-    {dialog === 'guide' && <Modal title="How to find a way." kind="guide" headerControl={soundToggle} onClose={() => setDialog(null)} wide>
+    {dialog === 'guide' && <Modal title="How to find a way." kind="guide" headerControl={soundToggle} closeIcon={screen === 'home' ? 'home' : 'close'} onClose={() => setDialog(null)} wide>
       <section className="guide-replay-card" aria-labelledby="guide-replay-title" data-testid="guide-replay-card">
         <GuideCourier portrait/>
         <div className="guide-replay-copy"><h3 id="guide-replay-title">Replay walkthrough</h3>
-          <p>One lesson. Four short cards.</p><small>No timer. No rank.</small></div>
+          <p>One lesson. Six short cards.</p><small>No timer. No rank.</small></div>
         <button className="primary-button" onClick={startWalkthrough}><Icon name="play" size={17}/>Replay walkthrough</button>
       </section>
       <div className="dialog-welcome">
@@ -1263,7 +1284,7 @@ export default function App() {
         The clock starts after 3, 2, 1 and stops on the winning exchange.</p></div></div>
       <div className="guide-footnotes">
         <p><Icon name="trophy" size={18}/><span>Practice stars reward efficient routes. Keep your highest stars, and discover better roads by replaying.
-          Finish an island's stops and collect 30 of its 60 stars to open the next one. Daily ranking is separate.</span></p>
+          Finish an island's stops and collect 45 of its 60 stars to open the next one. Daily ranking is separate.</span></p>
         <p><Icon name="check" size={18}/><span>Every completed exchange counts. There is no Undo in Daily or Practice.</span></p>
         <p><Icon name="grid" size={18}/><span>Keyboard: arrows choose a square; Space selects it; Escape clears a cut. Flat map has individual labeled buttons.</span></p>
         <p><Icon name="lock" size={18}/><span>Saved scores are yours to control. <button className="text-button data-management-link"
@@ -1273,9 +1294,7 @@ export default function App() {
       </div>
     </Modal>}
 
-    {dialog === 'atlas' && <Modal title="Practice map." kind="map" className="adventure-dialog" headerControl={soundToggle} onClose={() => {
-      practiceRequest.current++; setPracticeLoading(null); setDialog(null);
-    }} wide>
+    {dialog === 'atlas' && <Modal title="Practice map." kind="map" className="adventure-dialog" headerControl={soundToggle} closeIcon="home" closeLabel="Back to home" onClose={visitToday} wide>
       <AdventureMap places={bootstrap?.catalog ?? []} completed={preferences.completed} progress={practiceProgress} currentId={run?.puzzle.id ?? ''}
         reduced={reducedMotion} dark={dark}
         loading={practiceLoading} error={dialogError} onSelect={openPractice} onToday={visitToday} sync={progressSync}/>

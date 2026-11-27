@@ -1912,7 +1912,7 @@ export class LivingIsland {
     });
     if (extent.isEmpty()) extent.set(new THREE.Vector3(-4, -4, -1), new THREE.Vector3(4, 4, 1));
     const terrainExtent = extent.clone();
-    const margin = Math.min(8, width / 8, height / 8);
+    const margin = Math.min(3, width / 20, height / 20);
     let vertical = 2 * Math.max(
       (extent.max.y - extent.min.y) / 2 * height / Math.max(1, height - margin * 2),
       (extent.max.x - extent.min.x) / 2 * width / Math.max(1, width - margin * 2) / aspect,

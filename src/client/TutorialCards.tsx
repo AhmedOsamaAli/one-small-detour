@@ -191,8 +191,8 @@ function StartCards() {
   </div>;
 }
 
-export function TutorialCards({ onClose, onFinish, soundControl }: {
-  onClose: () => void; onFinish: () => void; soundControl: ReactNode;
+export function TutorialCards({ onClose, onFinish, onFinishHome, dailyReady = false, soundControl }: {
+  onClose: () => void; onFinish: () => void; onFinishHome?: () => void; dailyReady?: boolean; soundControl: ReactNode;
 }) {
   const [index, setIndex] = useState(0);
   const content = useRef<HTMLDivElement>(null);
@@ -202,7 +202,7 @@ export function TutorialCards({ onClose, onFinish, soundControl }: {
   useLayoutEffect(() => { content.current?.scrollTo({ top: 0 }); }, [index]);
   return <Modal title={card.title} className="walkthrough-dialog rule-flash-dialog"
     eyebrow={`CARD ${index + 1} / ${cards.length}`} headerControl={soundControl}
-    kind="guide" onClose={onClose}>
+    kind="guide" closeIcon="home" closeLabel="Back to home" onClose={onClose}>
     <div ref={content} className="rule-flash-content">
       <section key={card.id} className="rule-flash-page" data-testid="tutorial-rule-card" data-rule-card={card.id}>
         {card.id === 'order' || card.id === 'once' ? <RouteCards rule={card.id}/> :
@@ -216,11 +216,16 @@ export function TutorialCards({ onClose, onFinish, soundControl }: {
           <span className="sr-only">{item.title}</span>
         </li>)}
       </ol>
-      <div className="dialog-actions">
+      {last && <p className="rule-unlock-banner" data-testid="demo-unlock-banner">
+        <Icon name="check" size={16}/>{dailyReady ? "Demo done — Today's Daily is ready to play!" : 'Demo done — Daily & Practice are unlocked!'}
+      </p>}
+      <div className={`dialog-actions ${last && onFinishHome && dailyReady ? 'rule-final-actions' : ''}`}>
         <button className="secondary-button" onClick={() => index === 0 ? onClose() : setIndex(index - 1)}>
           {index === 0 ? 'Back home' : 'Back'}</button>
+        {last && onFinishHome && dailyReady && <button className="secondary-button" onClick={onFinishHome}>
+          <Icon name="home" size={16}/>Home</button>}
         <button className="primary-button" onClick={() => last ? onFinish() : setIndex(index + 1)}>
-          {last ? 'Ready to play' : 'Next card'}<Icon name="arrow" size={17}/></button>
+          {last ? (dailyReady ? "Play today's Daily" : 'Ready to play') : 'Next card'}<Icon name="arrow" size={17}/></button>
       </div>
     </footer>
   </Modal>;

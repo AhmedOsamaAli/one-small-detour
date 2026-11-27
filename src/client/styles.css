@@ -669,20 +669,26 @@ button { transition: background .18s, border-color .18s, color .18s, transform .
 }
 
 html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-behavior: none; }
-.viewport-fit.app-shell { height: var(--app-height); min-height: 0; display: grid; grid-template-rows: 64px minmax(0, 1fr); padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
-.viewport-fit .site-header { height: auto; min-height: 0; padding: 0; margin: 0 24px; flex-wrap: nowrap; gap: 10px; }
+.viewport-fit.app-shell { height: var(--app-height); min-height: 0; display: grid; grid-template-rows: 52px minmax(0, 1fr); padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
+.viewport-fit .site-header { height: auto; min-height: 0; padding: 0; margin: 0 18px; flex-wrap: nowrap; gap: 10px; }
 .viewport-fit .header-nav { width: auto; margin-left: auto; flex-shrink: 0; }
 .viewport-fit .header-nav > .icon-button { display: inline-flex; }
 .viewport-fit .header-nav > :is(.theme-toggle, .help-toggle) { background: var(--surface-soft); border-color: var(--line); border-radius: 12px; color: var(--green); }
 .viewport-fit .wordmark-compact { display: none; }
-.viewport-fit .wordmark { min-width: 44px; }
-.viewport-fit.direct-play .game-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); width: min(1200px, calc(100% - 48px)); height: 100%; min-height: 0; min-width: 0; padding: 14px 0 10px; margin: 0 auto; gap: 12px; align-items: stretch; }
-.viewport-fit .story-panel { grid-column: 1; grid-row: 1; margin: 0; min-width: 0; }
-.viewport-fit .story-panel h1 { margin: 5px 0 8px; font-size: clamp(24px, 2.8vw, 36px); font-weight: 510; letter-spacing: -.7px; line-height: 1.1; }
-.viewport-fit .my-rank-line { margin-top: 7px; }
+.viewport-fit .wordmark { min-width: 44px; padding: 4px 0; }
+.viewport-fit.direct-play .game-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); width: min(1340px, calc(100% - 20px)); height: 100%; min-height: 0; min-width: 0; padding: 6px 0 4px; margin: 0 auto; gap: 5px; align-items: stretch; }
+.viewport-fit .story-panel { grid-column: 1; grid-row: 1; margin: 0; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.viewport-fit .place-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; min-width: 0; }
+.viewport-fit .place-heading > .edition-label { font-size: 11px; letter-spacing: .6px; white-space: nowrap; }
+.viewport-fit .story-panel h1 { margin: 0; font-size: clamp(18px, 2vw, 23px); font-weight: 560; letter-spacing: -.4px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.viewport-fit .challenge-facts,
+.viewport-fit .story-panel .practice-note:not(:has(.original-route-toggle)),
+.viewport-fit .story-panel .daily-policy { display: none; }
+.viewport-fit .my-rank-line { margin-top: 0; font-size: 13px; }
+.viewport-fit .mission { margin: 0; flex-shrink: 0; }
 .viewport-fit .arrival-announcement { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.viewport-fit .island-panel { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 4px; min-height: 0; min-width: 0; height: 100%; padding: 0; }
-.viewport-fit .play-toolbar { grid-column: 1; grid-row: 1; margin: 0 auto; justify-self: center; align-self: start; width: min(600px, 100%); }
+.viewport-fit .island-panel { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 2px; min-height: 0; min-width: 0; height: 100%; padding: 0; }
+.viewport-fit .play-toolbar { grid-column: 1; grid-row: 1; margin: 0 auto; justify-self: center; align-self: start; width: min(640px, 100%); padding: 2px 4px; }
 .viewport-fit.direct-play .world-stage,
 .viewport-fit.direct-play .world-stage.large-world { grid-column: 1; grid-row: 2; min-width: 0; min-height: 0; height: auto; width: 100%; margin: 0; align-self: stretch; }
 .viewport-fit .world-canvas-wrap { height: 100%; min-height: 0; }
@@ -702,8 +708,8 @@ html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-be
 .viewport-fit .board-footer:has(.selection-warning) { border-color: #d6b5a7; }
 .viewport-fit .selection-warning { color: var(--error); border-top-color: #d6b5a7; background: #fff0e580; border-radius: 0 0 10px 10px; }
 .viewport-fit .selection-warning > svg { flex-shrink: 0; }
-.viewport-fit .flat-map-scroll { position: absolute; inset: 8px; padding: 0; overflow: visible; display: grid; place-items: center; }
-.viewport-fit .flat-map-scroll .flat-map { min-width: 0; min-height: 0; padding: 4px; gap: 2px; margin: 0; box-shadow: 0 4px 0 #b5a182, 0 10px 24px #384f3b12; }
+.viewport-fit .flat-map-scroll { position: absolute; inset: 2px; padding: 0; overflow: visible; display: grid; place-items: center; }
+.viewport-fit .flat-map-scroll .flat-map { min-width: 0; min-height: 0; padding: 3px; gap: 2px; margin: 0; box-shadow: 0 3px 0 #b5a182, 0 8px 18px #384f3b12; }
 .viewport-fit .flat-cell { min-width: 0; min-height: 0; padding: 1px; line-height: 1; }
 .viewport-fit .flat-landmark { line-height: 1; border-width: 1.5px; }
 .viewport-fit .terrain-water > span { font-size: 16px; line-height: 1; }
@@ -743,17 +749,17 @@ html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-be
 .viewport-fit .loading-place { min-height: 0; overflow: auto; }
 .viewport-fit .toast { bottom: max(14px, env(safe-area-inset-bottom)); }
 @media (max-width: 680px) {
-  .viewport-fit.app-shell { grid-template-rows: 56px minmax(0, 1fr); }
-  .viewport-fit .site-header { min-height: 0; margin: 0 16px; padding: 0; }
-  .viewport-fit.direct-play .game-layout { width: calc(100% - 32px); padding: 10px 0 8px; gap: 9px; }
-  .viewport-fit .story-panel { display: block; }
-  .viewport-fit .story-panel h1 { font-size: 26px; }
-  .viewport-fit .mission { margin-top: 10px; }
-  .viewport-fit .play-toolbar { margin: 0; width: 100%; padding: 4px 6px; gap: 5px; }
+  .viewport-fit.app-shell { grid-template-rows: 48px minmax(0, 1fr); }
+  .viewport-fit .site-header { min-height: 0; margin: 0 10px; padding: 0; }
+  .viewport-fit.direct-play .game-layout { width: calc(100% - 10px); padding: 4px 0 4px; gap: 4px; }
+  .viewport-fit .story-panel { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .viewport-fit .place-heading { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .viewport-fit .mission { margin-top: 0; width: 100%; display: flex; justify-content: center; }
+  .viewport-fit .play-toolbar { margin: 0; width: 100%; padding: 2px 2px; gap: 4px; }
   .viewport-fit .frame-label { display: none; }
   .viewport-fit .visual-frames { gap: 4px; }
-  .viewport-fit .frame-option { min-width: 44px; width: 48px; min-height: 50px; padding: 3px 4px; gap: 3px; }
-  .viewport-fit .frame-option .shape-glyph { max-width: 36px; max-height: 24px; }
+  .viewport-fit .frame-option { min-width: 44px; width: 46px; min-height: 44px; padding: 2px 3px; gap: 2px; }
+  .viewport-fit .frame-option .shape-glyph { max-width: 34px; max-height: 22px; }
   .viewport-fit .result-card { padding: 12px; bottom: 40px; }
   .viewport-fit .result-copy h2 { font-size: 22px; }
 }
@@ -761,11 +767,13 @@ html, body, #root { height: 100%; min-height: 0; overflow: hidden; overscroll-be
   .viewport-fit .place-heading > .edition-label,
   .viewport-fit .place-heading > h1,
   .viewport-fit .challenge-facts { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .viewport-fit .my-rank-line { margin: 0; min-height: 22px; font-size: 14px; }
-  .viewport-fit .mission { margin-top: 7px; }
+  .viewport-fit .story-panel { justify-content: center; }
+  .viewport-fit .place-heading { flex: 0; }
+  .viewport-fit .my-rank-line { margin: 0; min-height: 20px; font-size: 13px; }
+  .viewport-fit .mission { margin-top: 0; }
   .viewport-fit .journey-stop { height: 30px; }
-  .viewport-fit .play-toolbar { padding: 5px 7px; }
-  .viewport-fit .frame-option { min-height: 52px; }
+  .viewport-fit .play-toolbar { padding: 2px; }
+  .viewport-fit .frame-option { min-height: 44px; }
 }
 @media (max-height: 600px) and (min-width: 700px), (max-height: 500px) and (min-width: 560px) {
   .viewport-fit.app-shell { grid-template-rows: 52px minmax(0, 1fr); }

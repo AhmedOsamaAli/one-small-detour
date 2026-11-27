@@ -10,11 +10,12 @@ import { useCraftArt } from './CraftArt.tsx';
 
 export type RecordedDailyRank = MyRank & { rank: number; swaps: number; solveMs: number };
 
-export function SavedDailyResults({ edition, result, onReplay, onPractice }: {
+export function SavedDailyResults({ edition, result, onReplay, onPractice, onHome }: {
   edition: Edition;
   result: RecordedDailyRank;
   onReplay: () => void;
   onPractice: () => void;
+  onHome: () => void;
 }) {
   const crafted = useCraftArt();
   const [state, setState] = useState<StandingsState>({ status: 'loading' });
@@ -66,8 +67,9 @@ export function SavedDailyResults({ edition, result, onReplay, onPractice }: {
       </div>
     </div>
     <footer className="saved-daily-actions" id="saved-daily-controls" tabIndex={-1}>
-      <button className="primary-button" onClick={onPractice}><Icon name="map" size={17}/>Explore Practice</button>
+      <button className="primary-button" onClick={onPractice}><Icon name="map" size={17}/>Practice</button>
       <button className="secondary-button" onClick={onReplay}><Icon name="reset" size={17}/>Replay unranked</button>
+      <button className="secondary-button saved-daily-home" onClick={onHome} aria-label="Back to home"><Icon name="home" size={17}/>Home</button>
     </footer>
   </main>;
 }

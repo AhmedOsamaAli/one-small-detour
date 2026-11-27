@@ -66,9 +66,17 @@ export function DailyReminderControl({ signedIn, local }: { signedIn: boolean; l
     setAction({ kind: 'save', preference, generation: settings.generation });
   };
 
-  return <section className="daily-reminder" aria-labelledby={`${id}-title`} data-testid="daily-reminder">
+  const expanded = signedIn && (enabled || busy || error !== null || confirmation !== null ||
+    settings?.lastDelivery?.status === 'failed' || settings?.lastDelivery?.status === 'attempted');
+
+  return <section className={`daily-reminder ${expanded ? 'is-expanded' : 'is-compact'}`} aria-labelledby={`${id}-title`} data-testid="daily-reminder">
     <div className="reminder-heading">
-      <strong id={`${id}-title`}>Remind me daily</strong>
+      <div className="reminder-label">
+        <strong id={`${id}-title`}>Remind me daily</strong>
+        {!expanded && <span className="reminder-hint" id={`${id}-help`}>{!signedIn ?
+          'Sign in to Reddit for daily inbox reminders.' : local ?
+          'Local rehearsal only.' : 'Optional Reddit inbox nudge.'}</span>}
+      </div>
       {!signedIn || settings === null ? <span className="reminder-state">{!signedIn ? 'Sign in' :
         busy ? action.kind === 'load' ? 'Checking...' : 'Saving...' : 'Not confirmed'}</span> :
       <button type="button" className="reminder-switch" role="switch" aria-checked={enabled}
@@ -77,19 +85,18 @@ export function DailyReminderControl({ signedIn, local }: { signedIn: boolean; l
         <span className="reminder-switch-track" aria-hidden="true"/><span>{enabled ? 'On' : 'Off'}</span>
       </button>}
     </div>
-    <p className="reminder-help" id={`${id}-help`}>{!signedIn ?
-      'Sign in to Reddit to turn on inbox reminders.' : local ?
-      'Local rehearsal only. No Reddit messages are sent.' :
-      'One Reddit inbox message on unfinished days. Phone alerts depend on Reddit settings.'}</p>
-    {signedIn && <>
+    {expanded && <>
+      <p className="reminder-help" id={`${id}-help`}>{local ?
+        'Local rehearsal only. No Reddit messages are sent.' :
+        'One Reddit inbox message on unfinished days. Phone alerts depend on Reddit settings.'}</p>
       <div className="reminder-time-row">
         <label htmlFor={`${id}-time`}>Reminder time</label>
         <input id={`${id}-time`} className="reminder-time" type="time" step="60" required value={time}
           aria-describedby={`${id}-zone`} disabled={busy || settings === null} onChange={event => setTime(event.target.value)}/>
         {enabled && settings?.preference?.time !== time &&
-          <button type="button" className="text-button" disabled={busy} onClick={() => choose(true)}>Save time</button>}
+          <button type="button" className="secondary-button reminder-save-time" disabled={busy} onClick={() => choose(true)}>Save time</button>}
+        <span className="reminder-zone" id={`${id}-zone`}>{timeZone.replace(/_/g, ' ')}</span>
       </div>
-      <p className="reminder-zone" id={`${id}-zone`}>{timeZone.replace(/_/g, ' ')}</p>
       {settings?.nextAt && <p className="reminder-next">Next: <time dateTime={settings.nextAt}>{
         new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone })
           .format(new Date(settings.nextAt))}</time></p>}
@@ -100,8 +107,8 @@ export function DailyReminderControl({ signedIn, local }: { signedIn: boolean; l
       {settings?.lastDelivery?.status === 'attempted' &&
         <p className="reminder-help">Last delivery is not confirmed. We will not send it twice.</p>}
       {error && <div className="inline-error" role="alert">{error}
-        <button type="button" className="text-button" disabled={busy} onClick={() => setAction({ kind: 'load' })}>Check again</button>
-        {settings === null && <button type="button" className="text-button" disabled={busy} onClick={() => choose(false)}>Turn off reminders</button>}
+        <button type="button" className="secondary-button" disabled={busy} onClick={() => setAction({ kind: 'load' })}>Check again</button>
+        {settings === null && <button type="button" className="secondary-button" disabled={busy} onClick={() => choose(false)}>Turn off</button>}
       </div>}
     </>}
   </section>;

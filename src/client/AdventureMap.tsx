@@ -331,6 +331,9 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
   const previewAchievement = preview ? achievements.get(preview.id) : undefined;
   const previewStars = previewAchievement?.stars ?? 0;
   const starsHere = previewWorld ? worldStars(previewWorld, places, completed, progress) : 0;
+  const starGoal = previewWorld ? worldStarRequirement(previewWorld) : 0;
+  const nextWorldExists = previewWorld ? previewWorld.index + 1 < worlds.length : false;
+  const nextWorldUnlocked = previewWorld ? previewWorld.index + 1 < progress.unlockedWorlds : true;
   const starsNeeded = starWorld ? Math.max(0, worldStarRequirement(starWorld) - starsHere) : 0;
   const replay = previewAchievement?.solved === true;
   const credited = previewAchievement?.credited === true;
@@ -357,7 +360,13 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
     <div className="adventure-tools">
       <div className="adventure-progress"><strong>{previewWorld?.title ?? 'Your road'}</strong>
         <span aria-label={`${completedCount} of ${entries.length} stops completed`}>{completedCount} / {entries.length} <span className="progress-unit">completed</span></span>
-        {previewWorld && <small className="world-star-total" data-testid="world-star-total">{starsHere} / {(previewWorld.end - previewWorld.start) * 3} stars</small>}
+        {previewWorld && <small className={`world-star-total ${nextWorldExists && !nextWorldUnlocked && starsHere < starGoal ? 'needs-goal' : ''}`} data-testid="world-star-total">
+          {nextWorldExists && !nextWorldUnlocked ? (
+            starsHere < starGoal
+              ? `★ ${starsHere} / ${starGoal} stars for Island ${previewWorld.index + 2}`
+              : `★ ${starsHere} / ${(previewWorld.end - previewWorld.start) * 3} stars · Goal met!`
+          ) : `★ ${starsHere} / ${(previewWorld.end - previewWorld.start) * 3} stars`}
+        </small>}
       </div>
       <div className="adventure-controls">
         <button className="secondary-button adventure-focus" disabled={!entries.length} aria-label={needsStars ? 'Find island needing stars' : 'Find my next stop'}

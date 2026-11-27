@@ -23,6 +23,7 @@ interface HomeProps {
   practiceBusy: boolean;
   practiceSyncing: boolean;
   practiceNeedsStars: boolean;
+  islandStarGoal: { stars: number; required: number; nextIsland: number } | null;
   practiceError: string | null;
   syncError: string | null;
   onGuide: () => void;
@@ -60,10 +61,10 @@ export function GameHome(props: HomeProps) {
     </section>
     <div className="home-choices" id="home-controls" tabIndex={-1}>
       <section className="home-daily home-signpost" aria-labelledby="home-daily-title">
-        <div className="home-signpost-heading"><Icon name={complete ? 'check' : learning ? 'book' : 'leaf'} size={22}/>
-          <span className="eyebrow">{complete ? 'TODAY COMPLETE' : learning ? 'A LITTLE FIRST STEP' : "TODAY'S ISLAND"}</span></div>
-        <h2 id="home-daily-title">{learning ? 'Your first little swap.' : edition?.puzzle.title ?? 'A road at your own pace.'}</h2>
-        {learning && <p id="home-demo-lock">One lesson + picture cards unlock today.</p>}
+        <div className="home-signpost-heading"><Icon name={complete ? 'check' : learning ? 'book' : 'leaf'} size={20}/>
+          <span className="eyebrow">{complete ? 'TODAY COMPLETE' : learning ? 'STEP 1 · QUICK DEMO' : "TODAY'S DAILY"}</span></div>
+        <h2 id="home-daily-title">{learning ? 'Finish demo to unlock Daily.' : edition?.puzzle.title ?? 'A road at your own pace.'}</h2>
+        {learning && <p id="home-demo-lock" className="home-demo-lock">1 short swap lesson + 6 quick cards unlock Today's Daily.</p>}
         {daily.status === 'checking' && <p className="home-status" role="status">Checking today. No clock yet.</p>}
         {daily.status === 'error' && <p className="inline-error" role="alert">{daily.message}</p>}
         {daily.status === 'unavailable' && <p>A new Daily is not available. Practice is open.</p>}
@@ -75,43 +76,47 @@ export function GameHome(props: HomeProps) {
         {guestComplete && <p className="home-status">Finished on this device. No saved rank.</p>}
         {daily.status === 'ready' && !guestComplete && !learning && <p>Your solve timer starts with Play.</p>}
         <div className="home-actions">
-          {learning && <button className="primary-button" onClick={props.onGuide}><Icon name="play" size={17}/>Try a guided swap</button>}
+          {learning && <button className="primary-button" onClick={props.onGuide}><Icon name="play" size={17}/>Start demo</button>}
           {complete ? <>
-            {daily.status === 'complete' && <button className="secondary-button home-result-button" onClick={props.onResults} aria-label="View today's result">View result</button>}
-            <button className="text-button" onClick={props.onPlay}>Replay unranked</button>
+            {daily.status === 'complete' && <button className="secondary-button home-result-button" onClick={props.onResults} aria-label="View today's result"><Icon name="trophy" size={16}/>Top 10</button>}
+            <button className="secondary-button home-replay-button" onClick={props.onPlay}><Icon name="reset" size={16}/>Replay unranked</button>
           </> : daily.status === 'error' ?
             <button className="secondary-button" onClick={props.onRetry}><Icon name="reset" size={17}/>Retry today's status</button> :
-            edition && <button className={learning ? 'secondary-button' : 'primary-button'} onClick={props.onPlay}
+            edition && <button className={learning ? 'secondary-button home-locked-daily' : 'primary-button'} onClick={props.onPlay}
               disabled={firstVisit || !ready} data-demo-locked={firstVisit} aria-describedby={learning ? 'home-demo-lock' : undefined}
-              title={firstVisit ? 'Finish the lesson and picture cards to unlock today.' : undefined}>
-              <Icon name={firstVisit ? 'lock' : 'play'} size={17}/>{daily.status === 'checking' ? 'Checking today...' : 'Play today'}</button>}
+              title={firstVisit ? 'Finish the demo and 6 rule cards to unlock Today\'s Daily.' : undefined}>
+              <Icon name={firstVisit ? 'lock' : 'play'} size={17}/>{daily.status === 'checking' ? 'Checking...' : firstVisit ? 'Daily locked (finish demo)' : 'Play today'}</button>}
         </div>
         {edition && <NextDailyCountdown clock={props.nextDailyClock}/>}
-        <DailyReminderControl key={props.reminderIdentity} signedIn={props.signedIn} local={props.local}/>
       </section>
       <section className="home-practice home-signpost" aria-labelledby="home-practice-title">
-        <div className="home-signpost-heading"><Icon name="map" size={22}/><span className="eyebrow">PRACTICE</span>
+        <div className="home-signpost-heading"><Icon name="map" size={20}/><span className="eyebrow">PRACTICE</span>
           <span className="home-progress">{props.completed} / {props.total}</span></div>
         <h2 id="home-practice-title">{props.practiceNeedsStars ? 'More stars needed.' :
           props.nextPractice ? `Stop ${props.nextPracticeNumber}` : 'Every road discovered.'}</h2>
         <p className={props.practiceNeedsStars ? 'home-star-guidance' : 'home-next-name'} title={props.practiceNeedsStars ? undefined : props.nextPractice?.title}>
-          {props.practiceNeedsStars ? 'Pick a completed stop on the map.' :
-          props.nextPractice?.title.split(' / ')[0] ?? 'Revisit a favourite little place.'}</p>
+          {props.practiceNeedsStars && props.islandStarGoal
+            ? `Collect ${props.islandStarGoal.required - props.islandStarGoal.stars} more stars (${props.islandStarGoal.stars}/${props.islandStarGoal.required}) to open Island ${props.islandStarGoal.nextIsland}.`
+            : props.nextPractice?.title.split(' / ')[0] ?? 'Revisit a favourite little place.'}</p>
+        {!props.practiceNeedsStars && props.islandStarGoal && <p className="home-star-goal" data-testid="home-star-goal">
+          ★ {props.islandStarGoal.stars} / {props.islandStarGoal.required} stars for Island {props.islandStarGoal.nextIsland}
+        </p>}
         {props.syncError && <p className="inline-error" role="alert">{props.syncError}
-          <button className="text-button" onClick={props.onRetrySync}>Retry sync</button></p>}
+          <button className="secondary-button" onClick={props.onRetrySync}>Retry sync</button></p>}
         {props.practiceError && <p className="inline-error" role="alert">{props.practiceError}</p>}
         <div className="home-actions">
           <button className={complete ? 'primary-button' : 'secondary-button'} disabled={props.practiceBusy || props.practiceSyncing} onClick={props.onPractice}
             aria-label={props.practiceNeedsStars ? 'Choose a Practice stop for more stars' : undefined}>
-            <Icon name="map" size={17}/>{props.practiceBusy ? 'Opening your road...' : props.practiceSyncing ? 'Finding your stop...' :
+            <Icon name="play" size={17}/>{props.practiceBusy ? 'Opening...' : props.practiceSyncing ? 'Loading...' :
               props.practiceNeedsStars ? 'Choose on map' : props.nextPractice ? 'Continue Practice' : 'Explore Practice'}</button>
-          {!props.practiceNeedsStars && <button className="text-button" onClick={props.onMap}><Icon name="map" size={16}/>Explore map</button>}
+          {!props.practiceNeedsStars && <button className="secondary-button home-map-button" onClick={props.onMap}><Icon name="map" size={16}/>Map</button>}
         </div>
       </section>
     </div>
+    <DailyReminderControl key={props.reminderIdentity} signedIn={props.signedIn} local={props.local}/>
     <footer className="home-footnote">{guestComplete ? 'Guest finishes stay on this device. Daily ranks need a Reddit sign-in.' :
       complete ? 'Your saved finish stays. Your rank can change.' :
-      'One shared island each day. Plenty of roads in Practice.'}
-      {!learning && <button className="text-button" onClick={props.onGuide}><Icon name="book" size={16}/>Try the guide</button>}</footer>
+      'One shared island each day. 1,000 roads in Practice.'}
+      {!learning && <button className="secondary-button home-guide-button" onClick={props.onGuide}><Icon name="book" size={15}/>Guide</button>}</footer>
   </main>;
 }

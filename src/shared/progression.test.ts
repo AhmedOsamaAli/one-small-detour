@@ -96,19 +96,19 @@ test('Practice stars depend only on a completed move record and worse replays ca
   assert.throws(() => recordPracticeMoves(best, place, 2), /valid move count/);
 });
 
-test('new worlds require completed stops and 30 of 60 stars, then stay unlocked through later replays', () => {
+test('new worlds require completed stops and 45 of 60 stars, then stay unlocked through later replays', () => {
   const catalog = getCatalog(), entries = campaignPlaces(catalog), worlds = campaignWorlds(entries.length);
   const world = worlds[0], next = entries[20];
   assert.ok(world && next);
-  assert.equal(worldStarRequirement(world), 30);
+  assert.equal(worldStarRequirement(world), 45);
   let progress = initializePracticeProgress(catalog, []);
   const completed = entries.slice(0, 20).map((place) => place.id);
   assert.equal(worldStars(world, entries, completed, progress), 20);
   assert.equal(practiceGate(catalog, completed, next.id, progress).unlocked, false);
-  assert.match(practiceGate(catalog, completed, next.id, progress).reason ?? '', /10 more stars/);
+  assert.match(practiceGate(catalog, completed, next.id, progress).reason ?? '', /25 more stars/);
   assert.equal(nextCampaignPlace(catalog, completed, progress)?.id, entries[0]?.id);
-  for (const place of entries.slice(0, 5)) progress = recordPracticeMoves(progress, place, place.minimum ?? 1);
-  assert.equal(worldStars(world, entries, completed, progress), 30);
+  for (const place of entries.slice(0, 13)) progress = recordPracticeMoves(progress, place, place.minimum ?? 1);
+  assert.equal(worldStars(world, entries, completed, progress), 46);
   assert.equal(advancePracticeWorlds(catalog, completed.slice(0, -1), progress).unlockedWorlds, 1);
   progress = advancePracticeWorlds(catalog, completed, progress);
   assert.equal(progress.unlockedWorlds, 2);

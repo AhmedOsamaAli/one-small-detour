@@ -7,7 +7,7 @@ import { GardenCottage, GardenPlant, useGardenArt } from './GardenArt.tsx';
 import { GARDEN_ASSETS } from './gardenAssets.ts';
 import { CraftCourier, useCraftArt } from './CraftArt.tsx';
 
-type IconName = 'sound' | 'mute' | 'undo' | 'reset' | 'book' | 'help' | 'close' | 'arrow' | 'sun' | 'moon' | 'leaf' | 'trophy' | 'map' | 'swap' | 'check' | 'chevron' | 'lock' | 'clock' | 'warning' | 'bridge' | 'play' | 'grid' | 'trash' | 'cube';
+type IconName = 'sound' | 'mute' | 'undo' | 'reset' | 'book' | 'help' | 'close' | 'home' | 'arrow' | 'sun' | 'moon' | 'leaf' | 'trophy' | 'map' | 'swap' | 'check' | 'chevron' | 'lock' | 'clock' | 'warning' | 'bridge' | 'play' | 'grid' | 'trash' | 'cube';
 
 const paths: Record<IconName, ReactNode> = {
   sound: <><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></>,
@@ -17,6 +17,7 @@ const paths: Record<IconName, ReactNode> = {
   book: <><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Z"/><path d="M12 5v15"/></>,
   help: <><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-1 .7-1.7 1.2-1.7 2.7M12 17h.01"/></>,
   close: <path d="m6 6 12 12M6 18 18 6"/>,
+  home: <><path d="m3 10.5 9-7.5 9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.5 20v-6h5v6"/></>,
   arrow: <><path d="M4 12h16m-6-6 6 6-6 6"/></>,
   sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/></>,
   moon: <path d="M20 15.4A9 9 0 0 1 8.6 4a9 9 0 1 0 11.4 11.4Z"/>,
@@ -371,8 +372,8 @@ const dialogIdentity: Record<DialogKind, { icon: IconName; label: string }> = {
   erase: { icon: 'lock', label: 'YOUR DATA' },
 };
 
-export function Modal({ title, children, onClose, wide = false, className = '', kind = 'guide', emblem, headerControl, eyebrow }: {
-  title: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string; kind?: DialogKind; emblem?: ReactNode; headerControl?: ReactNode; eyebrow?: string;
+export function Modal({ title, children, onClose, wide = false, className = '', kind = 'guide', emblem, headerControl, eyebrow, closeIcon = 'close', closeLabel }: {
+  title: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string; kind?: DialogKind; emblem?: ReactNode; headerControl?: ReactNode; eyebrow?: string; closeIcon?: 'close' | 'home'; closeLabel?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -390,6 +391,7 @@ export function Modal({ title, children, onClose, wide = false, className = '', 
     }
   }, [title]);
   const identity = dialogIdentity[kind];
+  const label = closeLabel ?? (closeIcon === 'home' ? 'Back to home' : 'Close dialog');
   return <dialog ref={ref} className={`dialog dialog-${kind} ${wide ? 'dialog-wide' : ''} ${className}`} aria-labelledby={id}
     onCancel={(event) => { event.preventDefault(); onClose(); }}>
     <BotanicalFrame/>
@@ -397,7 +399,7 @@ export function Modal({ title, children, onClose, wide = false, className = '', 
       <span className="dialog-emblem">{emblem ?? <Icon name={identity.icon} size={25}/>}</span>
       <div className="dialog-title"><p className="eyebrow">{eyebrow ?? identity.label}</p><h2 id={id}>{title}</h2></div>
       {headerControl}
-      <button className="icon-button" onClick={onClose} aria-label="Close dialog"><Icon name="close"/></button>
+      <button className="icon-button" onClick={onClose} aria-label={label} title={label}><Icon name={closeIcon}/></button>
     </div>
     {children}
   </dialog>;
