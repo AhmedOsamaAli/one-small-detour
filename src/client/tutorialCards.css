@@ -77,11 +77,14 @@
 @keyframes rule-card-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 360px) {
   .app-shell .dialog.rule-flash-dialog { --dialog-pad: 12px; }
-  .app-shell .rule-flash-dialog .dialog-heading h2 { font-size: 23px; }
-  .rule-flash-dialog figcaption { font-size: 14px; }
+  .app-shell .rule-flash-dialog .dialog-heading h2 { font-size: 22px; }
+  .rule-flash-dialog figcaption { font-size: 13.5px; }
   .rule-terrain-group { padding: 8px; }
-  .rule-terrain-tiles .tile-guide-glyph { max-width: 54px; }
-  .rule-fixed .tile-guide-glyph { max-width: 50px; }
+  .rule-terrain-tiles .tile-guide-glyph { max-width: 52px; }
+  .rule-fixed .tile-guide-glyph { max-width: 48px; }
+  .rule-start-picture { height: 68px; }
+  .rule-unlock-banner { font-size: 12px; padding: 4px 8px; margin-bottom: 5px; }
+  .rule-flash-dialog .dialog-actions > button { min-height: 42px; font-size: 14px; padding-inline: 8px; }
 }
 @media (max-width: 280px) {
   .rule-terrain-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -144,8 +147,10 @@
   .rule-start-content { grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); }
   .rule-start-grid { grid-column: 1; grid-row: 1 / 3; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); gap: 6px; }
   .rule-corner-start { grid-column: auto; }
-  .rule-start-picture { height: 80px; }
-  .rule-clear-choice { margin: 0; font-size: 14px; padding: 6px; }
-  .rule-start-content > .rule-card-note { margin: 0; font-size: 14px; }
+  .rule-start-picture { height: 68px; }
+  .rule-clear-choice { margin: 0; font-size: 13px; padding: 5px; }
+  .rule-start-content > .rule-card-note { margin: 0; font-size: 13px; }
+  .rule-unlock-banner { display: none; }
+  .rule-flash-dialog .dialog-actions > button { min-height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) { .rule-flash-page { animation: none; } }

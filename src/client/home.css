@@ -29,10 +29,10 @@
 .home-demo-lock { color: var(--accent-ink); font-weight: 600; }
 .home-star-goal { color: var(--green); font-size: 13px; font-weight: 650; margin: -4px 0 9px; font-variant-numeric: tabular-nums; }
 .home-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; }
-.home-actions > :is(.primary-button, .secondary-button) { flex: 1 1 130px; min-height: 44px; justify-content: center; padding: 8px 12px; font-size: 14px; }
-.home-actions > .home-map-button { flex: 0 1 auto; min-width: 88px; }
-.home-actions > .home-result-button { flex: 1 1 105px; }
-.home-actions > .home-replay-button { flex: 1 1 135px; }
+.home-actions > :is(.primary-button, .secondary-button) { flex: 1 1 130px; min-height: 44px; justify-content: center; padding: 8px 12px; font-size: 14px; white-space: normal; text-align: center; line-height: 1.2; }
+.home-actions > .home-map-button { flex: 0 1 auto; min-width: 84px; }
+.home-actions > .home-result-button { flex: 1 1 100px; }
+.home-actions > .home-replay-button { flex: 1.25 1 140px; }
 .home-actions > .home-locked-daily { flex: 1 1 170px; font-size: 13px; }
 .app-shell .game-home .home-actions > :is(.primary-button, .secondary-button):disabled {
   color: var(--muted); background: var(--surface-soft); border-color: var(--line); box-shadow: none; cursor: not-allowed; opacity: .78;

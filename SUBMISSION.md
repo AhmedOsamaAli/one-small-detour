@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Devvit `small-detour` v0.1.2** (private test build; `v0.1.1` remains in unlisted Reddit launch review) is installed in
+**Devvit `small-detour` v0.1.3** (private test build; `v0.1.1` remains in unlisted Reddit launch review) is installed in
 [r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/), on the
 [interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
 
@@ -49,6 +49,21 @@ player choices are preserved; phone alerts still depend on Reddit settings.
 Actual scheduled inbox delivery, fresh signed-out play and physical-phone
 behavior remain separate checks; opening Home does not certify them.
 No public launch review, App Directory publication or promotional post was made.
+
+### Galaxy & real-device Reddit WebView polish (v0.1.3)
+
+- Verified across 9 realistic Reddit WebView dimensions (Galaxy Fold cover
+  `344×660`, Galaxy S24 `360×650`/`360×720`, Galaxy Ultra `384×710`, Galaxy
+  A55/Pixel `412×760`, Galaxy Landscape `720×330`, iPhone 15 Pro `393×720`,
+  Galaxy Tab S9 `800×1080`, Desktop `1280×740`) plus inline splash `344×320`
+  and `360×320` (0px scroll).
+- Saved Top 10 uses natural card height (no empty vertical stretching), readable
+  13–14px font, a header Home icon, and two roomy 1-line bottom buttons
+  (`Practice` and `Replay unranked`).
+- Practice Map puts stars beside the stop name with a compact `Play` button on a
+  60px bottom bar so the map stretches taller on phones.
+- Practice completion uses a Home button instead of `X`, trims wording/spacing
+  for 0px scroll on compact phone webviews, and uses proportional 40–42px buttons.
 
 ### UX, Top 10 scoreboard, 45-star gate, and bigger gameplay map (v0.1.2)
 

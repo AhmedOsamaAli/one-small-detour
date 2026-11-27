@@ -45,9 +45,13 @@ export function SavedDailyResults({ edition, result, onReplay, onPractice, onHom
   const source = board?.source ?? result.source;
   return <main className="saved-daily-results" data-testid="saved-daily-results">
     <header className="saved-daily-heading">
-      <p className="eyebrow">{edition.id} / {source === 'local' ? 'LOCAL REHEARSAL' : 'DAILY COMPLETE'}</p>
-      <h1 id="saved-daily-title" tabIndex={-1}>{edition.puzzle.title}<span>.</span></h1>
-      <p>{own ? crafted ? "Today's finish is saved." : 'Your first finish is recorded. No need to solve it again to check your rank.' : 'The saved result is unavailable. Replays remain unranked.'}</p>
+      <div className="saved-daily-title-group">
+        <p className="eyebrow">{edition.id} / {source === 'local' ? 'LOCAL REHEARSAL' : 'DAILY COMPLETE'}</p>
+        <h1 id="saved-daily-title" tabIndex={-1}>{edition.puzzle.title}<span>.</span></h1>
+      </div>
+      <button className="icon-button saved-daily-home-icon" onClick={onHome} aria-label="Back to home" title="Back to home">
+        <Icon name="home" size={20}/>
+      </button>
     </header>
     <div className="saved-daily-body">
       <section className="saved-daily-summary" aria-label="Your recorded Daily result">
@@ -69,7 +73,6 @@ export function SavedDailyResults({ edition, result, onReplay, onPractice, onHom
     <footer className="saved-daily-actions" id="saved-daily-controls" tabIndex={-1}>
       <button className="primary-button" onClick={onPractice}><Icon name="map" size={17}/>Practice</button>
       <button className="secondary-button" onClick={onReplay}><Icon name="reset" size={17}/>Replay unranked</button>
-      <button className="secondary-button saved-daily-home" onClick={onHome} aria-label="Back to home"><Icon name="home" size={17}/>Home</button>
     </footer>
   </main>;
 }

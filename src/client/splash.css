@@ -113,14 +113,20 @@ h1 { font-family: 'Fraunces Variable', Georgia, serif; font-size: clamp(28px, mi
   h1 { font-size: 30px; margin-top: 10px; }
   .preview-subtitle { font-size: 14px; }
 }
-@media (max-width: 340px) and (max-height: 379px) {
-  .preview-shell { grid-template-columns: minmax(0, 1.45fr) minmax(0, .75fr); padding: 12px; gap: 8px; }
-  .preview-brand > svg, .preview-eyebrow, .preview-subtitle { display: none; }
+@media (max-width: 400px) and (max-height: 379px) {
+  .preview-shell { grid-template-columns: minmax(0, 1.25fr) minmax(0, .85fr); padding: 12px; gap: 8px; }
+  .preview-eyebrow { display: none; }
+  .preview-brand > svg { width: 22px; height: 22px; }
   .preview-brand > span { font-size: 14px; }
-  h1 { font-size: 25px; margin: 12px 0; }
-  #open-game { font-size: 12px; gap: 4px; padding-inline: 8px; }
+  h1 { font-size: clamp(22px, 6.2vw, 27px); margin: 8px 0 6px; }
+  .preview-subtitle { font-size: 12px; line-height: 1.35; margin: 0 0 10px; }
+  #open-game { min-height: 44px; font-size: 13px; gap: 6px; padding: 8px 10px; }
   #open-game > svg { width: 16px; height: 16px; }
   .preview-art figcaption { display: none; }
+}
+@media (max-width: 350px) and (max-height: 379px) {
+  .preview-subtitle { display: none; }
+  h1 { margin: 10px 0 12px; }
 }
 :where(:root[data-appearance="dark"]) .scene-sun { display: none; }
 :where(:root[data-appearance="dark"]) .scene-moon { display: block; }

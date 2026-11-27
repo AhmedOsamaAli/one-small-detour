@@ -1105,7 +1105,7 @@ export default function App() {
           onFinishHome={() => { rememberGuides(['basics', 'rocks', 'bridges']); visitToday(); }}
           onFinish={() => { rememberGuides(['basics', 'rocks', 'bridges']); finishWalkthrough(false); }}/>}
         {completionOpen && run.kind !== 'guide' && <Modal title={CRAFT_PREVIEW ? "Everyone's home." : standingsOpen ? 'Daily Top 10.' : run.kind === 'daily' ? 'Your daily result.' : 'Practice complete.'}
-          kind="guide" className="completion-dialog" eyebrow={CRAFT_PREVIEW ? 'A GOOD LITTLE JOURNEY' : 'FIELD GUIDE'} emblem={<Icon name="trophy" size={25}/>} headerControl={soundToggle} onClose={() => { setResultDismissed(true); setStandingsOpen(false); }}>
+          kind="guide" className="completion-dialog" eyebrow={CRAFT_PREVIEW ? 'A GOOD LITTLE JOURNEY' : 'FIELD GUIDE'} emblem={<Icon name="trophy" size={25}/>} headerControl={soundToggle} closeIcon="home" closeLabel="Back to home" onClose={visitToday}>
         <div ref={resultCard} className={`result-card ${run.puzzle.minimum === moves.length ? 'perfect-result' : ''} ${reducedMotion ? '' : 'celebrate-completion'} ${standingsOpen ? 'standings-view' : ''}`} data-testid="result-card">
           <div className="completion-confetti" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <i key={index}
             style={{ left: `${(index * 37) % 100}%`, animationDelay: `${index * 38}ms` }}/>)}</div>
@@ -1129,36 +1129,31 @@ export default function App() {
               <span><Icon name={timed ? 'clock' : 'grid'} size={15}/>{timed ? formatSolveTime(elapsedMs, true) : `${footprint} tiles moved`}</span>
             </div>
             {run.kind === 'studio' && <div className="practice-star-result" data-testid="practice-star-result">
-              <StarRating stars={practiceAward} label={`${practiceAward} of 3 stars for this solution`}/>
-              <strong>{practiceAward === 3 ? 'The smallest detour.' : practiceAward > practiceBefore.stars ? 'A brighter little journey.' : 'Another road home.'}</strong>
-              <p>{CRAFT_PREVIEW ? practiceAward === 3 ? 'Three stars. Beautifully done.' : 'Fewer swaps. More stars.' :
-                practiceAward === 3 ? 'Three stars earned for your route.' : 'Keep exploring: a more efficient route can earn more stars.'}</p>
-              <small>Best kept: {bestPracticeStars} / 3 stars{practiceBefore.best !== null && practiceBefore.best < moves.length ?
-                `, in ${practiceBefore.best} moves` : ''}. Time does not affect Practice stars.</small>
-              {currentAchievement?.credited && !run.puzzle.archived && <small className="legacy-credit-note">Earlier stars are kept. This new route has its own move record.</small>}
+              <div className="practice-star-row">
+                <StarRating stars={practiceAward} label={`${practiceAward} of 3 stars for this solution`}/>
+                <strong>{practiceAward === 3 ? '3 / 3 · Perfect detour!' : practiceAward > practiceBefore.stars ? `${practiceAward} / 3 · New best!` : `${practiceAward} / 3 stars`}</strong>
+              </div>
+              <small>Best: {bestPracticeStars} / 3{practiceBefore.best !== null && practiceBefore.best < moves.length ?
+                ` (${practiceBefore.best} moves)` : ''}{practiceAward < 3 ? ' · Fewer swaps earn more stars.' : '.'}</small>
+              {currentAchievement?.credited && !run.puzzle.archived && <small className="legacy-credit-note">Earlier stars kept.</small>}
               {practiceProgress.unlockedWorlds > practiceBefore.worlds && <p className="practice-world-open" role="status">
                 <Icon name="map" size={16}/>New island open: {worlds[practiceProgress.unlockedWorlds - 1]?.title}.
               </p>}
-              <p className={progressSync.phase === 'error' ? 'inline-error' : 'practice-save-note'} role={progressSync.phase === 'error' ? 'alert' : 'status'}>
-                {progressSync.phase === 'error' ? progressSync.message : progressSync.phase === 'loading' || progressSync.phase === 'saving' ?
-                  'Saving your Practice progress...' : progressSync.phase === 'saved' ? 'Stops and stars saved to your account.' :
-                    'Guest progress is saved on this device.'}
-                {progressSync.phase === 'error' && <button className="text-button" onClick={progressSync.retry}>Retry sync</button>}
-              </p>
+              {progressSync.phase === 'error' && <p className="inline-error" role="alert">
+                {progressSync.message}
+                <button className="text-button" onClick={progressSync.retry}>Retry sync</button>
+              </p>}
             </div>}
-            {run.kind === 'studio' && currentCampaignIndex >= 0 && <p className="completion-next">
-              {replayForStars ? 'Choose a completed stop on the map for more stars.' :
-                nextCampaignIndex === currentCampaignIndex + 1 ? `Next: stop ${nextCampaignIndex + 1}.` :
-                nextCampaign ? 'Your next stop is ready.' : `All ${campaign.length} stops complete.`}
+            {run.kind === 'studio' && currentCampaignIndex >= 0 && !gateWorld && !nextCampaign && <p className="completion-next">
+              All {campaign.length} stops complete.
             </p>}
             {gateWorld && <p className="completion-next completion-star-goal" data-testid="practice-star-gate">
-              ★ {worldStars(gateWorld, catalog, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title}.
-              {' '}Collect {Math.max(0, worldStarRequirement(gateWorld) - worldStars(gateWorld, catalog, preferences.completed, practiceProgress))} more to open Island {gateWorld.index + 2}.
+              ★ {worldStars(gateWorld, catalog, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title} — need {Math.max(0, worldStarRequirement(gateWorld) - worldStars(gateWorld, catalog, preferences.completed, practiceProgress))} more for Island {gateWorld.index + 2}.
             </p>}
             {!gateWorld && run.kind === 'studio' && currentWorldGoal && <p className="completion-next completion-star-goal" data-testid="practice-island-star-goal">
               {currentWorldGoal.remaining > 0
-                ? `★ ${currentWorldGoal.stars} / ${currentWorldGoal.required} stars in ${currentWorldGoal.title} (${currentWorldGoal.remaining} more for Island ${currentWorldGoal.nextIsland}).`
-                : `★ ${currentWorldGoal.stars} / ${currentWorldGoal.required} stars — goal met for Island ${currentWorldGoal.nextIsland}!`}
+                ? `★ ${currentWorldGoal.stars} / ${currentWorldGoal.required} stars · ${currentWorldGoal.remaining} more for Island ${currentWorldGoal.nextIsland}`
+                : `★ ${currentWorldGoal.stars} / ${currentWorldGoal.required} stars · Island ${currentWorldGoal.nextIsland} star goal met!`}
             </p>}
             {run.kind === 'daily' && nextCampaign && <p className="completion-next">{replayForStars ?
               'Choose a completed Practice stop on the map for more stars.' : `Continue in unranked Practice: stop ${nextCampaignIndex + 1}.`}</p>}
@@ -1186,7 +1181,7 @@ export default function App() {
                   aria-label="Retry loading recorded rank"><Icon name="reset" size={17}/>Retry rank</button>}
                 {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
                   onClick={continuePractice} aria-label={replayForStars ? 'Choose a Practice stop for more stars' : 'Continue your journey'}>
-                  {replayForStars ? 'Choose on map' : CRAFT_PREVIEW ? 'Next stop' : 'Continue your journey'} <Icon name="arrow" size={17}/>
+                  {replayForStars ? 'Choose on map' : CRAFT_PREVIEW ? (run.kind === 'studio' && nextCampaignIndex >= 0 ? `Next: Stop ${nextCampaignIndex + 1}` : 'Next stop') : 'Continue your journey'} <Icon name="arrow" size={16}/>
                 </button>}
                 {run.kind === 'studio' && <button className="secondary-button" disabled={practiceLoading !== null}
                   onClick={() => openPractice(run.puzzle.id)} aria-label="Replay this Practice stop"><Icon name="reset" size={17}/>Replay</button>}
@@ -1195,7 +1190,7 @@ export default function App() {
                   onClick={() => { if (standingsOpen) setStandingsOpen(false); else void loadStandings(); }}>
                   <Icon name={standingsOpen ? 'undo' : 'trophy'} size={16}/>{standingsOpen ? 'Back to result' : 'Top 10'}
                 </button> : <button className={nextCampaign ? 'secondary-button' : 'primary-button'} onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }}
-                  aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={17}/>Practice map</button>}
+                  aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={16}/>Map</button>}
           </div>
         </Modal>}
       </section>

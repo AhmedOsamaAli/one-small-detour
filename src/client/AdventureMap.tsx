@@ -443,8 +443,10 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
           <div className="preview-eyebrow"><span>STOP {previewIndex + 1}</span><span className="preview-state">
             <Icon name={replay ? 'check' : previewGate.unlocked ? 'play' : 'lock'} size={12}/>{status}
           </span></div>
-          <h3>{preview.title}</h3>
-          <StarRating stars={previewStars} label={`${previewStars} of 3 stars kept for this stop`}/>
+          <div className="preview-title-row">
+            <h3>{preview.title}</h3>
+            <StarRating stars={previewStars} label={`${previewStars} of 3 stars kept for this stop`}/>
+          </div>
           {credited && !replay && <span className="legacy-credit-note">Earlier stars kept. A new road awaits.</span>}
           <div className="preview-facts">
             <span><Icon name="grid" size={14}/>{preview.size} x {preview.size}</span>
@@ -458,8 +460,8 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
         <button className="primary-button campaign-play" disabled={!previewGate.unlocked || loading !== null}
           onClick={() => onSelect(preview.id)}
           aria-label={loading ? 'Opening practice stop' : previewGate.unlocked ? `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}` : `Stop ${previewIndex + 1} is locked. ${previewGate.reason}`}>
-          <Icon name={!previewGate.unlocked ? 'lock' : replay ? 'reset' : 'play'} size={17}/>
-          {loading ? 'Opening...' : !previewGate.unlocked ? 'Island locked' : error ? 'Try again' : `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}`}
+          <Icon name={!previewGate.unlocked ? 'lock' : replay ? 'reset' : 'play'} size={15}/>
+          <span>{loading ? 'Opening...' : !previewGate.unlocked ? 'Locked' : error ? 'Retry' : replay ? 'Replay' : 'Play'}</span>
         </button>
         {originalRoad && <button className="text-button original-route-preview" disabled={loading !== null}
           onClick={() => onSelect(originalRoad)}><Icon name="book" size={16}/>Replay original road</button>}
