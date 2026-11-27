@@ -8,11 +8,13 @@ function RankBadge({ rank }: { rank: number }) {
   if (rank < 1 || rank > 3) return <>{rank}</>;
   const medal = rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze';
   return <span className={`rank-medal rank-medal-${medal}`} data-medal={medal} aria-label={`Rank ${rank}, ${medal} medal`}>
-    <svg className="rank-medal-icon" viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="10" cy="10" r="8.5" className="rank-medal-disc"/>
-      <circle cx="10" cy="10" r="6.5" className="rank-medal-rim"/>
+    <svg className="rank-medal-icon" viewBox="0 0 22 26" aria-hidden="true">
+      <path d="M4.5 1h4.8l2.7 8H8.4Z" className="rank-medal-ribbon-left"/>
+      <path d="M17.5 1h-4.8L10 9h3.6Z" className="rank-medal-ribbon-right"/>
+      <circle cx="11" cy="16.8" r="7.7" className="rank-medal-disc"/>
+      <circle cx="11" cy="16.8" r="5.8" className="rank-medal-rim"/>
+      <text x="11" y="17.1" textAnchor="middle" dominantBaseline="central" className="rank-medal-num">{rank}</text>
     </svg>
-    <span className="rank-medal-num">{rank}</span>
   </span>;
 }
 

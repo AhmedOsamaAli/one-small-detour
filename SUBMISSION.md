@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Devvit `small-detour` v0.1.6** (submitted for unlisted Reddit review update and installed in `r/small_detour_dev`) is live in
+**Devvit `small-detour` v0.1.7** (submitted for unlisted Reddit review update and installed in `r/small_detour_dev`) is live in
 [r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/), on the
 [interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
 
@@ -49,6 +49,13 @@ player choices are preserved; phone alerts still depend on Reddit settings.
 Actual scheduled inbox delivery, fresh signed-out play and physical-phone
 behavior remain separate checks; opening Home does not certify them.
 No public launch review, App Directory publication or promotional post was made.
+
+### Classic blue-ribbon Top 3 medals (v0.1.7)
+
+- Upgraded ranks 1–3 in Daily Top 10 to lightweight inline-SVG classic blue
+  V-ribbon medals (Gold, Silver, Bronze) sized at `18–20px` so usernames,
+  `You` badges, vertical column dividers, and 0px scroll stay intact with zero
+  extra network or filter cost.
 
 ### Zero-RPC backend auth, instant Top 10 cache, background art warm-up, medals, and column dividers (v0.1.6)
 

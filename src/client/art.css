@@ -345,18 +345,21 @@
 .daily-standings .standing-rank-col { text-align: center; padding-inline: 2px; }
 .daily-standings .standing-moves-col { text-align: center; border-left: 1px solid color-mix(in srgb, var(--line) 85%, transparent); border-right: 1px solid color-mix(in srgb, var(--line) 85%, transparent); padding-inline: 4px; }
 .daily-standings .standing-time-col { padding-inline: 6px 4px; }
-.daily-standings .rank-medal { position: relative; display: inline-grid; place-items: center; width: 20px; height: 20px; vertical-align: middle; }
-.daily-standings .rank-medal-icon { position: absolute; inset: 0; width: 100%; height: 100%; }
-.daily-standings .rank-medal-num { position: relative; z-index: 1; font-size: 11px; font-weight: 800; line-height: 1; }
-.daily-standings .rank-medal-gold .rank-medal-disc { fill: #eab839; stroke: #94680d; stroke-width: 1.2; }
-.daily-standings .rank-medal-gold .rank-medal-rim { fill: none; stroke: #fff4c6; stroke-width: .9; }
-.daily-standings .rank-medal-gold .rank-medal-num { color: #3c2803; }
-.daily-standings .rank-medal-silver .rank-medal-disc { fill: #cfd6dd; stroke: #6a7682; stroke-width: 1.2; }
-.daily-standings .rank-medal-silver .rank-medal-rim { fill: none; stroke: #f7fafc; stroke-width: .9; }
-.daily-standings .rank-medal-silver .rank-medal-num { color: #24303a; }
-.daily-standings .rank-medal-bronze .rank-medal-disc { fill: #d68d57; stroke: #7f461d; stroke-width: 1.2; }
-.daily-standings .rank-medal-bronze .rank-medal-rim { fill: none; stroke: #ffe6cf; stroke-width: .9; }
-.daily-standings .rank-medal-bronze .rank-medal-num { color: #361a06; }
+.daily-standings .rank-medal { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 23px; vertical-align: middle; }
+.daily-standings[data-density="compact"] .rank-medal { width: 18px; height: 21px; }
+.daily-standings .rank-medal-icon { display: block; width: 100%; height: 100%; }
+.daily-standings .rank-medal-ribbon-left { fill: #2c6cb0; stroke: #1d4978; stroke-width: .7; stroke-linejoin: round; }
+.daily-standings .rank-medal-ribbon-right { fill: #4a8fd6; stroke: #1d4978; stroke-width: .7; stroke-linejoin: round; }
+.daily-standings .rank-medal-num { font-size: 9.8px; font-weight: 800; }
+.daily-standings .rank-medal-gold .rank-medal-disc { fill: #eab839; stroke: #94680d; stroke-width: 1.1; }
+.daily-standings .rank-medal-gold .rank-medal-rim { fill: none; stroke: #fff4c6; stroke-width: .85; }
+.daily-standings .rank-medal-gold .rank-medal-num { fill: #3c2803; }
+.daily-standings .rank-medal-silver .rank-medal-disc { fill: #cfd6dd; stroke: #6a7682; stroke-width: 1.1; }
+.daily-standings .rank-medal-silver .rank-medal-rim { fill: none; stroke: #f7fafc; stroke-width: .85; }
+.daily-standings .rank-medal-silver .rank-medal-num { fill: #24303a; }
+.daily-standings .rank-medal-bronze .rank-medal-disc { fill: #d68d57; stroke: #7f461d; stroke-width: 1.1; }
+.daily-standings .rank-medal-bronze .rank-medal-rim { fill: none; stroke: #ffe6cf; stroke-width: .85; }
+.daily-standings .rank-medal-bronze .rank-medal-num { fill: #361a06; }
 .daily-standings thead th { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); font-weight: 700; padding-block: 4px 5px; border-bottom: 1px solid var(--border-strong); }
 .daily-standings tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-soft) 50%, transparent); }
 .daily-standings tbody th { font-weight: 550; padding-inline: 6px 4px; min-width: 0; }
