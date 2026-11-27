@@ -223,9 +223,9 @@ export function TutorialCards({ onClose, onFinish, onFinishHome, dailyReady = fa
         <button className="secondary-button" onClick={() => index === 0 ? onClose() : setIndex(index - 1)}>
           {index === 0 ? 'Back home' : 'Back'}</button>
         {last && onFinishHome && dailyReady && <button className="secondary-button" onClick={onFinishHome}>
-          <Icon name="home" size={16}/>Home</button>}
+          <Icon name="home" size={15}/>Home</button>}
         <button className="primary-button" onClick={() => last ? onFinish() : setIndex(index + 1)}>
-          {last ? (dailyReady ? "Play today's Daily" : 'Ready to play') : 'Next card'}<Icon name="arrow" size={17}/></button>
+          {last ? (dailyReady ? 'Play Daily' : 'Ready to play') : 'Next card'}<Icon name="arrow" size={16}/></button>
       </div>
     </footer>
   </Modal>;

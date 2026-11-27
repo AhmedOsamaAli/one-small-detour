@@ -12,7 +12,9 @@ export function DailyStandings({ state, edition, onRetry }: { state: StandingsSt
   const board = state.board;
   const leaders = board.entries.slice(0, 10);
   const own = board.yourBest && !leaders.some((entry) => entry.isYou) ? board.yourBest : null;
-  return <section className="daily-standings" aria-label="Current Daily top 10">
+  const rowCount = leaders.length + (own ? 1 : 0);
+  const density = rowCount <= 4 ? 'spacious' : rowCount <= 8 ? 'roomy' : 'compact';
+  return <section className="daily-standings" data-density={density} data-rows={rowCount} aria-label="Current Daily top 10">
     <div className="standings-header">
       <h3>{board.source === 'local' ? 'Local Top 10' : 'Daily Top 10'}</h3>
       <span className="standings-meta">{edition} · Moves, then time</span>

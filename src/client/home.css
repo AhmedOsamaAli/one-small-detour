@@ -28,14 +28,10 @@
 .home-signpost > p { margin: 0 0 9px; color: var(--muted); font-size: 14px; line-height: 1.35; }
 .home-demo-lock { color: var(--accent-ink); font-weight: 600; }
 .home-star-goal { color: var(--green); font-size: 13px; font-weight: 650; margin: -4px 0 9px; font-variant-numeric: tabular-nums; }
-.home-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; }
-.home-actions > :is(.primary-button, .secondary-button) { flex: 1 1 130px; min-height: 44px; justify-content: center; padding: 8px 12px; font-size: 14px; white-space: normal; text-align: center; line-height: 1.2; }
-.home-actions > .home-map-button { flex: 0 1 auto; min-width: 84px; }
-.home-actions > .home-result-button { flex: 1 1 100px; }
-.home-actions > .home-replay-button { flex: 1.25 1 140px; }
-.home-actions > .home-locked-daily { flex: 1 1 170px; font-size: 13px; }
+.home-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: stretch; gap: 8px; margin-top: auto; }
+.app-shell .game-home .home-actions > :is(.primary-button, .secondary-button) { width: 100%; min-width: 0; min-height: 44px; justify-content: center; padding: 8px 6px; font-size: 14px; white-space: nowrap; text-align: center; line-height: 1.2; }
 .app-shell .game-home .home-actions > :is(.primary-button, .secondary-button):disabled {
-  color: var(--muted); background: var(--surface-soft); border-color: var(--line); box-shadow: none; cursor: not-allowed; opacity: .78;
+  color: var(--ink); background: var(--surface-soft); border-color: var(--border-strong); box-shadow: none; cursor: not-allowed; opacity: .86;
 }
 .home-actions .text-button, .home-footnote .text-button { display: inline-flex; align-items: center; gap: 6px; justify-content: center; font-size: 14px; min-height: 44px; padding: 6px; }
 .home-record { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0 10px; }
@@ -103,7 +99,7 @@ html[data-appearance="dark"] .reminder-time { color-scheme: dark; }
   .home-signpost h2 { font-size: 20px; margin: 4px 0 4px; }
   .home-signpost > p { font-size: 13px; margin-bottom: 7px; }
   .home-star-goal { font-size: 12px; margin: -3px 0 7px; }
-  .home-actions > :is(.primary-button, .secondary-button) { min-height: 44px; padding: 7px 10px; font-size: 14px; }
+  .app-shell .game-home .home-actions > :is(.primary-button, .secondary-button) { min-height: 44px; padding: 7px 6px; font-size: 13.5px; }
   .next-daily-countdown { margin-top: 8px; padding-top: 6px; font-size: 11px; }
   .daily-reminder { margin-top: 8px; padding: 6px 10px; }
   .home-footnote { margin-top: 8px; font-size: 12px; }
@@ -125,7 +121,8 @@ html[data-appearance="dark"] .reminder-time { color-scheme: dark; }
 @media (max-width: 360px) {
   .home-signpost { padding: 8px 10px; }
   .home-signpost h2 { font-size: 18px; margin-block: 3px; }
-  .home-actions > .home-map-button { min-width: 72px; }
+  .home-actions { gap: 6px; }
+  .app-shell .game-home .home-actions > :is(.primary-button, .secondary-button) { font-size: 12.5px; padding: 6px 4px; gap: 4px; }
 }
 @media (max-width: 680px) and (max-height: 580px) {
   .game-home { padding-top: 6px; }

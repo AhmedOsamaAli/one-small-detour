@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Devvit `small-detour` v0.1.3** (private test build; `v0.1.1` remains in unlisted Reddit launch review) is installed in
+**Devvit `small-detour` v0.1.4** (staging build on `r/small_detour_dev`; `v0.1.1` approved by Reddit) is installed in
 [r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/), on the
 [interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
 
@@ -49,6 +49,18 @@ player choices are preserved; phone alerts still depend on Reddit settings.
 Actual scheduled inbox delivery, fresh signed-out play and physical-phone
 behavior remain separate checks; opening Home does not certify them.
 No public launch review, App Directory publication or promotional post was made.
+
+### Equal buttons, auto-sized Top 10, full stop names, and Light Mode contrast (v0.1.4)
+
+- Matched sibling button widths and heights across Home, Daily completion,
+  Practice completion, Saved Top 10, and Tutorial Cards (no oversized/tiny pairs).
+- Auto-scaled Top 10 table density by row count (`16px` for 1–4 rows, `15px` for
+  5–8 rows, `13–14px` for 9–11 rows) and widened the Top 10 popup to `640px`.
+- Moved Practice Map stars into the stop eyebrow so full stop names always show
+  without truncation, renamed `Find stop` to `My stop`, and fixed Light Mode
+  disabled/`Locked` button contrast (`9.78:1`).
+- Verified across 6 devices (`344×660` Galaxy Fold through `1280×740` desktop)
+  with 0 layout, contrast, or clipping issues; all 258 unit tests pass.
 
 ### Galaxy & real-device Reddit WebView polish (v0.1.3)
 

@@ -28,6 +28,15 @@
   transform: translateY(2px);
   box-shadow: inset 0 1px 0 var(--edge-light), 0 1px 0 var(--art-shadow);
 }
+.app-shell.craft-preview .primary-button:disabled,
+.app-shell.craft-preview .secondary-button:disabled {
+  color: var(--ink);
+  background: var(--surface-soft);
+  border-color: var(--border-strong);
+  box-shadow: none;
+  opacity: .85;
+  cursor: not-allowed;
+}
 .craft-preview :is(.icon-button, .text-button, .view-option) {
   min-height: 44px;
   min-width: 44px;
@@ -312,9 +321,12 @@
 :root[data-compact-height] .craft-preview .walkthrough-dialog .dialog-heading { padding-block: 6px; margin-bottom: 8px; }
 .craft-preview .walkthrough-dialog .dialog-actions {
   display: grid;
-  grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
   padding-bottom: 4px;
+}
+.craft-preview .walkthrough-dialog .dialog-actions.rule-final-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .craft-preview .walkthrough-dialog .dialog-actions > button:only-child { grid-column: 1 / -1; }
 .craft-preview .courier-words > strong { font-size: 17px; line-height: 1.3; }
@@ -354,9 +366,11 @@
 }
 .craft-preview .completion-next { font-size: 14px; }
 .craft-preview .daily-standings table { font-size: 14px; }
+.craft-preview .daily-standings[data-density="spacious"] table { font-size: 16px; }
+.craft-preview .daily-standings[data-density="roomy"] table { font-size: 15px; }
 .craft-preview .daily-standings .standing-rank { width: 34px; }
-.craft-preview .daily-standings .standing-moves { width: 54px; }
-.craft-preview .daily-standings .standing-time { width: 74px; }
+.craft-preview .daily-standings .standing-moves { width: 56px; }
+.craft-preview .daily-standings .standing-time { width: 78px; }
 .craft-preview .daily-standings tbody th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .craft-preview .daily-standings h3 { font-weight: 600; }
 .craft-preview .saved-daily-heading > .eyebrow { font-size: 12px; letter-spacing: .6px; }
@@ -368,24 +382,23 @@
   box-shadow: inset 0 2px 0 var(--edge-light), 0 3px 0 var(--art-shadow);
 }
 @media (max-width: 680px), (max-height: 700px) {
-  .app-shell.craft-preview .completion-dialog .completion-actions > :is(.primary-button, .secondary-button) { min-height: 40px; font-size: 14px; border-radius: 12px; }
-  .app-shell.craft-preview .completion-dialog .completion-actions > .primary-button { min-height: 42px; }
+  .app-shell.craft-preview .completion-dialog .completion-actions > :is(.primary-button, .secondary-button) { min-height: 44px; font-size: 14px; border-radius: 12px; }
   .craft-preview .completion-dialog .result-copy { grid-template-columns: minmax(0, 1fr) 54px; gap: 3px 6px; }
   .craft-preview .craft-finish-courier { width: 54px; height: 54px; }
 }
 @media (max-width: 680px) {
-  .craft-preview .daily-standings table { font-size: 14px; }
+  .craft-preview .daily-standings[data-density="compact"] table { font-size: 14px; }
   .craft-preview .daily-standings .standing-rank { width: 28px; }
   .craft-preview .daily-standings .standing-moves { width: 50px; }
   .craft-preview .daily-standings .standing-time { width: 70px; }
-  .app-shell.craft-preview .campaign-preview .campaign-play { min-height: 40px; font-size: 14px; border-radius: 12px; }
+  .app-shell.craft-preview .campaign-preview .campaign-play { min-height: 42px; font-size: 14px; border-radius: 12px; }
 }
 @media (max-height: 680px) and (max-width: 680px) {
-  .craft-preview .daily-standings table { font-size: 13px; }
-  .app-shell.craft-preview .saved-daily-actions > :is(.primary-button, .secondary-button) { min-height: 42px; font-size: 13.5px; border-radius: 12px; }
+  .craft-preview .daily-standings[data-density="compact"] table { font-size: 13px; }
+  .app-shell.craft-preview .saved-daily-actions > :is(.primary-button, .secondary-button) { min-height: 42px; font-size: 13px; border-radius: 12px; }
 }
 @media (max-height: 500px) {
-  .craft-preview .daily-standings table { font-size: 11.5px; }
+  .craft-preview .daily-standings[data-density="compact"] table { font-size: 11.5px; }
   .app-shell.craft-preview .saved-daily-actions > :is(.primary-button, .secondary-button) { min-height: 36px; font-size: 13px; border-radius: 10px; }
 }
 @media (max-width: 680px) and (min-height: 501px) {

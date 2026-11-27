@@ -76,16 +76,16 @@ export function GameHome(props: HomeProps) {
         {guestComplete && <p className="home-status">Finished on this device. No saved rank.</p>}
         {daily.status === 'ready' && !guestComplete && !learning && <p>Your solve timer starts with Play.</p>}
         <div className="home-actions">
-          {learning && <button className="primary-button" onClick={props.onGuide}><Icon name="play" size={17}/>Start demo</button>}
+          {learning && <button className="primary-button" onClick={props.onGuide}><Icon name="play" size={16}/>Start demo</button>}
           {complete ? <>
             {daily.status === 'complete' && <button className="secondary-button home-result-button" onClick={props.onResults} aria-label="View today's result"><Icon name="trophy" size={16}/>Top 10</button>}
             <button className="secondary-button home-replay-button" onClick={props.onPlay}><Icon name="reset" size={16}/>Replay unranked</button>
           </> : daily.status === 'error' ?
-            <button className="secondary-button" onClick={props.onRetry}><Icon name="reset" size={17}/>Retry today's status</button> :
+            <button className="secondary-button" onClick={props.onRetry}><Icon name="reset" size={16}/>Retry status</button> :
             edition && <button className={learning ? 'secondary-button home-locked-daily' : 'primary-button'} onClick={props.onPlay}
               disabled={firstVisit || !ready} data-demo-locked={firstVisit} aria-describedby={learning ? 'home-demo-lock' : undefined}
               title={firstVisit ? 'Finish the demo and 6 rule cards to unlock Today\'s Daily.' : undefined}>
-              <Icon name={firstVisit ? 'lock' : 'play'} size={17}/>{daily.status === 'checking' ? 'Checking...' : firstVisit ? 'Daily locked (finish demo)' : 'Play today'}</button>}
+              <Icon name={firstVisit ? 'lock' : 'play'} size={16}/>{daily.status === 'checking' ? 'Checking...' : firstVisit ? 'Daily locked' : 'Play today'}</button>}
         </div>
         {edition && <NextDailyCountdown clock={props.nextDailyClock}/>}
       </section>
@@ -107,9 +107,9 @@ export function GameHome(props: HomeProps) {
         <div className="home-actions">
           <button className={complete ? 'primary-button' : 'secondary-button'} disabled={props.practiceBusy || props.practiceSyncing} onClick={props.onPractice}
             aria-label={props.practiceNeedsStars ? 'Choose a Practice stop for more stars' : undefined}>
-            <Icon name="play" size={17}/>{props.practiceBusy ? 'Opening...' : props.practiceSyncing ? 'Loading...' :
-              props.practiceNeedsStars ? 'Choose on map' : props.nextPractice ? 'Continue Practice' : 'Explore Practice'}</button>
-          {!props.practiceNeedsStars && <button className="secondary-button home-map-button" onClick={props.onMap}><Icon name="map" size={16}/>Map</button>}
+            <Icon name="play" size={16}/>{props.practiceBusy ? 'Opening...' : props.practiceSyncing ? 'Loading...' :
+              props.practiceNeedsStars ? 'Choose on map' : props.nextPractice ? 'Continue' : 'Practice'}</button>
+          {!props.practiceNeedsStars && <button className="secondary-button home-map-button" onClick={props.onMap}><Icon name="map" size={16}/>Practice map</button>}
         </div>
       </section>
     </div>

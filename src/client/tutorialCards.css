@@ -67,12 +67,11 @@
 .rule-flash-progress [aria-current="step"] { background: var(--green); }
 .rule-unlock-banner { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 7px; padding: 5px 10px; border: 1px solid var(--accent-border); border-radius: 10px; background: var(--surface-selected); color: var(--green); font-size: 13px; font-weight: 650; line-height: 1.3; text-align: center; }
 .rule-unlock-banner > svg { flex-shrink: 0; }
-.rule-flash-dialog .dialog-actions { position: static; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); margin: 0; padding: 0; border: 0; gap: 8px; }
-.rule-flash-dialog .dialog-actions.rule-final-actions { grid-template-columns: auto auto minmax(0, 1fr); }
-.rule-flash-dialog .dialog-actions > button { min-height: 44px; padding-inline: 10px; }
-@media (max-width: 400px) {
-  .rule-flash-dialog .dialog-actions.rule-final-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .rule-flash-dialog .dialog-actions.rule-final-actions > .primary-button { grid-column: 1 / -1; order: -1; }
+.rule-flash-dialog .dialog-actions { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; padding: 0; border: 0; gap: 8px; }
+.rule-flash-dialog .dialog-actions.rule-final-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rule-flash-dialog .dialog-actions > button { min-height: 44px; padding-inline: 6px; font-size: 14px; white-space: nowrap; }
+@media (max-width: 360px) {
+  .rule-flash-dialog .dialog-actions > button { font-size: 13px; padding-inline: 4px; }
 }
 @keyframes rule-card-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 360px) {

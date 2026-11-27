@@ -1181,16 +1181,16 @@ export default function App() {
                   aria-label="Retry loading recorded rank"><Icon name="reset" size={17}/>Retry rank</button>}
                 {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
                   onClick={continuePractice} aria-label={replayForStars ? 'Choose a Practice stop for more stars' : 'Continue your journey'}>
-                  {replayForStars ? 'Choose on map' : CRAFT_PREVIEW ? (run.kind === 'studio' && nextCampaignIndex >= 0 ? `Next: Stop ${nextCampaignIndex + 1}` : 'Next stop') : 'Continue your journey'} <Icon name="arrow" size={16}/>
+                  {replayForStars ? 'Choose stop' : CRAFT_PREVIEW ? (run.kind === 'studio' ? 'Next' : 'Next stop') : 'Continue'} <Icon name="arrow" size={15}/>
                 </button>}
                 {run.kind === 'studio' && <button className="secondary-button" disabled={practiceLoading !== null}
-                  onClick={() => openPractice(run.puzzle.id)} aria-label="Replay this Practice stop"><Icon name="reset" size={17}/>Replay</button>}
+                  onClick={() => openPractice(run.puzzle.id)} aria-label="Replay this Practice stop"><Icon name="reset" size={15}/>Replay</button>}
                 {POSTCARD_PREVIEW && run.kind === 'daily' ? <button className={`${nextCampaign ? 'secondary-button' : 'primary-button'} standings-toggle`}
                   aria-label={standingsOpen ? 'Back to result' : 'View Daily Top 10'} aria-expanded={standingsOpen} aria-controls="daily-top-ten"
                   onClick={() => { if (standingsOpen) setStandingsOpen(false); else void loadStandings(); }}>
-                  <Icon name={standingsOpen ? 'undo' : 'trophy'} size={16}/>{standingsOpen ? 'Back to result' : 'Top 10'}
-                </button> : <button className={nextCampaign ? 'secondary-button' : 'primary-button'} onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }}
-                  aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={16}/>Map</button>}
+                  <Icon name={standingsOpen ? 'undo' : 'trophy'} size={15}/>{standingsOpen ? 'Result' : 'Top 10'}
+                </button> : !replayForStars && <button className={nextCampaign ? 'secondary-button' : 'primary-button'} onClick={() => { setResultDismissed(true); setDialogError(null); setDialog('atlas'); }}
+                  aria-label={run.kind === 'daily' ? 'Play more in practice' : 'View the next practice stop'}><Icon name="map" size={15}/>Map</button>}
           </div>
         </Modal>}
       </section>

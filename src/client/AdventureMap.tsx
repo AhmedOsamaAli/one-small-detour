@@ -369,10 +369,10 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
         </small>}
       </div>
       <div className="adventure-controls">
-        <button className="secondary-button adventure-focus" disabled={!entries.length} aria-label={needsStars ? 'Find island needing stars' : 'Find my next stop'}
-          title={needsStars ? 'Find island needing stars' : 'Find my next stop'}
+        <button className="secondary-button adventure-focus" disabled={!entries.length} aria-label={needsStars ? 'Jump to island needing stars' : 'Jump to my next stop'}
+          title={needsStars ? 'Jump to island needing stars' : 'Jump to my next stop'}
           onClick={() => { setPreviewId(needsStars ? null : entries[focusIndex]?.id ?? null); panTo(focusOffset, true, true); }}>
-          <Icon name="map" size={18}/><span className="control-full">{needsStars ? 'Find island' : 'Find my stop'}</span><span className="control-short">{needsStars ? 'Island' : 'Find stop'}</span>
+          <Icon name="map" size={18}/><span className="control-full">{needsStars ? 'My island' : 'My stop'}</span><span className="control-short">{needsStars ? 'Island' : 'My stop'}</span>
         </button>
         <button className="secondary-button adventure-daily" onClick={onToday} aria-label="Today's daily island">
           <Icon name="sun" size={18}/><span className="control-full">Daily challenge</span><span className="control-short">Daily</span>
@@ -440,13 +440,14 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
       aria-label={preview ? 'Selected stop preview' : 'Choose a Practice stop'} data-testid="campaign-preview">
       {preview && previewGate ? <>
         <div className="preview-copy">
-          <div className="preview-eyebrow"><span>STOP {previewIndex + 1}</span><span className="preview-state">
-            <Icon name={replay ? 'check' : previewGate.unlocked ? 'play' : 'lock'} size={12}/>{status}
-          </span></div>
-          <div className="preview-title-row">
-            <h3>{preview.title}</h3>
+          <div className="preview-eyebrow">
+            <span>STOP {previewIndex + 1}</span>
+            <span className="preview-state">
+              <Icon name={replay ? 'check' : previewGate.unlocked ? 'play' : 'lock'} size={12}/>{status}
+            </span>
             <StarRating stars={previewStars} label={`${previewStars} of 3 stars kept for this stop`}/>
           </div>
+          <h3>{preview.title}</h3>
           {credited && !replay && <span className="legacy-credit-note">Earlier stars kept. A new road awaits.</span>}
           <div className="preview-facts">
             <span><Icon name="grid" size={14}/>{preview.size} x {preview.size}</span>
