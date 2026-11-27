@@ -3,6 +3,8 @@ import type { AttemptStart, Bootstrap, GuideTopic, Leaderboard, MyRank, Puzzle, 
 import { isGuideTopics } from '../shared/guidance.ts';
 import { isPracticeAccount } from '../shared/practiceProgress.ts';
 import type { PracticeAccount, PracticeState } from '../shared/practiceProgress.ts';
+import { isDailyReminderSettings } from '../shared/reminders.ts';
+import type { DailyReminderPreference, DailyReminderSettings } from '../shared/reminders.ts';
 
 export class GameApiError extends Error {
   readonly code: string | null;
@@ -89,6 +91,14 @@ export const gameApi = {
   practiceProgress: (): Promise<PracticeAccount> => progressRequest('GET'),
   savePracticeProgress: (generation: number, state: PracticeState): Promise<PracticeAccount> => progressRequest('POST', { generation, ...state }),
   clearPracticeProgress: (): Promise<PracticeAccount> => progressRequest('DELETE'),
+  dailyReminder: (signal?: AbortSignal): Promise<DailyReminderSettings> =>
+    request('/api/me/reminder', isDailyReminderSettings, { cache: 'no-store', ...(signal ? { signal } : {}) }),
+  saveDailyReminder: (preference: DailyReminderPreference, generation: number, signal?: AbortSignal): Promise<DailyReminderSettings> =>
+    request('/api/me/reminder', isDailyReminderSettings, {
+      method: 'PUT', body: JSON.stringify({ ...preference, generation }), ...(signal ? { signal } : {}),
+    }),
+  clearDailyReminder: (signal?: AbortSignal): Promise<DailyReminderSettings> =>
+    request('/api/me/reminder', isDailyReminderSettings, { method: 'DELETE', ...(signal ? { signal } : {}) }),
   startAttempt: (edition: string, signal?: AbortSignal): Promise<AttemptStart> =>
     request('/api/attempts', isAttemptStart, {
       method: 'POST', body: JSON.stringify({ edition }), ...(signal ? { signal } : {}),

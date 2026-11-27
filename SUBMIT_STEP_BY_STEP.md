@@ -4,10 +4,19 @@ Checked against the [official rules](https://redditgameofday2026.devpost.com/rul
 on **21 November 2026**. This is a preparation guide, not a record that the
 entry has already been submitted.
 
-**Current test build: v0.1.23.** It contains the complete 1,000-puzzle,
+**Current build: `small-detour` v0.1.1 (submitted for unlisted review).** It contains the complete 1,000-puzzle,
 four-family no-surplus Practice replacement and preserved earlier routes/
-progress. The tutorial uses one hands-on lesson followed by four illustrated
-rule cards. The question mark opens Help with Replay walkthrough first.
+progress. The tutorial uses one hands-on lesson followed by six illustrated
+rule cards (including home order and no repeated road squares). The question
+mark opens Help with Replay walkthrough first.
+Water tiles now keep individual visible rims in both views; this visual-only
+update does not change puzzles, ranking or saved progress.
+When more Practice stars are needed, continuation opens the map so the player
+chooses a completed stop to improve rather than being assigned a replay.
+Phone completion controls now have larger continuation targets and more space;
+the portrait map gives Play/Replay a full-width row. Home also offers explicitly
+opted-in daily inbox reminders. Deployment does not subscribe anyone automatically,
+and phone alerts depend on Reddit settings.
 
 **Deadline:** 8 December 2026, 6:00 PM Pacific = 9 December, 02:00 UTC /
 04:00 UTC+2.
@@ -36,9 +45,9 @@ Use these clean canonical URLs, not challenge-token or local preview URLs:
 
 | Field | Link |
 |---|---|
-| App listing | https://developers.reddit.com/apps/one-small-detour |
-| Test subreddit | https://www.reddit.com/r/one_small_detour_dev/ |
-| Interactive post | https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/ |
+| App listing | https://developers.reddit.com/apps/small-detour |
+| Test subreddit | https://www.reddit.com/r/small_detour_dev/ |
+| Interactive post | https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/ |
 | Source | https://github.com/AhmedOsamaAli/one-small-detour |
 
 - [ ] Open the actual post signed out and signed in.
@@ -56,8 +65,8 @@ Use these clean canonical URLs, not challenge-token or local preview URLs:
 **No extra post or broad `devvit publish` is required by the reviewed rules.**
 They ask for an uploaded app listing, test subreddit and a post running the
 game. The same existing post and community are the intended judging links.
-The campaign/countdown/tutorial update is installed as **v0.1.23**; 34 delivered runtime files
-were compared with the upload-built release.
+The combined release, including the 6-card route tutorial, phone controls, and
+opt-in inbox reminders, is installed in `r/small_detour_dev` under `small-detour`.
 
 If the subreddit is public and judges can access the post, there is no reason
 to install the optional `dr-admin-approve` app. The rules offer it as an

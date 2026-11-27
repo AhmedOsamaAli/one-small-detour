@@ -15,6 +15,7 @@ import { GUIDE_PREFERENCE_TTL_SECONDS } from './guides.ts';
 import type { GuideStore } from './guides.ts';
 import { IndexedDailyRanking } from './indexedRanking.ts';
 import { RedisPracticeStore } from './practiceProgress.ts';
+import { dispatchDailyReminders, RedisReminderStore } from './reminders.ts';
 
 function isRedditId(id: string): id is `t2_${string}` {
   return /^t2_[a-z0-9]+$/i.test(id);
@@ -163,11 +164,12 @@ const guides: GuideStore = {
 };
 
 const practice = new RedisPracticeStore(redis);
+const reminders = new RedisReminderStore(redis);
 const dailyRanking = new IndexedDailyRanking(redis, {
   remember: rememberScoreKey,
   keys: async (id) => Object.keys(await redis.hGetAll(`detour:player-records:${id}`)),
   accountExists: async (id) => isRedditId(id) && Boolean(await reddit.getUserById(id)),
-  eraseOtherData: async (id) => { await attempts.erase(id); await store.erase(id); await guides.erase(id); await practice.erase(id); },
+  eraseOtherData: async (id) => { await reminders.erase(id); await attempts.erase(id); await store.erase(id); await guides.erase(id); await practice.erase(id); },
 });
 
 const app = createGameApi({
@@ -176,6 +178,8 @@ const app = createGameApi({
   guides,
   dailyRanking,
   practice,
+  reminders,
+  postId: () => context.postId,
   source: 'reddit',
   community: () => context.subredditName ? `r/${context.subredditName}` : 'This little community',
   player: async () => {
@@ -188,6 +192,27 @@ const app = createGameApi({
 });
 
 const internal = new Hono();
+internal.post('/scheduler/daily-reminders', async (c) => {
+  await dispatchDailyReminders({
+    store: reminders,
+    recipient: async (id, edition) => {
+      if (!isRedditId(id)) throw new Error('The reminder recipient is invalid.');
+      const user = await reddit.getUserById(id);
+      if (!user) return null;
+      return { name: user.username, completed: await dailyRanking.firstStatus(scoreKey(edition, 'daily'), id) !== 'eligible' };
+    },
+    send: async (name, postId, edition) => {
+      await reddit.sendPrivateMessage({
+        to: name,
+        subject: 'Your Daily detour is ready',
+        text: `A new little road is waiting. Your ${edition} Daily is ready in One Small Detour.\n\n` +
+          `[Play today's Daily](https://www.reddit.com/comments/${postId.slice(3)})\n\n` +
+          `You asked for this reminder. Turn off "Remind me daily" on the game's Home screen to stop these messages.`,
+      });
+    },
+  });
+  return c.json({ status: 'ok' });
+});
 internal.post('/menu/create-detour', async (c) => {
   try {
     const post = await reddit.submitCustomPost({

@@ -6,9 +6,9 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Private Devvit v0.1.23** is installed in
-[r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/), on the
-[same existing interactive post](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/).
+**Devvit `small-detour` v0.1.1** (submitted for unlisted Reddit launch review) is installed in
+[r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/), on the
+[interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
 
 It includes the shared next-Daily countdown and local opening time on Home.
 The Daily still resets at 00:00 UTC for everyone. The timer is isolated from
@@ -24,7 +24,86 @@ or move records. Older campaign clients remain supported.
 Daily generation, ranking keys and first-result policy are unchanged. No
 player reset, new Reddit post or broad marketplace publication was performed.
 
-### Verified
+### Phone controls and optional inbox reminders (v0.1.26)
+
+Phone completion actions have larger continuation targets and more space, with
+secondary buttons stacked on narrow screens. The portrait Practice map keeps
+Play/Replay on its own full-width row rather than squeezing it beside the title.
+
+Home also includes explicitly opted-in daily Reddit inbox reminders. Installing
+the release activates the scheduler, not automatic subscriptions. Existing
+player choices are preserved; phone alerts still depend on Reddit settings.
+
+- All 256 tests, three TypeScript checks and the build passed. Earlier phone/
+  desktop layout and real navigation checks passed without persistent guest
+  account or score writes.
+- All 170 release inputs stayed unchanged during upload. Every one of the 41
+  delivered client files matches the upload-built release: 39 byte-identical
+  assets and two HTML entrypoints with only the official Devvit SDK injection.
+- An explicit in-place upgrade and an independent installation listing confirm
+  v0.1.26 in the same authorized test community.
+- The signed-in Reddit web post loaded its v0.1.26 inline splash and expanded
+  Home. The live reminder preference was read successfully. No new post, score
+  or reminder subscription was created by these deployment checks.
+
+Actual scheduled inbox delivery, fresh signed-out play and physical-phone
+behavior remain separate checks; opening Home does not certify them.
+No public launch review, App Directory publication or promotional post was made.
+
+### Route-rule tutorial cards and `small-detour` launch submission (v0.1.1)
+
+The walkthrough now has six illustrated cards. Two new leading cards
+contrast A-B-C with A-C-B and show why returning over a road square is invalid,
+with the repeated square marked `2x`. The illustrations use the actual journey
+rules to distinguish correct and incorrect routes.
+
+All 258 tests, three TypeScript checks and the build passed. Forty-eight browser
+layout cases cover the six cards on phones, short landscape views and desktop
+in Light/Dark. Real lesson completion, early-close Daily locking, final-card
+unlocking and preservation of genuinely earned Practice progress also passed.
+
+The release is uploaded as `small-detour` v0.1.1, submitted for unlisted Reddit
+launch review, and installed in public
+[r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/) with its live
+[interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
+
+### Water-tile clarity update (v0.1.24)
+
+Water squares retain individual rims beside neighbouring water in both 3D
+and Flat. Usable bridge ends remain open, and the rims follow actual exchanges.
+Water animation, puzzle data, account records and ranking policy are unchanged.
+
+- All 237 source tests, three TypeScript checks and production build passed.
+- The exact upload-built client passed 53 water-boundary browser checks across
+  Light/Dark, Flat/3D, phone and desktop layouts, including real selection,
+  deselection and exchanges. The fixtures made no live account or score writes.
+- All 34 delivered runtime files match the tested v0.1.24 output.
+- The upload-built server is byte-identical to v0.1.23.
+- Explicit installation and a separate CLI listing confirm v0.1.24 in the same
+  authorized test community. No new post or marketplace publication was made.
+
+### Player-chosen star replays (v0.1.25)
+
+When an island needs stars, Home and result continuation now opens the Practice
+map without assigning a replay. The map starts unselected on the relevant
+island and asks the player to choose a completed stop with fewer than three
+stars. Normal next-stop continuation and explicit replays remain unchanged.
+
+All 237 source tests and type checks/build passed. The exact upload-built client
+passed 98 navigation checks using a genuinely earned twenty-stop star gate,
+player-selected replays, improvements to the unchanged 30-star threshold and
+ordinary continuation to the next new stop. The same upload also passed all 53
+water-boundary checks.
+
+All 34 delivered runtime files match the tested v0.1.25 output. The upload-built
+backend remains byte-identical to v0.1.24. Explicit installation and a separate
+CLI listing confirm v0.1.25 in the same authorized test community. No new post,
+progress reset or marketplace publication was performed.
+
+### Retained campaign/tutorial verification (v0.1.23)
+
+The following content and migration evidence was established for v0.1.23.
+Those shared rules, puzzle banks and existing progress storage are unchanged in v0.1.26.
 
 - All 235 source tests, three TypeScript checks and production build passed.
 - A fresh full audit replayed/regraded every new puzzle: 295 pairs, 271 strips,
@@ -48,8 +127,6 @@ player reset, new Reddit post or broad marketplace publication was performed.
   ephemeral guest countdown. These fixtures made no live account/score writes.
 - All 34 delivered runtime files match that checked output: 32 binary assets
   and two HTML entrypoints normalized for the normal Devvit bridge.
-- Installation and a separate CLI listing confirm v0.1.23 in the authorized
-  test community.
 
 Devvit invokes its build during upload. Asset-name ordering can change between
 builds, so the upload-built output was checked and compared directly rather
@@ -59,12 +136,13 @@ The existing post page was also opened successfully signed out. That is not
 proof of embedded-game play, fresh authenticated play or physical-phone
 certification. The owner still needs the native-device checks in the guide.
 
-## Tutorial and Help
+## Installed tutorial and Help
 
 Lesson one retains its three genuine swaps and courier journey. Its completion
-now leads directly to four illustrated rule cards instead of the fixed-tile
-and bridge puzzle chapters. They cover moving/fixed tiles, horizontal bridges,
-vertical bridges, and wide-left/tall-top/square-and-L-top-left selection.
+now leads directly to six illustrated rule cards instead of the fixed-tile
+and bridge puzzle chapters. They cover home visit order (A-B-C vs A-C-B),
+no repeated road squares (reused square marked `2x`), moving/fixed tiles,
+horizontal bridges, vertical bridges, and wide-left/tall-top/square-and-L-top-left selection.
 Grass and trees share a movable icon. Each bridge card contrasts a home's
 four accepting sides with a valid bridge end and blocked bridge side.
 Selecting the same start again clears the first choice at no move cost.
@@ -85,6 +163,7 @@ reduced motion and light/dark appearance.
 ## Source
 
 [GitHub repository](https://github.com/AhmedOsamaAli/one-small-detour).
+The public privacy page ([PRIVACY.md](PRIVACY.md)) includes daily reminder data handling.
 The owner authorized publication of the reviewed release and selected MIT for
 original code. Template, font and CC0 source-art notices are retained separately.
 Local/private records, environment files and generated caches are excluded.

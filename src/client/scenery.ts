@@ -1,5 +1,5 @@
 import type { Board, Cell, Swap } from '../shared/types.ts';
-import { patchCells } from '../shared/rules.ts';
+import { canTraverse, patchCells } from '../shared/rules.ts';
 
 export interface Flower {
   x: number;
@@ -10,10 +10,9 @@ export interface Flower {
 }
 
 export function waterBanks(board: Board, cell: Cell) {
-  const bank = (row: number, col: number): boolean => {
-    const tile = board[cell.row + row]?.[cell.col + col];
-    return tile !== '~' && tile !== 'h' && tile !== 'v';
-  };
+  // Keep each water square distinct without closing usable bridge ends.
+  const bank = (row: number, col: number): boolean =>
+    !canTraverse(board, cell, { row: cell.row + row, col: cell.col + col });
   return {
     west: bank(0, -1), east: bank(0, 1), south: bank(1, 0), north: bank(-1, 0),
     southwest: bank(1, -1), southeast: bank(1, 1), northwest: bank(-1, -1), northeast: bank(-1, 1),

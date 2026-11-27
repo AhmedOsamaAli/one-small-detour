@@ -12,6 +12,9 @@ import type { DailyRankingStore } from './indexedRanking.ts';
 import type { DailyWrite, FirstDailyStatus } from './firstDaily.ts';
 import { isPracticeState, normalizePracticeState, projectPracticeSnapshot } from '../shared/practiceProgress.ts';
 import type { PracticeStore } from './practiceProgress.ts';
+import { isDailyReminderPreference } from '../shared/reminders.ts';
+import { dailyReminderSettings } from './reminders.ts';
+import type { ReminderStore } from './reminders.ts';
 
 export interface ScoreStore {
   list(key: string): Promise<ScoreRecord[]>;
@@ -31,6 +34,8 @@ export interface GameServiceOptions {
   accountExists?: (userId: string) => Promise<boolean>;
   dailyRanking?: DailyRankingStore;
   practice?: PracticeStore;
+  reminders?: ReminderStore;
+  postId?: () => string | undefined;
 }
 
 function campaignRevision(url: string): 1 | 2 | 3 {
@@ -84,6 +89,7 @@ export function createGameApi(options: GameServiceOptions): Hono {
   const clock = options.now ?? (() => new Date());
   const checkedAt = new Map<string, number>();
   const erasePlayer = async (userId: string): Promise<void> => {
+    await options.reminders?.erase(userId);
     await options.dailyRanking?.erase(userId);
     await options.attempts.erase(userId);
     await options.store.erase(userId);
@@ -124,8 +130,9 @@ export function createGameApi(options: GameServiceOptions): Hono {
 
   api.onError((error, c) => {
     if (error instanceof RuleError) {
-      const temporary = error.code === 'ranking_busy' || error.code === 'ranking_indexing' || error.code === 'practice_busy';
-      if (error.code === 'practice_reset') return c.json({ error: error.message, code: error.code }, 409);
+      const temporary = error.code === 'ranking_busy' || error.code === 'ranking_indexing' ||
+        error.code === 'practice_busy' || error.code === 'reminder_busy';
+      if (error.code === 'practice_reset' || error.code === 'reminder_reset') return c.json({ error: error.message, code: error.code }, 409);
       if (temporary) c.header('Retry-After', '1');
       return c.json({ error: error.message, code: error.code }, temporary ? 503 : 400);
     }
@@ -164,6 +171,36 @@ export function createGameApi(options: GameServiceOptions): Hono {
     }
     await options.guides.markSeen(player.id, input['topics']);
     return c.json({ seenGuides: await options.guides.seen(player.id) });
+  });
+
+  api.all('/api/me/reminder', async (c) => {
+    c.header('Cache-Control', 'no-store');
+    const player = await options.player(c.req.raw);
+    if (!player) return c.json({ error: 'Sign in to Reddit to manage daily inbox reminders.', code: 'sign_in' }, 401);
+    const reminders = options.reminders;
+    if (!reminders) return c.json({ error: 'Daily reminders are temporarily unavailable. Please try again.', code: 'reminder_unavailable' }, 503);
+    if (c.req.method === 'GET') return c.json(await dailyReminderSettings(reminders, player.id, options.source, clock()));
+    if (c.req.method === 'DELETE') {
+      await reminders.erase(player.id);
+      return c.json(await dailyReminderSettings(reminders, player.id, options.source, clock()));
+    }
+    if (c.req.method !== 'PUT') return c.json({ error: 'Choose a supported reminder action.', code: 'method' }, 405);
+    let input: unknown;
+    try { input = await c.req.json<unknown>(); }
+    catch (error) {
+      if (error instanceof SyntaxError) throw new RuleError('The reminder choice could not be read.', 'invalid_json');
+      throw error;
+    }
+    if (!isRecord(input) || !isDailyReminderPreference(input) || typeof input['generation'] !== 'number' ||
+        !Number.isSafeInteger(input['generation']) || input['generation'] < 0) {
+      throw new RuleError('Choose a valid reminder time and timezone after checking your current reminder.', 'reminder_invalid');
+    }
+    const postId = options.postId?.() ?? null;
+    if (options.source === 'reddit' && (postId === null || !/^t3_[a-z0-9]+$/i.test(postId))) {
+      throw new RuleError('Open the game from its Reddit post before enabling reminders.', 'reminder_post');
+    }
+    await reminders.save(player.id, { time: input.time, timeZone: input.timeZone }, postId, clock(), input['generation']);
+    return c.json(await dailyReminderSettings(reminders, player.id, options.source, clock()));
   });
 
   api.all('/api/me/progress', async (c) => {

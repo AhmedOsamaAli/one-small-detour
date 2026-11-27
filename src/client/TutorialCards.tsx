@@ -1,17 +1,80 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Board, Cell, Shape, Tile } from '../shared/types.ts';
-import { canTraverse, patchCells, patchOutline, tileAt } from '../shared/rules.ts';
+import { canTraverse, checkPuzzle, isAnchor, patchCells, patchOutline, tileAt } from '../shared/rules.ts';
+import { TUTORIAL, TUTORIAL_ROUTE_EXAMPLES } from '../shared/tutorial.ts';
+import type { TutorialRouteExample } from '../shared/tutorial.ts';
 import { FLAT_AXES, Icon, Modal, TileGlyph } from './components.tsx';
 import { frameArrowPath } from './frameArrow.ts';
 import './tutorialCards.css';
 
 const cards = [
+  { id: 'order', title: 'Home order.' },
+  { id: 'once', title: 'No road twice.' },
   { id: 'terrain', title: 'Move or stay.' },
   { id: 'horizontal', title: 'Horizontal bridge.' },
   { id: 'vertical', title: 'Vertical bridge.' },
   { id: 'starts', title: 'Start here.' },
 ] as const;
+
+function RouteExample({ example }: { example: TutorialRouteExample }) {
+  const solved = checkPuzzle(example.board, TUTORIAL).solved;
+  const top = Math.min(...example.route.map(cell => cell.row));
+  const left = Math.min(...example.route.map(cell => cell.col));
+  const rows = Math.max(...example.route.map(cell => cell.row)) - top + 1;
+  const cols = Math.max(...example.route.map(cell => cell.col)) - left + 1;
+  const position = (cell: Cell) => ({ x: 6 + (cell.col - left) * 44, y: 6 + (cell.row - top) * 44 });
+  const squares = Array.from({ length: rows * cols }, (_, index) => {
+    const cell = { row: top + Math.floor(index / cols), col: left + index % cols };
+    return { cell, ...position(cell), tile: tileAt(example.board, cell),
+      visits: example.route.filter(item => item.row === cell.row && item.col === cell.col).length };
+  });
+  const points = example.route.map(cell => {
+    const point = position(cell);
+    return { x: point.x + 20, y: point.y + 20 };
+  });
+  return <figure className={`rule-route-example ${solved ? 'rule-connected' : 'rule-blocked'}`}
+    data-route-example={example.id} data-route-valid={solved}
+    aria-label={`${solved ? 'Correct' : 'Not allowed'}: ${example.caption}`}>
+    <svg className="rule-route-picture" viewBox={`0 0 ${cols * 44 + 8} ${rows * 44 + 8}`} aria-hidden="true">
+      {squares.map(({ cell, x, y, tile, visits }) => <g key={`${cell.row}:${cell.col}`}
+        transform={`translate(${x} ${y})`} data-route-visits={visits}>
+        <TileGlyph tile={isAnchor(tile) ? '.' : tile}/>
+      </g>)}
+      <polyline className="rule-route-trail" points={points.map(point => `${point.x},${point.y}`).join(' ')}/>
+      {points.slice(1).map((point, index) => {
+        const from = points[index]!;
+        const angle = Math.atan2(point.y - from.y, point.x - from.x) * 180 / Math.PI;
+        return <path key={index} className="rule-route-trail" d="m-4-4 4 4-4 4"
+          transform={`translate(${(point.x + from.x) / 2} ${(point.y + from.y) / 2}) rotate(${angle})`}/>;
+      })}
+      {squares.filter(square => isAnchor(square.tile)).map(({ cell, x, y, tile }) =>
+        <g key={`${cell.row}:${cell.col}`} transform={`translate(${x} ${y})`}>
+          <TileGlyph tile={tile}/><rect className="rule-route-home-plaque" x="10" y="17" width="20" height="20" rx="3"/>
+          <text className="rule-route-home-label" x="20" y="28">{tile}</text>
+        </g>)}
+      {squares.filter(square => square.visits > 1).map(({ cell, x, y, visits }) =>
+        <g key={`${cell.row}:${cell.col}`} data-route-repeat={visits}>
+          <rect className="rule-route-repeat" x={x - 1} y={y - 1} width="42" height="42" rx="7"/>
+          <circle className="rule-route-repeat-badge" cx={x + 31} cy={y + 31} r="10"/>
+          <text className="rule-route-repeat-label" x={x + 31} y={y + 31}>{visits}x</text>
+        </g>)}
+    </svg>
+    <figcaption><Icon name={solved ? 'check' : 'close'} size={18}/>{example.caption}</figcaption>
+  </figure>;
+}
+
+function RouteCards({ rule }: { rule: 'order' | 'once' }) {
+  return <div className={`rule-route-content rule-route-${rule}`}>
+    <p className="rule-route-lead">{rule === 'order' ? 'Example order: A, then B, then C.' :
+      'Never step on the same road square again.'}</p>
+    <div className="rule-route-comparison">
+      {TUTORIAL_ROUTE_EXAMPLES[rule].map(example => <RouteExample key={example.id} example={example}/>)}
+    </div>
+    <p className="rule-card-note">{rule === 'order' ? 'Follow the order shown above your board.' :
+      'Back over that square means two visits.'}</p>
+  </div>;
+}
 
 function TerrainCards() {
   const groups: { label: string; fixed: boolean; tiles: { tile: Tile; name: string }[] }[] = [
@@ -142,7 +205,8 @@ export function TutorialCards({ onClose, onFinish, soundControl }: {
     kind="guide" onClose={onClose}>
     <div ref={content} className="rule-flash-content">
       <section key={card.id} className="rule-flash-page" data-testid="tutorial-rule-card" data-rule-card={card.id}>
-        {card.id === 'terrain' ? <TerrainCards/> : card.id === 'horizontal' ? <BridgeCards orientation="h"/> :
+        {card.id === 'order' || card.id === 'once' ? <RouteCards rule={card.id}/> :
+          card.id === 'terrain' ? <TerrainCards/> : card.id === 'horizontal' ? <BridgeCards orientation="h"/> :
           card.id === 'vertical' ? <BridgeCards orientation="v"/> : <StartCards/>}
       </section>
     </div>

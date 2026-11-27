@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "one-small-detour",
+  "name": "small-detour",
   "post": {
     "dir": "dist/client",
     "entrypoints": {
@@ -22,8 +22,13 @@
     "reddit": true,
     "redis": true
   },
-  "dev": {
-    "subreddit": "one_small_detour_dev"
+  "scheduler": {
+    "tasks": {
+      "daily-reminders": {
+        "endpoint": "/internal/scheduler/daily-reminders",
+        "cron": "* * * * *"
+      }
+    }
   },
   "menu": {
     "items": [
@@ -39,5 +44,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch"
+  },
+  "dev": {
+    "subreddit": "small_detour_dev"
   }
 }

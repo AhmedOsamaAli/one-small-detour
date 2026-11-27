@@ -6,6 +6,8 @@ import { MemoryAttemptStore } from './attempts.ts';
 import { MemoryGuideStore } from './guides.ts';
 import type { ScoreRecord, Swap } from '../shared/types.ts';
 import { AUTHORED, dailyPuzzleForDate } from '../shared/puzzles.ts';
+import { MemoryReminderStore } from './reminders.ts';
+import { isDailyReminderSettings } from '../shared/reminders.ts';
 
 class MemoryScores implements ScoreStore {
   data = new Map<string, ScoreRecord[]>();
@@ -164,4 +166,69 @@ test('verified fifteen-exchange repairs remain accepted and isolate earlier rule
   assert.equal(result.includes('classic-rules'), false);
   const outside = await send([{ a: { row: 10, col: 0 }, b: { row: 0, col: 0 }, rows: 1, cols: 2 }]);
   assert.equal(outside.status, 400);
+});
+
+test('reminder endpoints use authenticated ownership and the current post, validate choices and allow opt-out', async () => {
+  const reminders = new MemoryReminderStore();
+  const app = createGameApi({
+    attempts: new MemoryAttemptStore(), guides: new MemoryGuideStore(), store: new MemoryScores(),
+    source: 'reddit', community: () => 'Test', reminders, postId: () => 't3_verified',
+    player: async request => request.headers.get('x-owner') ? { id: 'owner', name: 'Owner' } : null,
+    now: () => new Date('2026-11-23T12:00:00Z'),
+  });
+  const send = (method: string, body?: unknown) => app.request('/api/me/reminder', {
+    method, headers: { 'Content-Type': 'application/json', 'x-owner': 'yes' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  assert.equal((await app.request('/api/me/reminder')).status, 401);
+  const initial: unknown = await (await send('GET')).json();
+  assert.ok(isDailyReminderSettings(initial));
+  assert.equal(initial.preference, null);
+  const choice = { time: '18:00', timeZone: 'Asia/Kolkata', generation: 0, userId: 'impostor', postId: 't3_impostor' };
+  const response = await send('PUT', choice);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  const saved: unknown = await response.json();
+  assert.ok(isDailyReminderSettings(saved));
+  assert.deepEqual(saved.preference, { time: '18:00', timeZone: 'Asia/Kolkata' });
+  assert.equal(saved.nextAt, '2026-11-23T12:30:00.000Z');
+  assert.equal((await reminders.read('owner'))?.postId, 't3_verified');
+  assert.equal(await reminders.read('impostor'), null);
+  for (const bad of [
+    { time: '24:00', timeZone: 'UTC' }, { time: '18:00', timeZone: 'Invalid/Zone' },
+    { time: '18:00:01', timeZone: 'UTC' }, { time: '18:00' },
+  ]) assert.equal((await send('PUT', { ...bad, generation: 0 })).status, 400);
+  assert.deepEqual((await reminders.read('owner'))?.preference, saved.preference);
+  const malformed = await app.request('/api/me/reminder', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-owner': 'yes' }, body: '{',
+  });
+  assert.equal(malformed.status, 400);
+  assert.equal((await send('POST', choice)).status, 405);
+  const off: unknown = await (await send('DELETE')).json();
+  assert.ok(isDailyReminderSettings(off));
+  assert.equal(off.preference, null);
+  assert.equal(await reminders.read('owner'), null);
+  assert.equal((await send('PUT', choice)).status, 409);
+  assert.equal(await reminders.read('owner'), null);
+  assert.equal((await send('PUT', { ...choice, generation: off.generation })).status, 200);
+});
+
+test('record removal stops only the current account reminders and local choices do not capture a Reddit post', async () => {
+  const reminders = new MemoryReminderStore();
+  const now = new Date('2026-11-23T12:00:00Z');
+  await reminders.save('peer', { time: '18:00', timeZone: 'UTC' }, 't3_peer', now, 0);
+  const app = createGameApi({
+    attempts: new MemoryAttemptStore(), guides: new MemoryGuideStore(), store: new MemoryScores(),
+    source: 'local', community: () => 'Test', reminders, player: async () => ({ id: 'owner', name: 'Owner' }), now: () => now,
+  });
+  const response = await app.request('/api/me/reminder', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ time: '18:00', timeZone: 'UTC', generation: 0 }),
+  });
+  const saved: unknown = await response.json();
+  assert.ok(isDailyReminderSettings(saved));
+  assert.equal(saved.source, 'local');
+  assert.equal((await reminders.read('owner'))?.postId, null);
+  assert.equal((await app.request('/api/me', { method: 'DELETE' })).status, 200);
+  assert.equal(await reminders.read('owner'), null);
+  assert.ok(await reminders.read('peer'));
 });

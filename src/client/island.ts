@@ -1283,10 +1283,13 @@ export class LivingIsland {
       const row = Math.floor(index / this.size);
       const col = index % this.size;
       tile.links.forEach((link) => { link.mesh.visible = canTraverse(this.board, { row, col }, { row: row + link.row, col: col + link.col }); });
-      tile.banks.forEach(bank => { bank.mesh.visible = !hasWater(this.board[row + bank.row]?.[col + bank.col]); });
       if (!tile.water) return;
       tile.water.uniforms['uOffset']?.value.set(col, row);
       const banks = waterBanks(this.board, { row, col });
+      tile.banks.forEach(bank => {
+        const edge = bank.row < 0 ? 'north' : bank.row > 0 ? 'south' : bank.col < 0 ? 'west' : 'east';
+        bank.mesh.visible = banks[edge];
+      });
       tile.water.uniforms['uShore']?.value.set(Number(banks.west), Number(banks.east), Number(banks.south), Number(banks.north));
       tile.water.uniforms['uCorners']?.value.set(Number(banks.southwest), Number(banks.southeast), Number(banks.northwest), Number(banks.northeast));
     });

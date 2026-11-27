@@ -1,5 +1,5 @@
 import { patchCells } from './rules.ts';
-import type { Cell, Puzzle, Shape, Swap } from './types.ts';
+import type { Board, Cell, Puzzle, Shape, Swap } from './types.ts';
 
 export type TutorialStage = 'check' | 'frame' | 'first' | 'second' | 'home';
 export const TUTORIAL_START_SHAPE: Shape = { rows: 1, cols: 2 };
@@ -27,6 +27,40 @@ export const TUTORIAL: Puzzle = {
   budget: 3,
   goals: [{ from: 'A', to: 'B' }, { from: 'B', to: 'C' }],
   journey: ['A', 'B', 'C'],
+};
+
+export interface TutorialRouteExample {
+  id: string;
+  board: Board;
+  route: readonly [Cell, Cell, ...Cell[]];
+  caption: string;
+}
+
+export const TUTORIAL_ROUTE_EXAMPLES: Record<'order' | 'once', readonly TutorialRouteExample[]> = {
+  order: [
+    {
+      id: 'ordered', board: ['......', '......', 'AoBoC.', '......', '......', '......'],
+      route: [{ row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }],
+      caption: 'A, then B, then C.',
+    },
+    {
+      id: 'out-of-order', board: ['......', '......', 'AoCoB.', '......', '......', '......'],
+      route: [{ row: 2, col: 0 }, { row: 2, col: 1 }, { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 2, col: 4 }],
+      caption: 'C before B does not count.',
+    },
+  ],
+  once: [
+    {
+      id: 'one-pass', board: ['.Bo...', 'AoC...', '......', '......', '......', '......'],
+      route: [{ row: 1, col: 0 }, { row: 1, col: 1 }, { row: 0, col: 1 }, { row: 0, col: 2 }, { row: 1, col: 2 }],
+      caption: 'One visit per square.',
+    },
+    {
+      id: 'repeat', board: ['.B....', 'AoC...', '......', '......', '......', '......'],
+      route: [{ row: 1, col: 0 }, { row: 1, col: 1 }, { row: 0, col: 1 }, { row: 1, col: 1 }, { row: 1, col: 2 }],
+      caption: 'Same square twice.',
+    },
+  ],
 };
 
 interface TutorialRepair {

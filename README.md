@@ -8,8 +8,8 @@ A daily miniature-landscape puzzle built for Reddit. Exchange matching patches
 of terrain, connect the homes in order, and watch the courier follow the road
 you made.
 
-[Play on Reddit](https://www.reddit.com/r/one_small_detour_dev/comments/1xweqdk/one_small_detour_a_little_change_a_different_way/) |
-[App listing](https://developers.reddit.com/apps/one-small-detour) |
+[Play on Reddit](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/) |
+[App listing](https://developers.reddit.com/apps/small-detour) |
 [Architecture](ARCHITECTURE.md) |
 [Submission guide](SUBMIT_STEP_BY_STEP.md)
 
@@ -23,6 +23,10 @@ you made.
   unranked; removing a result does not give another ranked turn.
 - **A little more tomorrow:** seven landscape themes and fresh road layouts
   bring variety to the same understandable rules.
+- **An optional inbox reminder:** Home's **Remind me daily** switch is off by
+  default. Choose a reminder time in the displayed timezone; unfinished Dailies
+  get at most one Reddit inbox message per edition. Phone alerts depend on
+  Reddit settings; this is not the gated native push-notifications feature.
 - **Keep exploring:** Practice has 1,000 active puzzles across 50 islands,
   with pairs, three-cell strips, 2x2 squares and four-cell Ls. Every road and
   bridge tile is necessary. Proved minima rise from 3 to 8 exchanges without
@@ -53,9 +57,15 @@ of a tall patch, or the top-left of a square/L. The outline shows the complete
 footprint. Tap the selected start again, or press Escape, to deselect.
 There is no Undo; every completed exchange counts.
 
+Water squares keep visible individual rims, even beside other water. The same
+tile boundaries appear in 3D and Flat; usable bridge ends remain unobstructed.
+These separators are visual and do not change road connections or selection.
+
 The tutorial keeps the original untimed, three-swap lesson and
-courier journey, then shows four concise illustrated cards: moving/fixed tiles,
-horizontal bridges, vertical bridges, and left/top/top-left selection. Grass
+courier journey, then shows six concise illustrated cards: the shown home order,
+no repeated road squares, moving/fixed tiles, horizontal bridges, vertical
+bridges, and left/top/top-left selection. Correct and incorrect routes contrast
+A-B-C with A-C-B and mark a reused road square with `2x`. Grass
 and trees share a movable icon. Both bridge cards show a valid end, a blocked
 side, and how a home accepts a connection on any side. Tap or click the same
 starting tile again to clear the first choice.
@@ -132,13 +142,32 @@ no added requests during ticks, and correct time after returning Home.
 
 The app uses **Devvit Web**, React, Three.js, TypeScript and Redis.
 The authorized playtest community is
-[r/one_small_detour_dev](https://www.reddit.com/r/one_small_detour_dev/).
+[r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/).
 The existing interactive post is retained; installation updates do not recreate
 the campaign or clear earned progress.
 
 The native app requests Reddit and Redis permissions. A moderator-menu action
 creates a post only when explicitly invoked. It does not auto-post, use
 post-as-user permissions or request external-fetch domains.
+
+The reminder scheduler checks due choices once a minute in bounded batches.
+Only explicitly opted-in accounts can receive a message, linking to the
+existing interactive post; it does not create another daily post. Completed
+or removed Daily turns are skipped. Missed windows are not sent more than an
+hour late or carried into another UTC edition. A reservation prevents retries,
+time changes and off/on toggles from producing duplicate messages. Failed or
+unconfirmed deliveries are reported on Home and in server logs; ambiguous
+sends are not automatically repeated.
+Opt-out retains a minimal reset generation, so stale or delayed enable requests
+cannot turn reminders back on without checking the current choice first.
+An unreadable or failed preference request shows **Not confirmed**, never a
+false Off state; players can check again or directly turn reminders off.
+
+Local rehearsal saves reminder choices in server memory across page reloads,
+not server restarts, and never sends messages or runs the Reddit scheduler.
+Deploying the changed app will register the recurring scheduler, but no account
+is subscribed automatically. Hosted delivery must still be verified in the
+authorized test community before a production release.
 
 App upload/playtest is distinct from broad marketplace publication.
 Use the configured test community; do not install into unrelated subreddits.
@@ -151,13 +180,18 @@ installation. Guests keep device-local progress. Original and replaced routes
 remain addressable under stable IDs; updates preserve old results without
 pretending that new boards were solved.
 
+When an island needs more stars, continuation opens the Practice map so the
+player can choose a completed stop to improve. No particular replay is assigned;
+ordinary continuation still opens the next new stop when its island is unlocked.
+
 Daily records expire after their retention window. Account data controls
 separate Daily records from Practice progress. A minimal used-turn marker
 prevents result deletion from granting another ranked turn on the same edition.
 
-Display timezone is read through the browser's `Intl` API. It is not stored,
-sent to Reddit, used for tracking, or used to create separate local-midnight
-leaderboards. Read the full [privacy description](PRIVACY.md).
+Display timezone is read through the browser's `Intl` API. The countdown alone
+does not transmit or save it. Opting into reminders saves the chosen time and
+timezone solely to schedule inbox messages, never for tracking or separate
+local-midnight leaderboards. Read the full [privacy description](PRIVACY.md).
 
 ## Repository map
 

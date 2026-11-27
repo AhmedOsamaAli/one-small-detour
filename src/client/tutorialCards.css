@@ -11,6 +11,21 @@
 .rule-flash-page { animation: rule-card-in 220ms ease-out; }
 .rule-flash-dialog figure { margin: 0; min-width: 0; text-align: center; }
 .rule-flash-dialog figcaption { font-size: 16px; font-weight: 700; line-height: 1.25; color: var(--ink); }
+.rule-route-lead { margin: 0 0 12px; color: var(--ink); font-size: 18px; font-weight: 650; line-height: 1.4; text-align: center; }
+.rule-route-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rule-route-order .rule-route-comparison { grid-template-columns: minmax(0, 1fr); }
+.rule-route-example { padding: 8px; border: 1px solid var(--accent-border); border-radius: 14px; background: var(--surface-soft); }
+.rule-route-picture { display: block; width: 100%; height: 160px; margin-bottom: 6px; }
+.rule-route-order .rule-route-picture { height: 70px; }
+.rule-route-example figcaption { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.rule-route-example figcaption > svg { flex-shrink: 0; }
+.rule-route-trail { fill: none; stroke: var(--green); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.rule-blocked .rule-route-trail { stroke: var(--error); }
+.rule-route-home-plaque { fill: #fff7de; stroke: #766954; }
+.rule-route-home-label { fill: #244d3b; font-size: 15px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
+.rule-route-repeat { fill: none; stroke: var(--error); stroke-width: 3; }
+.rule-route-repeat-badge { fill: var(--error); stroke: var(--surface); stroke-width: 1.5; }
+.rule-route-repeat-label { fill: var(--surface); font-size: 12px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
 .rule-terrain-groups { display: grid; gap: 10px; }
 .rule-terrain-group { padding: 10px; border: 1px solid var(--accent-border); border-radius: 14px; background: var(--surface-soft); }
 .rule-terrain-group h3 { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 8px; font: 700 22px/1.15 var(--serif); color: var(--green); letter-spacing: .4px; }
@@ -72,6 +87,10 @@
 }
 @media (max-width: 500px) and (max-height: 650px) {
   .rule-flash-content { padding-block: 8px; }
+  .rule-route-lead { margin-bottom: 8px; font-size: 16px; }
+  .rule-route-example { padding: 5px; }
+  .rule-route-picture { height: 96px; margin-bottom: 4px; }
+  .rule-route-order .rule-route-picture { height: 44px; }
   .rule-terrain-group { padding-block: 6px; }
   .rule-terrain-group h3 { margin-bottom: 4px; font-size: 20px; }
   .rule-terrain-tiles .tile-guide-glyph { max-width: 40px; margin-bottom: 4px; }
@@ -100,6 +119,13 @@
   .rule-terrain-group h3 { margin-bottom: 4px; font-size: 20px; }
   .rule-terrain-tiles .tile-guide-glyph { max-width: 44px; margin-bottom: 4px; }
   .rule-flash-dialog figcaption { font-size: 14px; }
+  .rule-route-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr); gap: 8px 12px; align-items: center; }
+  .rule-route-lead { margin: 0; font-size: 16px; }
+  .rule-route-comparison, .rule-route-order .rule-route-comparison { grid-column: 2; grid-row: 1 / 3; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rule-route-example { padding: 5px; }
+  .rule-route-picture { height: 72px; }
+  .rule-route-order .rule-route-picture { height: 54px; }
+  .rule-route-content > .rule-card-note { grid-column: 1; grid-row: 2; margin: 0; font-size: 14px; }
   .rule-bridge-content, .rule-start-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr); gap: 8px 12px; align-items: center; }
   .rule-home-connections { grid-column: 1; grid-row: 1; padding: 5px; margin: 0; gap: 6px; }
   .rule-home-picture { width: 44px; height: 44px; }

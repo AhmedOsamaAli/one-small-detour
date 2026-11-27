@@ -235,9 +235,11 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
   const done = useMemo(() => new Set([...achievements].filter(([, value]) => value.completed).map(([id]) => id)), [achievements]);
   const next = useMemo(() => nextCampaignPlace(places, completed, progress), [places, completed, progress]);
   const nextIndex = next ? entries.findIndex((place) => place.id === next.id) : -1;
+  const needsStars = next !== null && done.has(next.id);
+  const starWorld = needsStars ? worlds[progress.unlockedWorlds - 1] : null;
   const currentPlace = places.find(place => place.id === currentId);
   const currentIndex = currentPlace?.campaignSlot ?? currentPlace?.originalSlot ?? entries.findIndex((place) => place.id === currentId);
-  const focusIndex = nextIndex >= 0 ? nextIndex : Math.max(0, currentIndex >= 0 ? currentIndex : entries.length - 1);
+  const focusIndex = starWorld?.start ?? (nextIndex >= 0 ? nextIndex : Math.max(0, currentIndex >= 0 ? currentIndex : entries.length - 1));
   const metrics = useMemo(() => mapMetrics(viewport.width), [viewport.width]);
   const { rowGap, topInset, bottomInset } = metrics;
   const points = useMemo(() => entries.map((_, index) => mapNodePosition(index, metrics)), [entries, metrics]);
@@ -322,13 +324,14 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
     setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
-  const preview = entries.find((place) => place.id === previewId) ?? entries[focusIndex] ?? null;
+  const preview = entries.find((place) => place.id === previewId) ?? (needsStars ? null : entries[focusIndex] ?? null);
   const previewGate = preview ? gates.get(preview.id) : null;
   const previewIndex = preview ? entries.findIndex((place) => place.id === preview.id) : -1;
-  const previewWorld = worlds[Math.floor(Math.max(0, previewIndex) / PRACTICE_WORLD_SIZE)];
+  const previewWorld = preview ? worlds[Math.floor(Math.max(0, previewIndex) / PRACTICE_WORLD_SIZE)] : starWorld;
   const previewAchievement = preview ? achievements.get(preview.id) : undefined;
   const previewStars = previewAchievement?.stars ?? 0;
   const starsHere = previewWorld ? worldStars(previewWorld, places, completed, progress) : 0;
+  const starsNeeded = starWorld ? Math.max(0, worldStarRequirement(starWorld) - starsHere) : 0;
   const replay = previewAchievement?.solved === true;
   const credited = previewAchievement?.credited === true;
   const originalRoad = preview && credited ? completedOriginalRoad(places, completed, preview.id) : null;
@@ -344,11 +347,11 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
         return <MapStop key={place.id} place={place} index={index} point={point} originY={top} theme={world.theme}
           discovered={discovered} solved={achievements.get(place.id)?.solved === true} credited={achievements.get(place.id)?.credited === true}
           stars={achievements.get(place.id)?.stars ?? 0} unlocked={gate.unlocked}
-          next={index === nextIndex} current={place.id === currentId} previewed={place.id === preview?.id}
+          next={!needsStars && index === nextIndex} current={place.id === currentId} previewed={place.id === preview?.id}
           loading={loading !== null} onPreview={previewStop} onSelect={onSelect}/>;
       })}
     </div>;
-  }), [entries, points, gates, done, achievements, worlds, rowGap, worldHeight, nextIndex, currentId, preview?.id, loading, previewStop, onSelect]);
+  }), [entries, points, gates, done, achievements, worlds, rowGap, worldHeight, needsStars, nextIndex, currentId, preview?.id, loading, previewStop, onSelect]);
 
   return <div className="adventure-map" data-campaign-count={entries.length}>
     <div className="adventure-tools">
@@ -357,9 +360,10 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
         {previewWorld && <small className="world-star-total" data-testid="world-star-total">{starsHere} / {(previewWorld.end - previewWorld.start) * 3} stars</small>}
       </div>
       <div className="adventure-controls">
-        <button className="secondary-button adventure-focus" disabled={!entries.length} aria-label="Find my next stop"
-          title="Find my next stop" onClick={() => { setPreviewId(entries[focusIndex]?.id ?? null); panTo(focusOffset, true, true); }}>
-          <Icon name="map" size={18}/><span className="control-full">Find my stop</span><span className="control-short">Find stop</span>
+        <button className="secondary-button adventure-focus" disabled={!entries.length} aria-label={needsStars ? 'Find island needing stars' : 'Find my next stop'}
+          title={needsStars ? 'Find island needing stars' : 'Find my next stop'}
+          onClick={() => { setPreviewId(needsStars ? null : entries[focusIndex]?.id ?? null); panTo(focusOffset, true, true); }}>
+          <Icon name="map" size={18}/><span className="control-full">{needsStars ? 'Find island' : 'Find my stop'}</span><span className="control-short">{needsStars ? 'Island' : 'Find stop'}</span>
         </button>
         <button className="secondary-button adventure-daily" onClick={onToday} aria-label="Today's daily island">
           <Icon name="sun" size={18}/><span className="control-full">Daily challenge</span><span className="control-short">Daily</span>
@@ -373,7 +377,7 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
     </div>
     <div ref={scene} className={`adventure-scene connected-world ${dragging ? 'is-dragging' : ''}`} style={sceneStyle} tabIndex={0} role="region"
       aria-label="Connected ordered practice map. Scroll, swipe, drag or use arrow keys to explore. Home and End reach opposite ends."
-      data-campaign-offset={Math.round(offset.current * rowGap)} data-next-stop={nextIndex >= 0 ? nextIndex + 1 : 'complete'}
+      data-campaign-offset={Math.round(offset.current * rowGap)} data-next-stop={needsStars ? 'stars' : nextIndex >= 0 ? nextIndex + 1 : 'complete'}
       onScroll={(event) => rememberScroll(event.currentTarget)}
       onWheelCapture={(event) => { if (!event.ctrlKey && event.deltaY) followingNext.current = false; }}
       onPointerDown={(event) => {
@@ -423,8 +427,8 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
         <div className="adventure-markers">{markers}</div>
       </div>}
     </div>
-    <section className={`campaign-preview ${replay ? 'preview-done' : previewGate?.unlocked ? 'preview-ready' : 'preview-locked'}`}
-      aria-label="Selected stop preview" data-testid="campaign-preview">
+    <section className={`campaign-preview ${!preview ? 'preview-choice' : replay ? 'preview-done' : previewGate?.unlocked ? 'preview-ready' : 'preview-locked'}`}
+      aria-label={preview ? 'Selected stop preview' : 'Choose a Practice stop'} data-testid="campaign-preview">
       {preview && previewGate ? <>
         <div className="preview-copy">
           <div className="preview-eyebrow"><span>STOP {previewIndex + 1}</span><span className="preview-state">
@@ -442,7 +446,6 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
             replay ? crafted ? 'Your best is kept. Try a smaller detour.' : 'Your stars are kept. Find a more efficient road to improve them.' :
               crafted ? 'One road. Every home. In order.' : 'Connect every home in order. Discover your own best route.')}
         </p>
-        {artError && <button className="text-button" onClick={() => setArtRetry(value => value + 1)}>Retry map artwork</button>}
         <button className="primary-button campaign-play" disabled={!previewGate.unlocked || loading !== null}
           onClick={() => onSelect(preview.id)}
           aria-label={loading ? 'Opening practice stop' : previewGate.unlocked ? `${replay ? 'Replay' : 'Play'} stop ${previewIndex + 1}` : `Stop ${previewIndex + 1} is locked. ${previewGate.reason}`}>
@@ -451,7 +454,13 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
         </button>
         {originalRoad && <button className="text-button original-route-preview" disabled={loading !== null}
           onClick={() => onSelect(originalRoad)}><Icon name="book" size={16}/>Replay original road</button>}
+      </> : starWorld ? <>
+        <div className="preview-copy"><div className="preview-eyebrow">MORE STARS</div><h3>Choose a stop.</h3></div>
+        <p className={`star-choice-message ${artError ? 'adventure-error' : ''}`} role={artError ? 'alert' : 'status'} data-testid="practice-star-choice">
+          {artError ?? <>Pick a completed stop on this island with fewer than 3 stars. {starsNeeded} more {starsNeeded === 1 ? 'star opens' : 'stars open'} the next island.</>}
+        </p>
       </> : <p className="preview-message" role="status">Preparing your road...</p>}
+      {artError && <button className="text-button" onClick={() => setArtRetry(value => value + 1)}>Retry map artwork</button>}
     </section>
     <div className={`campaign-map-hint progress-sync ${sync?.phase === 'error' ? 'progress-sync-error' : ''}`} role={sync?.phase === 'error' ? 'alert' : 'status'}
       data-testid="practice-sync-status">

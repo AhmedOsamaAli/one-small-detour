@@ -5,6 +5,7 @@ import { Icon, JourneyCottage, LandscapeIllustration } from './components.tsx';
 import type { HomeDailyState } from './useDailyHome.ts';
 import type { DailyClock } from './nextDaily.ts';
 import { NextDailyCountdown } from './NextDailyCountdown.tsx';
+import { DailyReminderControl } from './DailyReminderControl.tsx';
 
 interface HomeProps {
   edition: Edition | null;
@@ -13,6 +14,8 @@ interface HomeProps {
   firstVisit: boolean;
   guestComplete: boolean;
   local: boolean;
+  signedIn: boolean;
+  reminderIdentity: string;
   nextPractice: CatalogEntry | null;
   nextPracticeNumber: number;
   completed: number;
@@ -84,21 +87,25 @@ export function GameHome(props: HomeProps) {
               <Icon name={firstVisit ? 'lock' : 'play'} size={17}/>{daily.status === 'checking' ? 'Checking today...' : 'Play today'}</button>}
         </div>
         {edition && <NextDailyCountdown clock={props.nextDailyClock}/>}
+        <DailyReminderControl key={props.reminderIdentity} signedIn={props.signedIn} local={props.local}/>
       </section>
       <section className="home-practice home-signpost" aria-labelledby="home-practice-title">
         <div className="home-signpost-heading"><Icon name="map" size={22}/><span className="eyebrow">PRACTICE</span>
           <span className="home-progress">{props.completed} / {props.total}</span></div>
-        <h2 id="home-practice-title">{props.nextPractice ? `Stop ${props.nextPracticeNumber}` : 'Every road discovered.'}</h2>
-        <p className="home-next-name" title={props.nextPractice?.title}>{props.practiceNeedsStars ? 'Earn stars for the next island.' :
+        <h2 id="home-practice-title">{props.practiceNeedsStars ? 'More stars needed.' :
+          props.nextPractice ? `Stop ${props.nextPracticeNumber}` : 'Every road discovered.'}</h2>
+        <p className={props.practiceNeedsStars ? 'home-star-guidance' : 'home-next-name'} title={props.practiceNeedsStars ? undefined : props.nextPractice?.title}>
+          {props.practiceNeedsStars ? 'Pick a completed stop on the map.' :
           props.nextPractice?.title.split(' / ')[0] ?? 'Revisit a favourite little place.'}</p>
         {props.syncError && <p className="inline-error" role="alert">{props.syncError}
           <button className="text-button" onClick={props.onRetrySync}>Retry sync</button></p>}
         {props.practiceError && <p className="inline-error" role="alert">{props.practiceError}</p>}
         <div className="home-actions">
-          <button className={complete ? 'primary-button' : 'secondary-button'} disabled={props.practiceBusy || props.practiceSyncing} onClick={props.onPractice}>
+          <button className={complete ? 'primary-button' : 'secondary-button'} disabled={props.practiceBusy || props.practiceSyncing} onClick={props.onPractice}
+            aria-label={props.practiceNeedsStars ? 'Choose a Practice stop for more stars' : undefined}>
             <Icon name="map" size={17}/>{props.practiceBusy ? 'Opening your road...' : props.practiceSyncing ? 'Finding your stop...' :
-              props.practiceNeedsStars ? 'Play for stars' : props.nextPractice ? 'Continue Practice' : 'Explore Practice'}</button>
-          <button className="text-button" onClick={props.onMap}><Icon name="map" size={16}/>Explore map</button>
+              props.practiceNeedsStars ? 'Choose on map' : props.nextPractice ? 'Continue Practice' : 'Explore Practice'}</button>
+          {!props.practiceNeedsStars && <button className="text-button" onClick={props.onMap}><Icon name="map" size={16}/>Explore map</button>}
         </div>
       </section>
     </div>

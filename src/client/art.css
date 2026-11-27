@@ -553,6 +553,9 @@
 .campaign-preview { gap: 10px; padding: 12px; }
 .campaign-preview .preview-copy h3 { font-size: 23px; margin: 7px 0; }
 .campaign-preview .preview-copy > .practice-stars { margin-bottom: 5px; }
+.campaign-preview.preview-choice .preview-copy { grid-column: 1 / -1; }
+.star-choice-message { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.star-choice-message.adventure-error { color: var(--error); }
 .progress-sync { min-height: 17px; line-height: 1.4; font-size: 11px; }
 .progress-sync-error { color: var(--error); flex-wrap: wrap; }
 .progress-sync-error > span { flex: 1; text-align: left; min-width: 100px; }
@@ -590,7 +593,7 @@
   .adventure-map > .adventure-scene { grid-column: 1; grid-row: 2; min-height: 100px; }
   .adventure-map > .campaign-preview { grid-column: 1; grid-row: 3; }
   .adventure-map > .campaign-map-hint { grid-column: 1; grid-row: 4; display: flex; }
-  .campaign-preview { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 5px 10px; padding: 10px; align-items: center; }
+  .campaign-preview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px; align-items: center; }
   .campaign-preview .preview-copy { grid-column: 1; grid-row: 1; min-height: 0; }
   .campaign-preview .preview-copy h3 { font-size: 19px; line-height: 1.15; margin: 4px 0; }
   .campaign-preview .preview-eyebrow { font-size: 11px; gap: 4px 6px; letter-spacing: .3px; }
@@ -598,15 +601,15 @@
   .campaign-preview .preview-facts { display: none; }
   .campaign-preview .preview-copy > .practice-stars { margin-bottom: 0; }
   .campaign-preview .preview-copy > .practice-stars { width: 52px; height: 16px; }
-  .campaign-preview .preview-message { display: none; grid-column: 1 / -1; grid-row: 2; font-size: 12px; max-height: 56px; overflow: auto; }
+  .campaign-preview .preview-message { display: none; grid-column: 1 / -1; grid-row: auto; font-size: 12px; max-height: 56px; overflow: auto; }
   .campaign-preview.preview-locked .preview-message, .campaign-preview .preview-message.adventure-error { display: block; }
-  .campaign-preview .campaign-play { grid-column: 2; grid-row: 1; padding-inline: 5px; font-size: 13px; white-space: normal; gap: 5px; line-height: 1.35; }
+  .campaign-preview .campaign-play { grid-column: 1 / -1; grid-row: auto; padding: 12px; white-space: normal; gap: 8px; line-height: 1.35; }
   .adventure-progress strong { font-size: 17px; line-height: 1.1; }
   .adventure-controls .secondary-button { min-width: 44px; padding: 5px 7px; }
 }
 @media (max-width: 340px) and (min-height: 501px) {
   .adventure-map { gap: 4px; }
-  .campaign-preview { grid-template-columns: minmax(0, 1fr) 76px; gap: 5px; padding: 6px; }
+  .campaign-preview { gap: 8px; padding: 8px; }
   .campaign-preview .preview-copy h3 { font-size: 16px; }
   .campaign-preview .preview-state { display: none; }
   .adventure-progress strong { font-size: 15px; }
@@ -632,6 +635,16 @@
 .completion-dialog .practice-completion-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .completion-dialog .practice-completion-actions > .primary-button:first-child { grid-column: 1 / -1; }
 .completion-dialog .practice-completion-actions > button { padding-inline: 8px; line-height: 1.35; }
+@media (max-width: 680px), (max-height: 500px) {
+  .completion-dialog .completion-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 12px; padding-bottom: 4px; }
+  .completion-dialog .completion-actions > button { min-height: 48px; padding: 12px; }
+  .completion-dialog .completion-actions > .primary-button,
+  .completion-dialog .completion-actions > button:only-child { grid-column: 1 / -1; }
+  .completion-dialog .completion-actions > button.primary-button { min-height: 52px; }
+}
+@media (max-width: 400px) {
+  .completion-dialog .completion-actions { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-height: 500px) {
   .completion-dialog .standings-view .rank-reveal { grid-template-columns: auto auto minmax(0, 1fr); align-items: center; }
   .completion-dialog .standings-view .rank-reveal > span:first-child { display: none; }
@@ -666,8 +679,8 @@
     radial-gradient(ellipse at 30% 20%, color-mix(in srgb, var(--world-water-light) 22%, var(--world-water)), var(--world-water) 85%);
   color: var(--world-foam);
   border-radius: 2px;
-  outline: 1.5px solid var(--world-water);
-  box-shadow: none;
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--world-soil-edge);
 }
 .flat-ripples { position: absolute; inset: 17% 12%; pointer-events: none; }
 .flat-ripples::before, .flat-ripples::after {

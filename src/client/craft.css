@@ -159,7 +159,7 @@
 }
 .craft-preview :is(.terrain-water, .terrain-bridge) {
   background: radial-gradient(ellipse at 35% 20%, var(--world-water-light), var(--world-water) 74%);
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--world-water) 60%, #203e3e);
+  box-shadow: inset 0 0 0 1px var(--world-soil-edge), inset 0 1px 2px color-mix(in srgb, var(--world-water) 60%, #203e3e);
 }
 .craft-shore { position: absolute; z-index: 1; width: 100%; height: 12%; left: 0; top: 0; background: linear-gradient(var(--world-soil-edge), color-mix(in srgb, var(--world-soil-edge) 70%, var(--world-water-light)) 40%, transparent); pointer-events: none; }
 .craft-shore.shore-south { top: auto; bottom: 0; transform: rotate(180deg); }

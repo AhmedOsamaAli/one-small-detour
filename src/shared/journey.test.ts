@@ -1,12 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkPuzzle, checkRoutes, planJourney, RULE_VERSION, validateRepair } from './rules.ts';
+import { canTraverse, checkPuzzle, checkRoutes, isAnchor, planJourney, RULE_VERSION, tileAt, validateRepair } from './rules.ts';
 import { generateChallenge, seedOf } from './generation.ts';
 import { dailyPuzzleForDate, editionForDate, getSeasonPuzzles } from './puzzles.ts';
 import { certifyMinimum, pavingLowerBound } from './difficulty.ts';
 import { ARRIVAL_PAUSE_MS, CelebrationHold, COMPLETION_CELEBRATION_MS, JourneyPlayer, WALK_STEP_MS } from './playback.ts';
 import { isPuzzle } from './validation.ts';
 import type { Board, JourneyPlan } from './types.ts';
+import { TUTORIAL, TUTORIAL_ROUTE_EXAMPLES } from './tutorial.ts';
+
+test('tutorial home-order pictures reject the wrong order without repeating a square', () => {
+  for (const [index, example] of TUTORIAL_ROUTE_EXAMPLES.order.entries()) {
+    assert.equal(checkPuzzle(example.board, TUTORIAL).solved, index === 0, example.id);
+    assert.deepEqual(example.route.map(cell => tileAt(example.board, cell)).filter(isAnchor),
+      index === 0 ? ['A', 'B', 'C'] : ['A', 'C', 'B']);
+    assert.equal(new Set(example.route.map(cell => `${cell.row}:${cell.col}`)).size, example.route.length);
+    for (let step = 1; step < example.route.length; step++) {
+      assert.equal(canTraverse(example.board, example.route[step - 1]!, example.route[step]!), true);
+    }
+  }
+});
+
+test('tutorial one-visit pictures reject retracing even when homes are reached in order', () => {
+  for (const [index, example] of TUTORIAL_ROUTE_EXAMPLES.once.entries()) {
+    assert.equal(checkPuzzle(example.board, TUTORIAL).solved, index === 0, example.id);
+    assert.deepEqual(example.route.map(cell => tileAt(example.board, cell)).filter(isAnchor), ['A', 'B', 'C']);
+    const squares = new Set(example.route.map(cell => `${cell.row}:${cell.col}`));
+    assert.equal(squares.size, example.route.length - (index === 0 ? 0 : 1));
+    for (let step = 1; step < example.route.length; step++) {
+      assert.equal(canTraverse(example.board, example.route[step - 1]!, example.route[step]!), true);
+    }
+  }
+});
 
 test('ordered journey cannot visit C before B, even when separate connections exist', () => {
   const board: Board = ['AoCoBo', '......', '......', '......', '......', '......'];

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sceneryOrigins, tileScenery, waterBanks } from './scenery.ts';
+import { applySwap } from '../shared/rules.ts';
 import type { Swap } from '../shared/types.ts';
 
 test('decorative terrain identities follow exchanges and reverse exactly with Undo', () => {
@@ -51,13 +52,42 @@ test('L scenery identities move with the four selected cells, not the two notch 
   assert.deepEqual(sceneryOrigins(6, [move, move]), initial);
 });
 
-test('joined water and bridges have no internal bank, including diagonal shore corners', () => {
+test('water squares retain every rim beside water and bridges, including inside a two-by-two pool', () => {
   assert.deepEqual(waterBanks(['.~.', 'h~v', '.~.'], { row: 1, col: 1 }), {
-    west: false, east: false, south: false, north: false,
+    west: true, east: true, south: true, north: true,
     southwest: true, southeast: true, northwest: true, northeast: true,
   });
   assert.deepEqual(waterBanks(['~~', '~~'], { row: 0, col: 0 }), {
-    west: true, east: false, south: false, north: true,
-    southwest: true, southeast: false, northwest: true, northeast: true,
+    west: true, east: true, south: true, north: true,
+    southwest: true, southeast: true, northwest: true, northeast: true,
   });
+});
+
+test('bridge rims leave valid ends open but keep the sides and incompatible bridge ends outlined', () => {
+  assert.deepEqual(waterBanks(['.~.', 'ohB', '.~.'], { row: 1, col: 1 }), {
+    west: false, east: false, south: true, north: true,
+    southwest: true, southeast: true, northwest: true, northeast: true,
+  });
+  assert.deepEqual(waterBanks(['.A.', '~v~', '.o.'], { row: 1, col: 1 }), {
+    west: true, east: true, south: false, north: false,
+    southwest: true, southeast: true, northwest: true, northeast: true,
+  });
+  assert.deepEqual(waterBanks(['.~.', 'vhv', '.~.'], { row: 1, col: 1 }), {
+    west: true, east: true, south: true, north: true,
+    southwest: true, southeast: true, northwest: true, northeast: true,
+  });
+});
+
+test('water and bridge boundaries follow the current board after an actual patch exchange', () => {
+  const board = ['......', 'AhhooB', '~~~~~~', '......', '......', '......'];
+  const exchanged = applySwap(board, {
+    a: { row: 1, col: 1 }, b: { row: 2, col: 1 }, rows: 1, cols: 2,
+  }, { areas: [2], budget: 2 });
+  assert.equal(waterBanks(board, { row: 1, col: 1 }).east, false);
+  assert.equal(waterBanks(exchanged, { row: 1, col: 1 }).east, true);
+  const movedBridge = waterBanks(exchanged, { row: 2, col: 1 });
+  assert.equal(movedBridge.west, true);
+  assert.equal(movedBridge.east, false);
+  assert.equal(movedBridge.north, true);
+  assert.equal(movedBridge.south, true);
 });

@@ -110,6 +110,7 @@ export default function App() {
   const dark = appearance === 'dark';
   useLayoutEffect(() => { document.documentElement.dataset['appearance'] = appearance; }, [appearance]);
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
+  const [reminderRevision, setReminderRevision] = useState(0);
   const dailyClock = useMemo(() => bootstrap ? createDailyClock(bootstrap.nextReset, bootstrap.now, Date.now()) : null, [bootstrap]);
   const catalogRef = useRef<readonly CatalogEntry[]>(EMPTY_CATALOG);
   catalogRef.current = bootstrap?.catalog ?? EMPTY_CATALOG;
@@ -415,7 +416,6 @@ export default function App() {
   const nextCampaign = useMemo(() => nextCampaignPlace(catalog, preferences.completed, practiceProgress), [catalog, preferences.completed, practiceProgress]);
   const nextCampaignIndex = nextCampaign ? campaign.findIndex((place) => place.id === nextCampaign.id) : -1;
   const replayForStars = nextCampaign !== null && achievements.get(nextCampaign.id)?.completed === true;
-  const starRepairLabel = nextCampaign && achievements.get(nextCampaign.id)?.solved ? 'Replay for stars' : 'Play for stars';
   const currentAchievement = currentCampaignIndex >= 0 ? achievements.get(campaign[currentCampaignIndex]?.id ?? '') : undefined;
   const originalTarget = run?.kind === 'studio' && currentCampaignIndex >= 0 ? run.puzzle.archived ?
     campaign[currentCampaignIndex]?.id : completedOriginalRoad(catalog, preferences.completed, run.puzzle.id) : null;
@@ -718,6 +718,14 @@ export default function App() {
     });
   };
 
+  const continuePractice = (): void => {
+    if (replayForStars || !nextCampaign) {
+      setResultDismissed(true);
+      setDialogError(null);
+      setDialog('atlas');
+    } else openPractice(nextCampaign.id);
+  };
+
   const toggleSound = async (): Promise<void> => {
     const instrument = audio.current;
     if (!instrument) return;
@@ -947,6 +955,8 @@ export default function App() {
     {!loading && !loadError && screen === 'home' && bootstrap && dailyClock && <GameHome
       edition={bootstrap.edition} nextDailyClock={dailyClock} daily={homeDaily.state} firstVisit={!preferences.seenGuides.includes('basics')}
       guestComplete={guestDailyComplete} local={bootstrap.source === 'local'} nextPractice={nextCampaign}
+      signedIn={bootstrap.playerName !== null}
+      reminderIdentity={JSON.stringify([bootstrap.source, bootstrap.community, bootstrap.playerName, reminderRevision])}
       nextPracticeNumber={nextCampaignIndex + 1} completed={[...achievements.values()].filter(value => value.completed).length}
       total={campaign.length} practiceBusy={practiceLoading !== null} practiceSyncing={progressSync.phase === 'loading'}
       practiceNeedsStars={replayForStars}
@@ -959,7 +969,7 @@ export default function App() {
           setScreen('results');
         }
       }}
-      onPractice={() => { if (nextCampaign) openPractice(nextCampaign.id); else { setDialogError(null);setDialog('atlas'); } }}
+      onPractice={continuePractice}
       onMap={() => { setDialogError(null);setDialog('atlas'); }}/> }
     {!loading && !loadError && screen === 'results' && recordedDaily && <SavedDailyResults key={recordedDaily.edition.id}
       edition={recordedDaily.edition} result={recordedDaily.result}
@@ -1121,7 +1131,7 @@ export default function App() {
               </p>
             </div>}
             {run.kind === 'studio' && currentCampaignIndex >= 0 && <p className="completion-next">
-              {replayForStars ? `${starRepairLabel === 'Replay for stars' ? 'Replay' : 'Play'} stop ${nextCampaignIndex + 1} for more stars.` :
+              {replayForStars ? 'Choose a completed stop on the map for more stars.' :
                 nextCampaignIndex === currentCampaignIndex + 1 ? `Next: stop ${nextCampaignIndex + 1}.` :
                 nextCampaign ? 'Your next stop is ready.' : `All ${campaign.length} stops complete.`}
             </p>}
@@ -1129,7 +1139,8 @@ export default function App() {
               {worldStars(gateWorld, catalog, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title}.
               {' '}Replay earlier stops to open the next island.
             </p>}
-            {run.kind === 'daily' && nextCampaign && <p className="completion-next">Continue in unranked Practice: stop {nextCampaignIndex + 1}.</p>}
+            {run.kind === 'daily' && nextCampaign && <p className="completion-next">{replayForStars ?
+              'Choose a completed Practice stop on the map for more stars.' : `Continue in unranked Practice: stop ${nextCampaignIndex + 1}.`}</p>}
             {run.kind === 'daily' && <p className={`score-save-status ${saveError ? 'save-failed' : ''}`} data-testid="save-status">
               <Icon name={saveError ? 'warning' : 'trophy'} size={14}/>
               {autoSaveSuppressed ? firstResultOnly ? "Records removed. Today's ranked turn stays used." : 'Records removed. Begin a fresh attempt to rank again.' :
@@ -1153,8 +1164,8 @@ export default function App() {
                 {run.kind === 'daily' && replayRankError && <button className="secondary-button" onClick={() => setReplayRankRetry((current) => current + 1)}
                   aria-label="Retry loading recorded rank"><Icon name="reset" size={17}/>Retry rank</button>}
                 {nextCampaign && <button className="primary-button" disabled={publishing || practiceLoading !== null}
-                  onClick={() => { if (nextCampaign) openPractice(nextCampaign.id); }} aria-label={replayForStars ? starRepairLabel : 'Continue your journey'}>
-                  {replayForStars ? starRepairLabel : CRAFT_PREVIEW ? 'Next stop' : 'Continue your journey'} <Icon name="arrow" size={17}/>
+                  onClick={continuePractice} aria-label={replayForStars ? 'Choose a Practice stop for more stars' : 'Continue your journey'}>
+                  {replayForStars ? 'Choose on map' : CRAFT_PREVIEW ? 'Next stop' : 'Continue your journey'} <Icon name="arrow" size={17}/>
                 </button>}
                 {run.kind === 'studio' && <button className="secondary-button" disabled={practiceLoading !== null}
                   onClick={() => openPractice(run.puzzle.id)} aria-label="Replay this Practice stop"><Icon name="reset" size={17}/>Replay</button>}
@@ -1187,7 +1198,7 @@ export default function App() {
         {CRAFT_PREVIEW ? 'Swap two matching patches.' : <>Connect A, then B, then C with one unbroken road. C is the final home here.
         The courier waits at A until the whole road is ready, then visits every home in order.
         No gaps, diagonals or revisiting a square.</>}</p>
-      <p className="tour-reassurance"><Icon name="clock" size={18}/>One lesson. Four short cards. No clock.</p>
+      <p className="tour-reassurance"><Icon name="clock" size={18}/>One lesson. Six short cards. No clock.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => setDialog(CRAFT_PREVIEW ? null : 'tour-tools')}>{CRAFT_PREVIEW ? 'Try a little swap' : 'See the moves'} <Icon name="arrow" size={17}/></button></div>
     </Modal>}
@@ -1207,7 +1218,7 @@ export default function App() {
             onClick={() => setPreferences((current) => ({ ...current, flat: true }))}><Icon name="grid" size={18}/>Try Flat</button>
         </div>
       </div>
-      <p className="tutorial-next">Next: one hands-on lesson, then four illustrated rule cards.</p>
+      <p className="tutorial-next">Next: one hands-on lesson, then six illustrated rule cards.</p>
       <div className="dialog-actions"><button className="secondary-button" onClick={() => finishWalkthrough(true)}>Back home</button>
         <button className="primary-button" onClick={() => setDialog(null)}>Show me <Icon name="arrow" size={17}/></button></div>
     </Modal>}
@@ -1290,10 +1301,10 @@ export default function App() {
     </Modal>}
 
     {dialog === 'erase' && <Modal title="Remove saved scores?" kind="erase" headerControl={soundToggle} onClose={() => setDialog(null)}>
-      <p className="dialog-intro">Remove your rankings, active timers and synced guide choices from this game community. This cannot be undone.
+      <p className="dialog-intro">Remove your rankings, active timers, synced guide choices and inbox reminders from this game community. This cannot be undone.
         Removing a Daily result does not give another ranked turn for that edition.</p>
       <div className="data-choice-grid">
-        <div className="data-choice data-remove"><Icon name="trash" size={24}/><strong>Records removed</strong><p>Saved ranks, active timers and synced guide choices.</p></div>
+        <div className="data-choice data-remove"><Icon name="trash" size={24}/><strong>Records removed</strong><p>Saved ranks, active timers, synced guide choices and inbox reminders.</p></div>
         <div className="data-choice data-keep"><Icon name="leaf" size={24}/><strong>Your road stays</strong><p>Campaign progress, view and sound choices.</p></div>
       </div>
       {dialogError && <p className="inline-error" role="alert"><Icon name="warning" size={18}/>{dialogError}</p>}
@@ -1310,10 +1321,11 @@ export default function App() {
           setPublished(false);
           setMyRank(null);
           setPreferences((current) => ({ ...current, seenGuides: [] }));
+          setReminderRevision(value => value + 1);
           setDialog(null);
           if (erasedLanding && erasedRevision === currentRevision.current) visitToday();
           else if (screen === 'home') homeDaily.refresh();
-          notify('Your leaderboard records were removed.');
+          notify('Your leaderboard records and inbox reminders were removed.');
         })
           .catch((error: unknown) => { console.error('Could not erase leaderboard data:', error); setDialogError(messageOf(error)); })
           .finally(() => setPublishing(false));
