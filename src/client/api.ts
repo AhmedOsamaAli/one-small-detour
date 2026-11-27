@@ -77,6 +77,35 @@ async function progressRequest(method: 'GET' | 'POST' | 'DELETE', body?: object)
 
 const placeCache = new Map<string, Puzzle>();
 const placeInFlight = new Map<string, Promise<Puzzle>>();
+const standingsCache = new Map<string, { board: DailyLeaderboard; fetchedAt: number }>();
+const standingsInFlight = new Map<string, Promise<DailyLeaderboard>>();
+const STANDINGS_FRESH_MS = 15_000;
+
+function fetchStandings(edition: string, force = false): Promise<DailyLeaderboard> {
+  const cached = standingsCache.get(edition);
+  if (!force && cached && Date.now() - cached.fetchedAt < STANDINGS_FRESH_MS) {
+    return Promise.resolve(cached.board);
+  }
+  const running = standingsInFlight.get(edition);
+  if (running) return running;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
+  const promise = request(`/api/leaderboard?edition=${encodeURIComponent(edition)}&mode=daily`, isDailyLeaderboard, { signal: controller.signal })
+    .then((board) => {
+      standingsCache.set(edition, { board, fetchedAt: Date.now() });
+      return board;
+    })
+    .catch((error: unknown) => {
+      if (controller.signal.aborted) throw new Error('Standings took too long. Retry when your connection is ready.');
+      throw error;
+    })
+    .finally(() => {
+      window.clearTimeout(timeout);
+      standingsInFlight.delete(edition);
+    });
+  standingsInFlight.set(edition, promise);
+  return promise;
+}
 
 function fetchPlace(id: string): Promise<Puzzle> {
   const cached = placeCache.get(id);
@@ -131,16 +160,13 @@ export const gameApi = {
     }),
   myRank: (edition: string, signal?: AbortSignal): Promise<MyRank> =>
     request(`/api/my-rank?edition=${encodeURIComponent(edition)}`, isMyRank, signal ? { signal } : {}),
-  standings: async (edition: string): Promise<DailyLeaderboard> => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8000);
-    try {
-      return await request(`/api/leaderboard?edition=${encodeURIComponent(edition)}&mode=daily`, isDailyLeaderboard, { signal: controller.signal });
-    } catch (error) {
-      if (controller.signal.aborted) throw new Error('Standings took too long. Retry when your connection is ready.');
-      throw error;
-    } finally { window.clearTimeout(timeout); }
+  peekStandings: (edition: string): DailyLeaderboard | null => standingsCache.get(edition)?.board ?? null,
+  prefetchStandings: (edition: string): void => {
+    const cached = standingsCache.get(edition);
+    if ((cached && Date.now() - cached.fetchedAt < STANDINGS_FRESH_MS) || standingsInFlight.has(edition)) return;
+    void fetchStandings(edition, false).catch(() => { /* Background prefetch is best-effort. */ });
   },
+  standings: (edition: string, force = false): Promise<DailyLeaderboard> => fetchStandings(edition, force),
   rememberGuides: async (topics: readonly GuideTopic[]): Promise<void> => {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 8000);
@@ -154,15 +180,21 @@ export const gameApi = {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 15_000);
     try {
-      return await request('/api/repairs', isSavedRepair, {
+      const saved = await request('/api/repairs', isSavedRepair, {
         method: 'POST', body: JSON.stringify(repair), signal: controller.signal,
       });
+      standingsCache.delete(repair.edition);
+      return saved;
     } catch (error) {
       if (controller.signal.aborted) throw new Error('Saving took too long. Retry save; your repair is safe.');
       throw error;
     } finally { window.clearTimeout(timeout); }
   },
-  erase: (): Promise<{ deleted: true }> => request('/api/me',
-    (data): data is { deleted: true } => isRecord(data) && data['deleted'] === true,
-    { method: 'DELETE' }),
+  erase: async (): Promise<{ deleted: true }> => {
+    const result = await request('/api/me',
+      (data): data is { deleted: true } => isRecord(data) && data['deleted'] === true,
+      { method: 'DELETE' });
+    standingsCache.clear();
+    return result;
+  },
 };

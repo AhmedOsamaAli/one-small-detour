@@ -368,9 +368,9 @@
 .craft-preview .daily-standings table { font-size: 13.5px; }
 .craft-preview .daily-standings[data-density="spacious"] table { font-size: 14.5px; }
 .craft-preview .daily-standings[data-density="roomy"] table { font-size: 14px; }
-.craft-preview .daily-standings .standing-rank { width: 28px; }
-.craft-preview .daily-standings .standing-moves { width: 48px; }
-.craft-preview .daily-standings .standing-time { width: 64px; }
+.craft-preview .daily-standings .standing-rank { width: 30px; }
+.craft-preview .daily-standings .standing-moves { width: 52px; }
+.craft-preview .daily-standings .standing-time { width: 68px; }
 .craft-preview .daily-standings h3 { font-weight: 600; }
 .craft-preview .saved-daily-heading > .eyebrow { font-size: 12px; letter-spacing: .6px; }
 .craft-preview .saved-daily-heading > p:last-child { font-size: 13px; }
@@ -387,9 +387,9 @@
 }
 @media (max-width: 680px) {
   .craft-preview .daily-standings[data-density="compact"] table { font-size: 13.5px; }
-  .craft-preview .daily-standings .standing-rank { width: 24px; }
-  .craft-preview .daily-standings .standing-moves { width: 44px; }
-  .craft-preview .daily-standings .standing-time { width: 56px; }
+  .craft-preview .daily-standings .standing-rank { width: 26px; }
+  .craft-preview .daily-standings .standing-moves { width: 46px; }
+  .craft-preview .daily-standings .standing-time { width: 58px; }
   .app-shell.craft-preview .campaign-preview .campaign-play { min-height: 42px; font-size: 14px; border-radius: 12px; }
 }
 @media (max-height: 680px) and (max-width: 680px) {

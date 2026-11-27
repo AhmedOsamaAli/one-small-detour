@@ -29,6 +29,8 @@ import { SavedDailyResults } from './SavedDailyResults.tsx';
 import type { RecordedDailyRank } from './SavedDailyResults.tsx';
 import { CraftArtContext, CraftFinishCourier, CraftScene } from './CraftArt.tsx';
 import { CraftTerrainDefinitions } from './CraftTerrainArt.tsx';
+import { loadGardenImages } from './gardenAssets.ts';
+import { loadLandscapeArt } from './LandscapeArt.tsx';
 import { GameHome } from './GameHome.tsx';
 import { useDailyHome } from './useDailyHome.ts';
 import { createDailyClock } from './nextDaily.ts';
@@ -435,31 +437,38 @@ export default function App() {
   }, [currentWorld, worlds.length, practiceProgress.unlockedWorlds, campaign, achievements]);
   const gateWorldStars = useMemo(() => gateWorld ? worldStarsFromAchievements(gateWorld, campaign, achievements) : 0, [gateWorld, campaign, achievements]);
 
-  // Silently warm the next Practice stop so Continue / Next opens with zero network wait.
+  // Silently warm the next Practice stop and Today's Top 10 so navigation opens with zero network wait.
   useEffect(() => {
     if (!bootstrap) return;
     if (screen === 'home' && nextCampaign && !replayForStars) gameApi.prefetchPlace(nextCampaign.id);
+    if (screen === 'home' && homeDaily.state.status === 'complete') gameApi.prefetchStandings(homeDaily.state.edition);
     if (screen === 'game' && run?.kind === 'studio' && currentCampaignIndex >= 0) {
       const upcoming = campaign[currentCampaignIndex + 1];
       if (upcoming) gameApi.prefetchPlace(upcoming.id);
     }
-  }, [bootstrap, screen, nextCampaign, replayForStars, run?.kind, currentCampaignIndex, campaign]);
+  }, [bootstrap, screen, nextCampaign, replayForStars, homeDaily.state, run?.kind, currentCampaignIndex, campaign]);
 
-  // Warm the 3D engine and models during idle time on Home so tapping Play starts smoothly.
+  // Warm 3D engine/models, Flat sprites, and Practice Map artwork during idle time on Home.
   useEffect(() => {
-    if (!bootstrap || screen !== 'home' || preferences.flat) return;
+    if (!bootstrap || screen !== 'home') return;
     let cancelled = false;
     const warm = (): void => {
       if (cancelled) return;
-      void import('./island.ts').catch(() => { /* Best-effort preload. */ });
-      if (CRAFT_PREVIEW) void import('./craftWorld.ts').then((m) => m.loadCraftWorld()).catch(() => { /* Best-effort preload. */ });
+      if (!preferences.flat) {
+        void import('./island.ts').catch(() => { /* Best-effort preload. */ });
+        if (CRAFT_PREVIEW) void import('./craftWorld.ts').then((m) => m.loadCraftWorld()).catch(() => { /* Best-effort preload. */ });
+      }
+      if (GARDEN_PREVIEW) {
+        void loadGardenImages(CRAFT_PREVIEW).catch(() => { /* Best-effort preload. */ });
+        void loadLandscapeArt(CRAFT_PREVIEW).catch(() => { /* Best-effort preload. */ });
+      }
     };
     const ric = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void });
     if (typeof ric.requestIdleCallback === 'function') {
-      const id = ric.requestIdleCallback(warm, { timeout: 1500 });
+      const id = ric.requestIdleCallback(warm, { timeout: 1200 });
       return () => { cancelled = true; ric.cancelIdleCallback?.(id); };
     }
-    const timerId = window.setTimeout(warm, 350);
+    const timerId = window.setTimeout(warm, 300);
     return () => { cancelled = true; window.clearTimeout(timerId); };
   }, [bootstrap, screen, preferences.flat]);
   const playback = useMemo<JourneyPlayback | null>(() => {
@@ -897,16 +906,19 @@ export default function App() {
     const request = ++standingsRequest.current;
     const savedRevision = currentRevision.current;
     if (open) setStandingsOpen(true);
-    setStandings({ status: 'loading' });
+    const cached = gameApi.peekStandings(run.edition);
+    setStandings(cached ? { status: 'ready', board: cached } : { status: 'loading' });
     try {
-      const board = await gameApi.standings(run.edition);
+      const board = await gameApi.standings(run.edition, !cached);
       if (request !== standingsRequest.current || savedRevision !== currentRevision.current) return;
       setStandings({ status: 'ready', board });
       setCommunity({ players: board.players, source: board.source });
       setCommunityError(null);
     } catch (error) {
       console.error('Could not load Daily standings:', error);
-      if (request === standingsRequest.current && savedRevision === currentRevision.current) setStandings({ status: 'error', message: messageOf(error) });
+      if (request === standingsRequest.current && savedRevision === currentRevision.current && !cached) {
+        setStandings({ status: 'error', message: messageOf(error) });
+      }
     }
   }, [won, run]);
 

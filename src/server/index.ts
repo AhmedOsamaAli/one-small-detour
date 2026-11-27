@@ -163,12 +163,36 @@ const guides: GuideStore = {
   },
 };
 
+const ACCOUNT_CACHE_TTL_MS = 300_000;
+const activeAccounts = new Map<string, { name: string; checkedAt: number }>();
+
+function rememberActiveAccount(id: string, name: string): void {
+  if (activeAccounts.size >= 500) {
+    const oldest = activeAccounts.keys().next().value;
+    if (oldest !== undefined) activeAccounts.delete(oldest);
+  }
+  activeAccounts.set(id, { name, checkedAt: Date.now() });
+}
+
+async function resolveAccountExists(id: string): Promise<boolean> {
+  if (!isRedditId(id)) return false;
+  const cached = activeAccounts.get(id);
+  if (cached && Date.now() - cached.checkedAt < ACCOUNT_CACHE_TTL_MS) return true;
+  const user = await reddit.getUserById(id);
+  if (user) {
+    rememberActiveAccount(id, user.username);
+    return true;
+  }
+  activeAccounts.delete(id);
+  return false;
+}
+
 const practice = new RedisPracticeStore(redis);
 const reminders = new RedisReminderStore(redis);
 const dailyRanking = new IndexedDailyRanking(redis, {
   remember: rememberScoreKey,
   keys: async (id) => Object.keys(await redis.hGetAll(`detour:player-records:${id}`)),
-  accountExists: async (id) => isRedditId(id) && Boolean(await reddit.getUserById(id)),
+  accountExists: resolveAccountExists,
   eraseOtherData: async (id) => { await reminders.erase(id); await attempts.erase(id); await store.erase(id); await guides.erase(id); await practice.erase(id); },
 });
 
@@ -185,10 +209,21 @@ const app = createGameApi({
   player: async () => {
     const id = context.userId;
     if (!id || !isRedditId(id)) return null;
+    // Use Reddit's request-context username directly (0ms) instead of an RPC per call.
+    if (typeof context.username === 'string' && context.username.length > 0) {
+      rememberActiveAccount(id, context.username);
+      return { id, name: context.username };
+    }
+    const cached = activeAccounts.get(id);
+    if (cached && Date.now() - cached.checkedAt < ACCOUNT_CACHE_TTL_MS) {
+      return { id, name: cached.name };
+    }
     const user = await reddit.getUserById(id);
-    return user ? { id, name: user.username } : null;
+    if (!user) return null;
+    rememberActiveAccount(id, user.username);
+    return { id, name: user.username };
   },
-  accountExists: async (id) => isRedditId(id) && Boolean(await reddit.getUserById(id)),
+  accountExists: resolveAccountExists,
 });
 
 const internal = new Hono();

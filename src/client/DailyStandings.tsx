@@ -4,6 +4,18 @@ import { useCraftArt } from './CraftArt.tsx';
 
 export type StandingsState = { status: 'idle' } | { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; board: DailyLeaderboard };
 
+function RankBadge({ rank }: { rank: number }) {
+  if (rank < 1 || rank > 3) return <>{rank}</>;
+  const medal = rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze';
+  return <span className={`rank-medal rank-medal-${medal}`} data-medal={medal} aria-label={`Rank ${rank}, ${medal} medal`}>
+    <svg className="rank-medal-icon" viewBox="0 0 20 20" aria-hidden="true">
+      <circle cx="10" cy="10" r="8.5" className="rank-medal-disc"/>
+      <circle cx="10" cy="10" r="6.5" className="rank-medal-rim"/>
+    </svg>
+    <span className="rank-medal-num">{rank}</span>
+  </span>;
+}
+
 export function DailyStandings({ state, edition, onRetry }: { state: StandingsState; edition: string; onRetry: () => void }) {
   const crafted = useCraftArt();
   if (state.status === 'idle' || state.status === 'loading') return <p role="status">Loading current standings...</p>;
@@ -22,13 +34,13 @@ export function DailyStandings({ state, edition, onRetry }: { state: StandingsSt
     {!leaders.length ? <p className="standings-empty">No saved finishers yet.</p> : <table>
       <caption className="sr-only">Current Daily top ten by moves, then time</caption>
       <colgroup><col className="standing-rank"/><col/><col className="standing-moves"/><col className="standing-time"/></colgroup>
-      <thead><tr><th scope="col" className="standing-num">#</th><th scope="col">Player</th><th scope="col" className="standing-num">Moves</th><th scope="col" className="standing-num">Time</th></tr></thead>
+      <thead><tr><th scope="col" className="standing-num standing-rank-col">#</th><th scope="col">Player</th><th scope="col" className="standing-num standing-moves-col">Moves</th><th scope="col" className="standing-num standing-time-col">Time</th></tr></thead>
       <tbody>{leaders.map((entry) => <tr key={entry.userId} className={entry.isYou ? 'standing-you' : undefined}>
-        <td className="standing-num">{entry.rank}</td><th scope="row" title={entry.name}><span className="standing-player"><span className="standing-name">{entry.name}</span>{entry.isYou && <small className="standing-you-tag">You</small>}</span></th><td className="standing-num">{entry.swaps}</td>
-        <td className="standing-num">{formatSolveTime(entry.solveMs, true)}</td>
+        <td className="standing-num standing-rank-col"><RankBadge rank={entry.rank}/></td><th scope="row" title={entry.name}><span className="standing-player"><span className="standing-name">{entry.name}</span>{entry.isYou && <small className="standing-you-tag">You</small>}</span></th><td className="standing-num standing-moves-col">{entry.swaps}</td>
+        <td className="standing-num standing-time-col">{formatSolveTime(entry.solveMs, true)}</td>
       </tr>)}</tbody>
-      {own && <tfoot><tr className="standing-you"><td className="standing-num">{own.rank}</td><th scope="row">{firstDailyResultOnly(edition) ? 'Your result' : 'Your best'}</th><td className="standing-num">{own.swaps}</td>
-        <td className="standing-num">{formatSolveTime(own.solveMs, true)}</td></tr></tfoot>}
+      {own && <tfoot><tr className="standing-you"><td className="standing-num standing-rank-col">{own.rank}</td><th scope="row">{firstDailyResultOnly(edition) ? 'Your result' : 'Your best'}</th><td className="standing-num standing-moves-col">{own.swaps}</td>
+        <td className="standing-num standing-time-col">{formatSolveTime(own.solveMs, true)}</td></tr></tfoot>}
     </table>}
     <p className="standings-footnote">{crafted ? `${board.players} ${board.players === 1 ? 'finisher' : 'finishers'} · ${firstDailyResultOnly(edition) ? 'First finish only · ' : ''}Snapshot when opened.` :
       <>{board.players} saved {board.players === 1 ? 'finisher' : 'finishers'}. Each person counts once.

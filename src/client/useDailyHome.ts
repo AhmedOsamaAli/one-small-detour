@@ -26,7 +26,8 @@ export function useDailyHome(edition: string | null, active: boolean, identity: 
   });
   const [generation, setGeneration] = useState(0);
   const refresh = useCallback(() => {
-    setChecked({ identity, state: { status: 'checking', edition } });
+    setChecked((prev) => prev.identity === identity && prev.state.edition === edition && prev.state.status !== 'error'
+      ? prev : { identity, state: { status: 'checking', edition } });
     setGeneration(value => value + 1);
   }, [edition, identity]);
 
@@ -36,7 +37,9 @@ export function useDailyHome(edition: string | null, active: boolean, identity: 
     let current = true;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 8000);
-    setChecked({ identity, state: { status: 'checking', edition } });
+    setChecked((prev) => prev.identity === identity && prev.state.edition === edition &&
+      (prev.state.status === 'ready' || prev.state.status === 'complete')
+      ? prev : { identity, state: { status: 'checking', edition } });
     void gameApi.myRank(edition, controller.signal).then(result => {
       if (current) setChecked({ identity, state: homeDailyResult(edition, result) });
     }).catch((error: unknown) => {

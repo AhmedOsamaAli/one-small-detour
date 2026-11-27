@@ -20,8 +20,11 @@ export const GARDEN_TREE_CELL: Readonly<Record<Theme, number>> = {
 };
 
 const pending = new Map<boolean, Promise<GardenImages>>();
+const imageCache = new Map<string, Promise<HTMLImageElement>>();
 export function loadArtworkImage(url: string, label: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
+  const existing = imageCache.get(url);
+  if (existing) return existing;
+  const promise = new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.decoding = 'async';
     image.onload = () => {
@@ -30,7 +33,12 @@ export function loadArtworkImage(url: string, label: string): Promise<HTMLImageE
     };
     image.onerror = () => reject(new Error(`The detailed ${label} artwork could not load. Check your connection and try again.`));
     image.src = url;
+  }).catch((error: unknown) => {
+    imageCache.delete(url);
+    throw error;
   });
+  imageCache.set(url, promise);
+  return promise;
 }
 
 export function loadGardenImages(crafted = false): Promise<GardenImages> {

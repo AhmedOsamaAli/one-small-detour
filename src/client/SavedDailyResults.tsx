@@ -18,19 +18,30 @@ export function SavedDailyResults({ edition, result, onReplay, onPractice, onHom
   onHome: () => void;
 }) {
   const crafted = useCraftArt();
-  const [state, setState] = useState<StandingsState>({ status: 'loading' });
-  const [board, setBoard] = useState<DailyLeaderboard | null>(null);
+  const initialBoard = gameApi.peekStandings(edition.id);
+  const [state, setState] = useState<StandingsState>(() => initialBoard ? { status: 'ready', board: initialBoard } : { status: 'loading' });
+  const [board, setBoard] = useState<DailyLeaderboard | null>(initialBoard);
   const [refresh, setRefresh] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   useEffect(() => {
     let active = true;
-    setState({ status: 'loading' });
-    void gameApi.standings(edition.id).then((next) => {
+    const cached = refresh === 0 ? gameApi.peekStandings(edition.id) : null;
+    if (cached) {
+      setBoard(cached);
+      setState({ status: 'ready', board: cached });
+    } else if (refresh === 0) {
+      setState({ status: 'loading' });
+    }
+    setRefreshing(true);
+    void gameApi.standings(edition.id, refresh > 0).then((next) => {
       if (!active) return;
       setBoard(next);
       setState({ status: 'ready', board: next });
     }).catch((error: unknown) => {
       console.error('The saved Daily standings could not refresh:', error);
-      if (active) setState({ status: 'error', message: error instanceof Error ? error.message : 'Your rank could not refresh. Please try again.' });
+      if (active) setState((prev) => prev.status === 'ready' ? prev : { status: 'error', message: error instanceof Error ? error.message : 'Your rank could not refresh. Please try again.' });
+    }).finally(() => {
+      if (active) setRefreshing(false);
     });
     return () => { active = false; };
   }, [edition.id, refresh]);
@@ -63,7 +74,7 @@ export function SavedDailyResults({ edition, result, onReplay, onPractice, onHom
           <p className="saved-daily-metrics">{own.swaps} moves · {formatSolveTime(own.solveMs, true)}</p>
         </> : <p role="status">Your saved result is no longer available. No rank is being shown.</p>}
         <p>{own ? crafted ? 'Your finish stays. Your rank can change.' : 'Rankings can change as other people finish. Your recorded moves and time stay the same.' : 'Refresh to check again. No old rank is being shown.'}</p>
-        <button className="secondary-button" disabled={state.status === 'loading'} onClick={() => setRefresh((value) => value + 1)}
+        <button className="secondary-button" disabled={state.status === 'loading' || refreshing} onClick={() => setRefresh((value) => value + 1)}
           aria-label="Refresh current Daily rank"><Icon name="reset" size={16}/>Refresh rank</button>
       </section>
       <div className="saved-daily-standings">

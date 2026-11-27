@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Devvit `small-detour` v0.1.5** (submitted for unlisted Reddit review update and installed in `r/small_detour_dev`) is live in
+**Devvit `small-detour` v0.1.6** (submitted for unlisted Reddit review update and installed in `r/small_detour_dev`) is live in
 [r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/), on the
 [interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
 
@@ -49,6 +49,24 @@ player choices are preserved; phone alerts still depend on Reddit settings.
 Actual scheduled inbox delivery, fresh signed-out play and physical-phone
 behavior remain separate checks; opening Home does not certify them.
 No public launch review, App Directory publication or promotional post was made.
+
+### Zero-RPC backend auth, instant Top 10 cache, background art warm-up, medals, and column dividers (v0.1.6)
+
+- Backend: reads `context.username` directly (0ms) instead of calling
+  `reddit.getUserById()` on every API call, and caches positive `accountExists`
+  checks for 5 minutes.
+- Dashboard & Top 10: silently prefetches Today's Top 10 on Home when Daily is
+  complete and serves cached standings immediately (0ms, no loading flash) with
+  stale-while-revalidate refresh; keeps Home status visible on tab return
+  without `"Checking today..."` flicker.
+- Assets: deduplicates artwork image decodes by URL (stopping 6× redundant
+  `white.webp` decodes) and idle-warms 3D models, Flat sprites, and Practice
+  Map artwork on Home.
+- Top 10 visuals: added compact Gold/Silver/Bronze medal badges for ranks 1–3
+  and subtle vertical divider lines separating Moves from Time.
+- All 258 unit tests, three TypeScript checks, warning-free build, and 6-device
+  browser checks passed. Published as `small-detour` `v0.1.6` and installed in
+  `r/small_detour_dev`.
 
 ### Top 10 username/badge fit + backend, map, and transition performance (v0.1.5)
 
