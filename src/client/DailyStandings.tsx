@@ -24,7 +24,7 @@ export function DailyStandings({ state, edition, onRetry }: { state: StandingsSt
       <colgroup><col className="standing-rank"/><col/><col className="standing-moves"/><col className="standing-time"/></colgroup>
       <thead><tr><th scope="col" className="standing-num">#</th><th scope="col">Player</th><th scope="col" className="standing-num">Moves</th><th scope="col" className="standing-num">Time</th></tr></thead>
       <tbody>{leaders.map((entry) => <tr key={entry.userId} className={entry.isYou ? 'standing-you' : undefined}>
-        <td className="standing-num">{entry.rank}</td><th scope="row" title={entry.name}><span className="standing-name">{entry.name}</span>{entry.isYou && <small className="standing-you-tag">You</small>}</th><td className="standing-num">{entry.swaps}</td>
+        <td className="standing-num">{entry.rank}</td><th scope="row" title={entry.name}><span className="standing-player"><span className="standing-name">{entry.name}</span>{entry.isYou && <small className="standing-you-tag">You</small>}</span></th><td className="standing-num">{entry.swaps}</td>
         <td className="standing-num">{formatSolveTime(entry.solveMs, true)}</td>
       </tr>)}</tbody>
       {own && <tfoot><tr className="standing-you"><td className="standing-num">{own.rank}</td><th scope="row">{firstDailyResultOnly(edition) ? 'Your result' : 'Your best'}</th><td className="standing-num">{own.swaps}</td>

@@ -365,13 +365,12 @@
   box-shadow: inset 0 0 0 1px var(--home-roof), 0 2px 0 var(--art-shadow);
 }
 .craft-preview .completion-next { font-size: 14px; }
-.craft-preview .daily-standings table { font-size: 14px; }
-.craft-preview .daily-standings[data-density="spacious"] table { font-size: 16px; }
-.craft-preview .daily-standings[data-density="roomy"] table { font-size: 15px; }
-.craft-preview .daily-standings .standing-rank { width: 34px; }
-.craft-preview .daily-standings .standing-moves { width: 56px; }
-.craft-preview .daily-standings .standing-time { width: 78px; }
-.craft-preview .daily-standings tbody th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.craft-preview .daily-standings table { font-size: 13.5px; }
+.craft-preview .daily-standings[data-density="spacious"] table { font-size: 14.5px; }
+.craft-preview .daily-standings[data-density="roomy"] table { font-size: 14px; }
+.craft-preview .daily-standings .standing-rank { width: 28px; }
+.craft-preview .daily-standings .standing-moves { width: 48px; }
+.craft-preview .daily-standings .standing-time { width: 64px; }
 .craft-preview .daily-standings h3 { font-weight: 600; }
 .craft-preview .saved-daily-heading > .eyebrow { font-size: 12px; letter-spacing: .6px; }
 .craft-preview .saved-daily-heading > p:last-child { font-size: 13px; }
@@ -387,10 +386,10 @@
   .craft-preview .craft-finish-courier { width: 54px; height: 54px; }
 }
 @media (max-width: 680px) {
-  .craft-preview .daily-standings[data-density="compact"] table { font-size: 14px; }
-  .craft-preview .daily-standings .standing-rank { width: 28px; }
-  .craft-preview .daily-standings .standing-moves { width: 50px; }
-  .craft-preview .daily-standings .standing-time { width: 70px; }
+  .craft-preview .daily-standings[data-density="compact"] table { font-size: 13.5px; }
+  .craft-preview .daily-standings .standing-rank { width: 24px; }
+  .craft-preview .daily-standings .standing-moves { width: 44px; }
+  .craft-preview .daily-standings .standing-time { width: 56px; }
   .app-shell.craft-preview .campaign-preview .campaign-play { min-height: 42px; font-size: 14px; border-radius: 12px; }
 }
 @media (max-height: 680px) and (max-width: 680px) {

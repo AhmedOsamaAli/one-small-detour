@@ -6,7 +6,7 @@ personal eligibility checks and the final confirmation step.
 
 ## Current release
 
-**Devvit `small-detour` v0.1.4** (staging build on `r/small_detour_dev`; `v0.1.1` approved by Reddit) is installed in
+**Devvit `small-detour` v0.1.5** (submitted for unlisted Reddit review update and installed in `r/small_detour_dev`) is live in
 [r/small_detour_dev](https://www.reddit.com/r/small_detour_dev/), on the
 [interactive post](https://www.reddit.com/r/small_detour_dev/comments/1y6qwml/one_small_detour_a_little_change_a_different_way/).
 
@@ -49,6 +49,25 @@ player choices are preserved; phone alerts still depend on Reddit settings.
 Actual scheduled inbox delivery, fresh signed-out play and physical-phone
 behavior remain separate checks; opening Home does not certify them.
 No public launch review, App Directory publication or promotional post was made.
+
+### Top 10 username/badge fit + backend, map, and transition performance (v0.1.5)
+
+- Fixed Top 10 player cell layout with flex alignment so full usernames
+  (including 16+ char names) and the `You` badge never clip across 1, 2, 6, 10,
+  and 11 rows on Galaxy Fold (`344×660`), Galaxy S24 (`360×650`), Ultra, iPhone
+  15, Galaxy Tab, and Desktop (`0px` scroll).
+- Backend: cached the 2,448-entry catalog per revision, indexed `findPuzzle` in
+  O(1) maps, and added `Cache-Control: public, max-age=3600` for immutable
+  `/api/places/:id` puzzle responses.
+- Dashboard & Practice Map: virtualized the 50-island map to mount only nearby
+  islands (40 stops / 2 SVG regions on open instead of 1,000 stops / 50 regions,
+  a ~96% DOM reduction) and switched star totals to O(20) achievement lookups.
+- Transitions: added client-side puzzle caching, silent background prefetching
+  of the next Practice stop on Home and during play, and idle 3D engine/model
+  warm-up on Home.
+- All 258 unit tests, three TypeScript checks, production build, and multi-device
+  browser checks passed. Published as `small-detour` `v0.1.5` (unlisted review)
+  and installed in `r/small_detour_dev`.
 
 ### Equal buttons, auto-sized Top 10, full stop names, and Light Mode contrast (v0.1.4)
 

@@ -318,23 +318,39 @@ export function editionById(id: string): Edition | null {
   return date ? editionForDate(date) : null;
 }
 
+const catalogCache = new Map<1 | 2 | 3, readonly CatalogEntry[]>();
+const puzzleIndexCache = new Map<1 | 2 | 3, ReadonlyMap<string, Puzzle>>();
+
+function getPuzzleIndex(revision: 1 | 2 | 3): ReadonlyMap<string, Puzzle> {
+  const cached = puzzleIndexCache.get(revision);
+  if (cached) return cached;
+  const index = new Map<string, Puzzle>();
+  for (const item of getPuzzles(revision)) index.set(item.id, publicPuzzle(item));
+  puzzleIndexCache.set(revision, index);
+  return index;
+}
+
 export function findPuzzle(id: string, revision: 1 | 2 | 3 = 1): Puzzle | null {
-  const puzzle = getPuzzles(revision).find((item) => item.id === id);
-  return puzzle ? publicPuzzle(puzzle) : null;
+  return getPuzzleIndex(revision).get(id) ?? null;
 }
 
 export function getCatalog(revision: 1 | 2 | 3 = 1): CatalogEntry[] {
-  return getPuzzles(revision).map(({ id, title, note, theme, chapter, area, board, minimum, frame, practiceAfter, campaignSlot, originalSlot, legacyId, archived, challengeTier }) => ({
-    id, title: displayTitle(id, title), note, theme, chapter, area, budget: MAX_EXCHANGES, size: board.length,
-    ...(minimum === undefined ? {} : { minimum }),
-    ...(frame === undefined ? {} : { frame }),
-    ...(practiceAfter === undefined ? {} : { practiceAfter }),
-    ...(campaignSlot === undefined ? {} : { campaignSlot }),
-    ...(originalSlot === undefined ? {} : { originalSlot }),
-    ...(legacyId === undefined ? {} : { legacyId }),
-    ...(archived === undefined ? {} : { archived }),
-    ...(challengeTier === undefined ? {} : { challengeTier }),
-  }));
+  let cached = catalogCache.get(revision);
+  if (!cached) {
+    cached = getPuzzles(revision).map(({ id, title, note, theme, chapter, area, board, minimum, frame, practiceAfter, campaignSlot, originalSlot, legacyId, archived, challengeTier }) => ({
+      id, title: displayTitle(id, title), note, theme, chapter, area, budget: MAX_EXCHANGES, size: board.length,
+      ...(minimum === undefined ? {} : { minimum }),
+      ...(frame === undefined ? {} : { frame }),
+      ...(practiceAfter === undefined ? {} : { practiceAfter }),
+      ...(campaignSlot === undefined ? {} : { campaignSlot }),
+      ...(originalSlot === undefined ? {} : { originalSlot }),
+      ...(legacyId === undefined ? {} : { legacyId }),
+      ...(archived === undefined ? {} : { archived }),
+      ...(challengeTier === undefined ? {} : { challengeTier }),
+    }));
+    catalogCache.set(revision, cached);
+  }
+  return [...cached];
 }
 
 export function nextReset(date: Date): string {

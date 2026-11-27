@@ -142,18 +142,20 @@ export function createGameApi(options: GameServiceOptions): Hono {
 
   api.get('/api/bootstrap', async (c) => {
     const now = clock();
+    const revision = campaignRevision(c.req.url);
     const player = await options.player(c.req.raw);
+    const seenGuides = player ? await options.guides.seen(player.id) : [];
     return c.json({
       edition: editionForDate(now),
-      catalog: getCatalog(campaignRevision(c.req.url)),
-      campaignRevision: campaignRevision(c.req.url),
+      catalog: getCatalog(revision),
+      campaignRevision: revision,
       source: options.source,
       community: options.community(),
       playerName: player?.name ?? null,
       now: now.toISOString(),
       nextReset: nextReset(now),
       seasonComplete: false,
-      seenGuides: player ? await options.guides.seen(player.id) : [],
+      seenGuides,
     });
   });
 
@@ -229,7 +231,9 @@ export function createGameApi(options: GameServiceOptions): Hono {
 
   api.get('/api/places/:id', (c) => {
     const puzzle = findPuzzle(c.req.param('id'), campaignRevision(c.req.url));
-    return puzzle ? c.json(puzzle) : c.json({ error: 'That place is not in the atlas.', code: 'not_found' }, 404);
+    if (!puzzle) return c.json({ error: 'That place is not in the atlas.', code: 'not_found' }, 404);
+    c.header('Cache-Control', 'public, max-age=3600');
+    return c.json(puzzle);
   });
 
   api.post('/api/attempts', async (c) => {

@@ -9,7 +9,7 @@ import { applySwap, checkPuzzle, patchArea, patchCells, RuleError, rulesFor, sel
 import type { PatchIssue } from '../shared/rules.ts';
 import { difficultyLabel } from '../shared/difficulty.ts';
 import { CelebrationHold } from '../shared/playback.ts';
-import { advancePracticeWorlds, campaignAchievements, campaignPlaces, campaignWorlds, completedOriginalRoad, initializePracticeProgress, nextCampaignPlace, PRACTICE_WORLD_SIZE, practiceGate, practiceStars, recordPracticeMoves, worldStarRequirement, worldStars } from '../shared/progression.ts';
+import { advancePracticeWorlds, campaignAchievements, campaignPlaces, campaignWorlds, completedOriginalRoad, initializePracticeProgress, nextCampaignPlace, PRACTICE_WORLD_SIZE, practiceGate, practiceStars, recordPracticeMoves, worldStarRequirement, worldStarsFromAchievements } from '../shared/progression.ts';
 import { guidePatchStart, pendingTutorialProbe, TUTORIAL, TUTORIAL_LESSONS, tutorialLesson, tutorialStage } from '../shared/tutorial.ts';
 import { TutorialCoach } from './TutorialCoach.tsx';
 import { TutorialCards } from './TutorialCards.tsx';
@@ -425,14 +425,43 @@ export default function App() {
   const activeGoalWorld = useMemo(() => {
     const world = worlds[practiceProgress.unlockedWorlds - 1];
     if (!world || practiceProgress.unlockedWorlds >= worlds.length) return null;
-    return { stars: worldStars(world, catalog, preferences.completed, practiceProgress), required: worldStarRequirement(world), nextIsland: world.index + 2 };
-  }, [worlds, practiceProgress, catalog, preferences.completed]);
+    return { stars: worldStarsFromAchievements(world, campaign, achievements), required: worldStarRequirement(world), nextIsland: world.index + 2 };
+  }, [worlds, practiceProgress.unlockedWorlds, campaign, achievements]);
   const currentWorldGoal = useMemo(() => {
     if (!currentWorld || currentWorld.index + 1 >= worlds.length || currentWorld.index + 1 < practiceProgress.unlockedWorlds) return null;
-    const stars = worldStars(currentWorld, catalog, preferences.completed, practiceProgress);
+    const stars = worldStarsFromAchievements(currentWorld, campaign, achievements);
     const required = worldStarRequirement(currentWorld);
     return { title: currentWorld.title, stars, required, remaining: Math.max(0, required - stars), nextIsland: currentWorld.index + 2 };
-  }, [currentWorld, worlds.length, practiceProgress, catalog, preferences.completed]);
+  }, [currentWorld, worlds.length, practiceProgress.unlockedWorlds, campaign, achievements]);
+  const gateWorldStars = useMemo(() => gateWorld ? worldStarsFromAchievements(gateWorld, campaign, achievements) : 0, [gateWorld, campaign, achievements]);
+
+  // Silently warm the next Practice stop so Continue / Next opens with zero network wait.
+  useEffect(() => {
+    if (!bootstrap) return;
+    if (screen === 'home' && nextCampaign && !replayForStars) gameApi.prefetchPlace(nextCampaign.id);
+    if (screen === 'game' && run?.kind === 'studio' && currentCampaignIndex >= 0) {
+      const upcoming = campaign[currentCampaignIndex + 1];
+      if (upcoming) gameApi.prefetchPlace(upcoming.id);
+    }
+  }, [bootstrap, screen, nextCampaign, replayForStars, run?.kind, currentCampaignIndex, campaign]);
+
+  // Warm the 3D engine and models during idle time on Home so tapping Play starts smoothly.
+  useEffect(() => {
+    if (!bootstrap || screen !== 'home' || preferences.flat) return;
+    let cancelled = false;
+    const warm = (): void => {
+      if (cancelled) return;
+      void import('./island.ts').catch(() => { /* Best-effort preload. */ });
+      if (CRAFT_PREVIEW) void import('./craftWorld.ts').then((m) => m.loadCraftWorld()).catch(() => { /* Best-effort preload. */ });
+    };
+    const ric = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void });
+    if (typeof ric.requestIdleCallback === 'function') {
+      const id = ric.requestIdleCallback(warm, { timeout: 1500 });
+      return () => { cancelled = true; ric.cancelIdleCallback?.(id); };
+    }
+    const timerId = window.setTimeout(warm, 350);
+    return () => { cancelled = true; window.clearTimeout(timerId); };
+  }, [bootstrap, screen, preferences.flat]);
   const playback = useMemo<JourneyPlayback | null>(() => {
     const plan = roadReady && !arrivalComplete ? check.journey : null;
     return plan ? { revision, plan } : null;
@@ -1148,7 +1177,7 @@ export default function App() {
               All {campaign.length} stops complete.
             </p>}
             {gateWorld && <p className="completion-next completion-star-goal" data-testid="practice-star-gate">
-              ★ {worldStars(gateWorld, catalog, preferences.completed, practiceProgress)} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title} — need {Math.max(0, worldStarRequirement(gateWorld) - worldStars(gateWorld, catalog, preferences.completed, practiceProgress))} more for Island {gateWorld.index + 2}.
+              ★ {gateWorldStars} / {worldStarRequirement(gateWorld)} stars in {gateWorld.title} — need {Math.max(0, worldStarRequirement(gateWorld) - gateWorldStars)} more for Island {gateWorld.index + 2}.
             </p>}
             {!gateWorld && run.kind === 'studio' && currentWorldGoal && <p className="completion-next completion-star-goal" data-testid="practice-island-star-goal">
               {currentWorldGoal.remaining > 0

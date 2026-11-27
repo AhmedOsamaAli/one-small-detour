@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import type { CatalogEntry, Theme } from '../shared/types.ts';
-import { campaignAchievements, campaignGates, campaignPlaces, campaignWorlds, completedOriginalRoad, nextCampaignPlace, PRACTICE_WORLD_SIZE, worldStarRequirement, worldStars } from '../shared/progression.ts';
+import { campaignAchievements, campaignGates, campaignPlaces, campaignWorlds, completedOriginalRoad, nextCampaignPlace, PRACTICE_WORLD_SIZE, worldStarRequirement, worldStarsFromAchievements } from '../shared/progression.ts';
 import type { CampaignGate, CampaignWorld, PracticeProgress } from '../shared/progression.ts';
 import { Icon, StarRating } from './components.tsx';
 import { HOME_COLORS } from './worldTheme.ts';
@@ -110,9 +110,10 @@ interface SceneryProps {
   unlockedWorlds: number;
   dark: boolean;
   revision: number;
+  visibleWorlds: { start: number; end: number };
 }
 
-const MapScenery = memo(function MapScenery({ entries, points, gates, done, worlds, metrics, height, unlockedWorlds, dark, revision }: SceneryProps) {
+const MapScenery = memo(function MapScenery({ entries, points, gates, done, worlds, metrics, height, unlockedWorlds, dark, revision, visibleWorlds }: SceneryProps) {
   const garden = useGardenArt();
   const crafted = useCraftArt();
   const { width, rowGap } = metrics;
@@ -123,7 +124,7 @@ const MapScenery = memo(function MapScenery({ entries, points, gates, done, worl
     <svg className="garden-art-definitions" width="0" height="0" focusable="false">
       {garden ? <LandscapeDefinitions/> : <AtlasDefinitions/>}
     </svg>
-    {worlds.map((world) => {
+    {worlds.slice(visibleWorlds.start, visibleWorlds.end + 1).map((world) => {
       const top = world.index * regionHeight, span = Math.min(regionHeight, height - top);
       const priorWorld = worlds[world.index - 1], locked = world.index >= unlockedWorlds;
       const headingHeight = crafted ? 108 : 100;
@@ -216,6 +217,7 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
   const [artError, setArtError] = useState<string | null>(null);
   const [artRetry, setArtRetry] = useState(0);
   const [artRevision, setArtRevision] = useState(0);
+  const [visibleWorlds, setVisibleWorlds] = useState<{ start: number; end: number }>({ start: 0, end: 2 });
   useEffect(() => {
     if (!garden) return;
     let active = true;
@@ -255,12 +257,21 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
     viewport.height >= Math.max(...focusRow.map((point) => point.y + bottomInset)) - headingTop + 4
     ? headingTop - 4 : rowFocusY - (viewport.height + topInset - bottomInset) / 2;
   const completedCount = entries.filter((place) => done.has(place.id)).length;
+  const regionHeight = 9.2 * rowGap;
+  const syncVisibleWorlds = useCallback((pixels: number): void => {
+    if (!worlds.length) return;
+    const vh = viewport.height || 600;
+    const first = Math.max(0, Math.floor(pixels / regionHeight) - 1);
+    const last = Math.min(worlds.length - 1, Math.floor((pixels + vh) / regionHeight) + 1);
+    setVisibleWorlds((prev) => prev.start === first && prev.end === last ? prev : { start: first, end: last });
+  }, [worlds.length, viewport.height, regionHeight]);
   const rememberScroll = useCallback((element: HTMLDivElement): void => {
     const pixels = element.scrollTop;
     offset.current = pixels / rowGap;
     const value = String(Math.round(pixels));
     if (element.dataset['campaignOffset'] !== value) element.dataset['campaignOffset'] = value;
-  }, [rowGap]);
+    syncVisibleWorlds(pixels);
+  }, [rowGap, syncVisibleWorlds]);
 
   useLayoutEffect(() => {
     const element = scene.current;
@@ -330,7 +341,7 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
   const previewWorld = preview ? worlds[Math.floor(Math.max(0, previewIndex) / PRACTICE_WORLD_SIZE)] : starWorld;
   const previewAchievement = preview ? achievements.get(preview.id) : undefined;
   const previewStars = previewAchievement?.stars ?? 0;
-  const starsHere = previewWorld ? worldStars(previewWorld, places, completed, progress) : 0;
+  const starsHere = previewWorld ? worldStarsFromAchievements(previewWorld, entries, achievements) : 0;
   const starGoal = previewWorld ? worldStarRequirement(previewWorld) : 0;
   const nextWorldExists = previewWorld ? previewWorld.index + 1 < worlds.length : false;
   const nextWorldUnlocked = previewWorld ? previewWorld.index + 1 < progress.unlockedWorlds : true;
@@ -340,7 +351,7 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
   const originalRoad = preview && credited ? completedOriginalRoad(places, completed, preview.id) : null;
   const status = replay ? 'Completed' : credited ? 'Stars kept' : previewGate?.unlocked ? 'Ready' : 'Locked';
   const sceneStyle: CSSProperties & { '--map-stop-scale': number } = { '--map-stop-scale': metrics.stopScale };
-  const markers = useMemo(() => worlds.map((world) => {
+  const markers = useMemo(() => worlds.slice(visibleWorlds.start, visibleWorlds.end + 1).map((world) => {
     const top = world.index * 9.2 * rowGap;
     return <div key={world.index} className="adventure-marker-region" style={{ top, height: Math.min(9.2 * rowGap, worldHeight - top) }}>
       {entries.slice(world.start, world.end).map((place, local) => {
@@ -354,7 +365,7 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
           loading={loading !== null} onPreview={previewStop} onSelect={onSelect}/>;
       })}
     </div>;
-  }), [entries, points, gates, done, achievements, worlds, rowGap, worldHeight, needsStars, nextIndex, currentId, preview?.id, loading, previewStop, onSelect]);
+  }), [entries, points, gates, done, achievements, worlds, visibleWorlds.start, visibleWorlds.end, rowGap, worldHeight, needsStars, nextIndex, currentId, preview?.id, loading, previewStop, onSelect]);
 
   return <div className="adventure-map" data-campaign-count={entries.length}>
     <div className="adventure-tools">
@@ -432,7 +443,7 @@ export function AdventureMap({ places, completed, progress, currentId, reduced, 
       }}>
       {viewport.width > 0 && <div className="adventure-world" style={{ height: worldHeight }}>
         <MapScenery entries={entries} points={points} gates={gates} done={done} worlds={worlds} metrics={metrics}
-          height={worldHeight} unlockedWorlds={progress.unlockedWorlds} dark={dark} revision={artRevision}/>
+          height={worldHeight} unlockedWorlds={progress.unlockedWorlds} dark={dark} revision={artRevision} visibleWorlds={visibleWorlds}/>
         <div className="adventure-markers">{markers}</div>
       </div>}
     </div>

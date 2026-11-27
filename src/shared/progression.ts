@@ -54,9 +54,18 @@ export function practiceStars(place: Pick<CatalogEntry, 'minimum'>, best: number
   return best === place.minimum ? 3 : best <= place.minimum + 2 ? 2 : 1;
 }
 
+export function worldStarsFromAchievements(world: CampaignWorld, places: readonly CatalogEntry[], achievements: ReadonlyMap<string, CampaignAchievement>): number {
+  let sum = 0;
+  for (let i = world.start; i < world.end; i++) {
+    const place = places[i];
+    if (place) sum += achievements.get(place.id)?.stars ?? 0;
+  }
+  return sum;
+}
+
 export function worldStars(world: CampaignWorld, entries: readonly CatalogEntry[], completed: readonly string[], progress: PracticeProgress): number {
   const places = campaignPlaces(entries), earned = campaignAchievements(entries, completed, progress);
-  return places.slice(world.start, world.end).reduce((sum, place) => sum + (earned.get(place.id)?.stars ?? 0), 0);
+  return worldStarsFromAchievements(world, places, earned);
 }
 
 function originalRoads(place: CatalogEntry, lookup: ReadonlyMap<string, CatalogEntry>): CatalogEntry[] {

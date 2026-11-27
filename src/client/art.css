@@ -330,23 +330,25 @@
 .standings-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .daily-standings .standings-empty { margin: 8px 0; color: var(--muted); font-size: 13px; }
 .daily-standings .standings-footnote { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.3; }
-.daily-standings table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; line-height: 1.3; }
-.daily-standings[data-density="spacious"] table { font-size: 16px; line-height: 1.35; }
+.daily-standings table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13.5px; line-height: 1.3; }
+.daily-standings[data-density="spacious"] table { font-size: 14.5px; line-height: 1.35; }
 .daily-standings[data-density="spacious"] th,
-.daily-standings[data-density="spacious"] td { padding: 10px 6px; }
-.daily-standings[data-density="roomy"] table { font-size: 15px; line-height: 1.3; }
+.daily-standings[data-density="spacious"] td { padding: 8px 4px; }
+.daily-standings[data-density="roomy"] table { font-size: 14px; line-height: 1.3; }
 .daily-standings[data-density="roomy"] th,
-.daily-standings[data-density="roomy"] td { padding: 7px 6px; }
-.daily-standings .standing-rank { width: 34px; }
-.daily-standings .standing-moves { width: 56px; }
-.daily-standings .standing-time { width: 78px; }
-.daily-standings th, .daily-standings td { padding: 5px 5px; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); text-align: left; vertical-align: middle; color: var(--ink); }
+.daily-standings[data-density="roomy"] td { padding: 6px 4px; }
+.daily-standings .standing-rank { width: 28px; }
+.daily-standings .standing-moves { width: 48px; }
+.daily-standings .standing-time { width: 64px; }
+.daily-standings th, .daily-standings td { padding: 5px 4px; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); text-align: left; vertical-align: middle; color: var(--ink); }
 .daily-standings .standing-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.daily-standings thead th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-weight: 700; padding-block: 4px 5px; border-bottom: 1px solid var(--border-strong); }
+.daily-standings thead th { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); font-weight: 700; padding-block: 4px 5px; border-bottom: 1px solid var(--border-strong); }
 .daily-standings tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-soft) 50%, transparent); }
-.daily-standings tbody th { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-inline: 8px 6px; }
-.daily-standings .standing-name { vertical-align: middle; }
-.daily-standings .standing-you-tag { margin-left: 5px; padding: 1px 5px; border-radius: 999px; background: var(--green); color: var(--primary-ink); font-size: 10px; font-weight: 700; vertical-align: middle; }
+.daily-standings tbody th { font-weight: 550; padding-inline: 6px 4px; min-width: 0; }
+.daily-standings .standing-player { display: flex; align-items: center; gap: 5px; min-width: 0; width: 100%; }
+.daily-standings .standing-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daily-standings[data-density="spacious"] .standing-name { white-space: normal; overflow-wrap: anywhere; }
+.daily-standings .standing-you-tag { flex-shrink: 0; padding: 1px 5px; border-radius: 999px; background: var(--green); color: var(--primary-ink); font-size: 10px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
 .daily-standings td:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .daily-standings tbody tr.standing-you,
 .daily-standings tfoot tr.standing-you { background: var(--surface-selected); }
@@ -379,12 +381,13 @@
   .saved-daily-summary > p:nth-last-child(2) { display: none; }
   .saved-daily-summary .secondary-button { grid-column: 3; grid-row: 1 / 4; width: 40px; min-height: 40px; padding: 6px; margin: 0; font-size: 0; gap: 0; }
   .saved-daily-summary .secondary-button > svg { width: 17px; height: 17px; }
-  .saved-daily-standings { padding: 10px 12px; align-self: start; }
-  .daily-standings table { font-size: 14px; }
-  .daily-standings th, .daily-standings td { padding: 5px 4px; }
-  .daily-standings .standing-rank { width: 28px; }
-  .daily-standings .standing-moves { width: 50px; }
-  .daily-standings .standing-time { width: 70px; }
+  .saved-daily-standings { padding: 8px 10px; align-self: start; }
+  .daily-standings table { font-size: 13.5px; }
+  .daily-standings th, .daily-standings td { padding: 5px 3px; }
+  .daily-standings tbody th { padding-inline: 5px 3px; }
+  .daily-standings .standing-rank { width: 24px; }
+  .daily-standings .standing-moves { width: 44px; }
+  .daily-standings .standing-time { width: 56px; }
   .saved-daily-actions > button { font-size: 14px; padding: 8px 8px; }
 }
 @media (max-height: 680px) and (max-width: 680px) {

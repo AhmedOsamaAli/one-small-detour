@@ -75,18 +75,44 @@ async function progressRequest(method: 'GET' | 'POST' | 'DELETE', body?: object)
   } finally { window.clearTimeout(timeout); }
 }
 
+const placeCache = new Map<string, Puzzle>();
+const placeInFlight = new Map<string, Promise<Puzzle>>();
+
+function fetchPlace(id: string): Promise<Puzzle> {
+  const cached = placeCache.get(id);
+  if (cached) return Promise.resolve(cached);
+  const running = placeInFlight.get(id);
+  if (running) return running;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
+  const promise = request(`/api/places/${encodeURIComponent(id)}?campaign=3`, isPuzzle, { signal: controller.signal })
+    .then((puzzle) => {
+      if (placeCache.size >= 40) {
+        const oldest = placeCache.keys().next().value;
+        if (oldest !== undefined) placeCache.delete(oldest);
+      }
+      placeCache.set(id, puzzle);
+      return puzzle;
+    })
+    .catch((error: unknown) => {
+      if (controller.signal.aborted) throw new Error('Opening this stop took too long. Your progress is safe; please try again.');
+      throw error;
+    })
+    .finally(() => {
+      window.clearTimeout(timeout);
+      placeInFlight.delete(id);
+    });
+  placeInFlight.set(id, promise);
+  return promise;
+}
+
 export const gameApi = {
   bootstrap: (): Promise<Bootstrap> => request('/api/bootstrap?campaign=3',
     (data): data is Bootstrap => isBootstrap(data) && data.campaignRevision === 3),
-  place: async (id: string): Promise<Puzzle> => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8000);
-    try {
-      return await request(`/api/places/${encodeURIComponent(id)}?campaign=3`, isPuzzle, { signal: controller.signal });
-    } catch (error) {
-      if (controller.signal.aborted) throw new Error('Opening this stop took too long. Your progress is safe; please try again.');
-      throw error;
-    } finally { window.clearTimeout(timeout); }
+  place: (id: string): Promise<Puzzle> => fetchPlace(id),
+  prefetchPlace: (id: string): void => {
+    if (placeCache.has(id) || placeInFlight.has(id)) return;
+    void fetchPlace(id).catch(() => { /* Prefetch is best-effort; explicit opens report errors. */ });
   },
   practiceProgress: (): Promise<PracticeAccount> => progressRequest('GET'),
   savePracticeProgress: (generation: number, state: PracticeState): Promise<PracticeAccount> => progressRequest('POST', { generation, ...state }),
